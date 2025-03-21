@@ -1,0 +1,38 @@
+name: "Lint & Test"
+description: "Runs golangci-lint first, then executes tests."
+
+inputs:
+  go-version:
+    description: "Go version"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{inputs.go-version}}
+
+    - name: Platform info
+      run: go version
+      shell: bash
+
+    - name: Run go mod tidy
+      run: go mod tidy -diff
+      shell: bash
+
+    - name: Install & build
+      run: make
+      shell: bash
+
+    - name: Run lint
+      run: make lint
+      shell: bash
+
+    - name: Run tests
+      run: make test
+      shell: bash

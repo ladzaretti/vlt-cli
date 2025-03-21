@@ -1,0 +1,9 @@
+builds:
+  - main: ./cmd/pvlt
+    id: "pvlt"
+    binary: pvlt
+
+archives:
+  - id: "pvlt"
+    format: tar.gz
+    name_template: "pvlt_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
