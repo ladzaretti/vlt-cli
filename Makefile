@@ -13,8 +13,8 @@ bin/golangci-lint-${GOLANGCI_VERSION}:
 bin/golangci-lint: bin/golangci-lint-${GOLANGCI_VERSION}
 	@ln -sf golangci-lint-${GOLANGCI_VERSION} bin/golangci-lint
 
-bin/pvlt: go-mod-tidy
-	go build -o "bin/pvlt" ./cmd/pvlt
+bin/vlt: go-mod-tidy
+	go build -o "bin/vlt" ./cmd/vlt
 
 .PHONY: go-mod-tidy
 go-mod-tidy:
