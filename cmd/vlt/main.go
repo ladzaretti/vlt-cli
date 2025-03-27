@@ -1,7 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"github.com/ladzaretti/vlt-cli/internal/cmd"
+)
 
 func main() {
-	fmt.Println("hello world!")
+	_ = cmd.MustInitialize()
+	cmd.Execute()
 }

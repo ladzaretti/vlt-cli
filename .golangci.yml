@@ -21,7 +21,6 @@ linters:
     - dogsled
     - dupl
     - durationcheck
-    - err113
     - errchkjson
     - errname
     - errorlint
@@ -54,7 +53,6 @@ linters:
     - nilerr
     - nilnesserr
     - nilnil
-    - nlreturn
     - nolintlint
     - perfsprint
     - predeclared
