@@ -1,4 +1,4 @@
-package store
+package vlt
 
 import (
 	"database/sql"
