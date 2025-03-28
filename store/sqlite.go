@@ -29,7 +29,7 @@ func errf(format string, a ...any) error {
 	return fmt.Errorf(format, a...)
 }
 
-func New(path string) (*Store, error) {
+func Open(path string) (*Store, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, errf("sqlite open: %v", err)

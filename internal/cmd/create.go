@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +15,10 @@ import (
 	"github.com/ladzaretti/vlt-cli/store"
 )
 
-const defaultFilename = ".vlt"
+const (
+	defaultFilename = ".vlt"
+	minPasswordLen  = 8
+)
 
 type createCmd struct {
 	cmd *cobra.Command
@@ -60,13 +64,15 @@ func (c *createCmd) run(_ *cobra.Command, _ []string) error {
 	pass, err := c.readPassword()
 	if err != nil {
 		// TODO: use stdlib logger and set the log level based on the verbose flag
-		fmt.Printf("Could not read user password: %v\n", err)
+		log.Printf("Could not read user password: %v\n", err)
 		return errors.New("read user password failure")
 	}
 
 	_ = pass
 
-	if _, err := store.New(c.filePath); err != nil {
+	log.Printf("Using database filepath: %q", c.filePath)
+
+	if _, err := store.Open(c.filePath); err != nil {
 		return fmt.Errorf("create new data store: %w", err)
 	}
 
@@ -75,7 +81,7 @@ func (c *createCmd) run(_ *cobra.Command, _ []string) error {
 
 func (c *createCmd) readPassword() (string, error) {
 	if c.stdin {
-		fmt.Println("reading from stdin")
+		log.Println("Reading password from stdin")
 
 		pass, err := io.ReadAll(os.Stdin)
 		if err != nil {
@@ -85,40 +91,47 @@ func (c *createCmd) readPassword() (string, error) {
 		return strings.TrimSpace(string(pass)), nil
 	}
 
-	return askUserPassword(create)
+	return requestPassword(enterNewPassword)
 }
 
-type passwordType int
+type promptAction int
 
 const (
-	_ passwordType = iota
-	create
-	current
+	_ promptAction = iota
+	enterNewPassword
+	enterCurrentPassword
 )
 
-func promptPassword(pt passwordType) string {
-	switch pt {
-	case create:
+func passwordPrompt(action promptAction) string {
+	switch action {
+	case enterNewPassword:
 		return "Enter new password: "
-	case current:
+	case enterCurrentPassword:
 		fallthrough
 	default:
 		return "Enter password: "
 	}
 }
 
-func askUserPassword(pt passwordType) (string, error) {
-	// FIXME: enforce pass len
-	fmt.Println(promptPassword(pt))
+func requestPassword(action promptAction) (string, error) {
+	pass := ""
 
-	pb, err := term.ReadPassword(int(os.Stdin.Fd()))
-	if err != nil {
-		return "", fmt.Errorf("read password: %w", err)
+	for len(pass) < minPasswordLen {
+		fmt.Println(passwordPrompt(action))
+
+		pb, err := term.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			return "", fmt.Errorf("read password: %w", err)
+		}
+
+		pass = string(pb)
+
+		if len(pass) < minPasswordLen {
+			fmt.Printf("Password must be at least %d characters. Please try again.\n", minPasswordLen)
+		}
 	}
 
-	pass := string(pb)
-
-	if pt != create {
+	if action != enterNewPassword {
 		return pass, nil
 	}
 
