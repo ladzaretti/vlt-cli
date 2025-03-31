@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,7 +18,10 @@ const (
 	defaultFilename = ".vlt"
 )
 
-var ErrUnexpectedPipedData = errors.New("unexpected piped data")
+var (
+	ErrUnexpectedPipedData = errors.New("unexpected piped data")
+	ErrFileExists          = errors.New("vault file path already exists")
+)
 
 type createCmd struct {
 	cmd *cobra.Command
@@ -60,6 +64,11 @@ func (c *createCmd) init() error {
 }
 
 func (c *createCmd) run(_ *cobra.Command, _ []string) error {
+	if _, err := os.Stat(c.filePath); !errors.Is(err, fs.ErrNotExist) {
+		fmt.Printf("A file already exists at path: %q. Cannot create a new vault.\n", c.filePath)
+		return ErrFileExists
+	}
+
 	pass, err := c.readPassword()
 	if err != nil {
 		log.Printf("Could not read user password: %v\n", err)
