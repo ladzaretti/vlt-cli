@@ -1,7 +1,7 @@
 .DEFAULT_GOAL = check
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_VERSION ?= v1.64.8
+GOLANGCI_VERSION ?= v2.0.2
 TEST_ARGS=-v -timeout 40s
 
 bin/golangci-lint-${GOLANGCI_VERSION}:

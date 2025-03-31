@@ -10,22 +10,17 @@ import (
 )
 
 var (
+	verbose bool
+
 	rootCmd = &cobra.Command{
 		Use:   "vlt",
 		Short: "Vault CLI for managing secrets",
 		Long:  "vlt is a command-line password manager for securely storing and retrieving credentials.",
 		PersistentPreRun: func(_ *cobra.Command, _ []string) {
-			setupLogging(verbose)
+			setupLogging()
 		},
 	}
-
-	verbose bool
 )
-
-func logAndExit(err error, msg string) {
-	fmt.Fprintf(os.Stderr, "Error: %s: %v\n\n", msg, err)
-	os.Exit(1)
-}
 
 func MustInitialize() error {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false,
@@ -35,7 +30,7 @@ func MustInitialize() error {
 
 	createCmd, err := newCreateCmd()
 	if err != nil {
-		logAndExit(err, "failed to initialize create command")
+		return fmt.Errorf("failed to initialize create command: %w", err)
 	}
 
 	rootCmd.AddCommand(createCmd.cmd)
@@ -43,18 +38,16 @@ func MustInitialize() error {
 	return nil
 }
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
-	}
+func Execute() error {
+	//nolint:wrapcheck
+	return rootCmd.Execute()
 }
 
-func setupLogging(enabled bool) {
+func setupLogging() {
 	log.SetFlags(0)
+	log.SetOutput(io.Discard)
 
-	if enabled {
+	if verbose {
 		log.SetOutput(os.Stderr)
-	} else {
-		log.SetOutput(io.Discard)
 	}
 }

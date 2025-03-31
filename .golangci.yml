@@ -1,26 +1,32 @@
+version: "2"
+
 linters:
-  disable-all: true
+  default: none
   # run 'golangci-lint help linters' to see the list of supported linters
   enable:
     # Enabled by default
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
 
-   # Enabled, disabled by default
+    # Enabled, disabled by default
     - asasalint
     - asciicheck
     - bidichk
+    - bodyclose
+    - canonicalheader
     - containedctx
+    - contextcheck
     - copyloopvar
     - cyclop
     - decorder
     - dogsled
     - dupl
+    - dupword
     - durationcheck
+    - errcheck
     - errchkjson
     - errname
     - errorlint
@@ -29,56 +35,121 @@ linters:
     - fatcontext
     - forcetypeassert
     - funlen
-    - gci
+    - ginkgolinter
     - gocheckcompilerdirectives
-    - gochecknoglobals
     - gochecknoinits
+    - gochecksumtype
+    - gocognit
     - goconst
     - gocritic
+    - gocyclo
     - godot
-    - gofmt
-    - gofumpt
-    - goimports
+    #- godox
+    - goheader
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
     - gosec
+    - gosmopolitan
+    - govet
+    - grouper
     - iface
     - importas
     - inamedparam
+    - ineffassign
     - interfacebloat
     - intrange
     - ireturn
-    - lll
+    - loggercheck
+    - maintidx
+    - makezero
+    - mirror
+    - misspell
     - musttag
     - nakedret
     - nestif
     - nilerr
     - nilnesserr
     - nilnil
+    - nlreturn
+    - noctx
     - nolintlint
+    - nosprintfhostport
+    - paralleltest
     - perfsprint
+    - prealloc
     - predeclared
+    - promlinter
+    - protogetter
     - reassign
     - recvcheck
     - revive
     - rowserrcheck
+    - sloglint
+    - spancheck
     - sqlclosecheck
-    - stylecheck
+    - staticcheck
     - tagalign
+    - tagliatelle
     - testableexamples
+    - testifylint
+    - testpackage
     - thelper
     - tparallel
     - unconvert
     - unparam
+    - unused
     - usestdlibvars
-    - varnamelen
+    - usetesting
+    - wastedassign
     - whitespace
     - wrapcheck
-  fast: false
+    - wsl
+    - zerologlint
+
+  settings:
+    cyclop:
+      max-complexity: 15
+    revive:
+      enable-all-rules: true
+      rules:
+        - name: add-constant
+          disabled: true
+        - name: bare-return
+          disabled: true
+        - name: cognitive-complexity
+          disabled: true
+        - name: cyclomatic
+          disabled: true
+        - name: exported
+          disabled: true
+        - name: line-length-limit
+          disabled: true
+        - name: package-comments
+          disabled: true
+    wsl:
+      allow-cuddle-used-in-block: true
+      force-err-cuddling: true
+    nlreturn:
+      block-size: 4
+    errorlint:
+      errorf: false
+    paralleltest:
+      ignore-missing: true
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+    - gofumpt
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: "interface{}"
+          replacement: "any"
+    goimports:
+      local-prefixes:
+        - github.com/ladzaretti/vlt-cli
 
 run:
-  timeout: 3m
-
-linters-settings:
-  cyclop:
-    max-complexity: 15
-  nakedret:
-    max-func-lines: 40
+  timeout: "3m"
