@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	//go:embed migrations/sqlite
+	//go:embed db/migrations/sqlite
 	embedFS embed.FS
 
 	embeddedMigrations = migrate.EmbeddedMigrations{
@@ -21,7 +21,7 @@ var (
 	}
 )
 
-type Store struct {
+type Vault struct {
 	db *sql.DB
 }
 
@@ -29,7 +29,7 @@ func errf(format string, a ...any) error {
 	return fmt.Errorf(format, a...)
 }
 
-func Open(path string) (*Store, error) {
+func Open(path string) (*Vault, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, errf("sqlite open: %v", err)
@@ -41,5 +41,10 @@ func Open(path string) (*Store, error) {
 		return nil, errf("migration: %v", err)
 	}
 
-	return &Store{db: db}, nil
+	return &Vault{db: db}, nil
+}
+
+func (*Vault) SetMasterKey(k string) error {
+	_ = k
+	return nil
 }
