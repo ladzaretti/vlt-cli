@@ -1,9 +1,13 @@
 package vlt
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
+	"log"
+
+	"github.com/ladzaretti/vlt-cli/pkg/database"
 
 	// Package sqlite is a CGo-free port of SQLite/SQLite3.
 	_ "modernc.org/sqlite"
@@ -17,12 +21,13 @@ var (
 
 	embeddedMigrations = migrate.EmbeddedMigrations{
 		FS:   embedFS,
-		Path: "migrations/sqlite",
+		Path: "db/migrations/sqlite",
 	}
 )
 
 type Vault struct {
-	db *sql.DB
+	db          *sql.DB
+	dataHandler *database.Handler
 }
 
 func errf(format string, a ...any) error {
@@ -37,14 +42,18 @@ func Open(path string) (*Vault, error) {
 
 	m := migrate.New(db, migrate.SQLiteDialect{})
 
-	if _, err := m.Apply(embeddedMigrations); err != nil {
+	n, err := m.Apply(embeddedMigrations)
+	if err != nil {
 		return nil, errf("migration: %v", err)
 	}
 
-	return &Vault{db: db}, nil
+	log.Printf("Number migration scripts applied: %d", n)
+
+	vlt := &Vault{db: db, dataHandler: database.NewHandler(db)}
+
+	return vlt, nil
 }
 
-func (*Vault) SetMasterKey(k string) error {
-	_ = k
-	return nil
+func (v *Vault) SetMasterKey(k string) error {
+	return v.dataHandler.SaveMasterKey(context.Background(), k)
 }

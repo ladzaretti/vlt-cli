@@ -24,7 +24,7 @@ func IsPiped() bool {
 func ReadTrimStdin() (string, error) {
 	bs, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		return "", fmt.Errorf("read from stdin: %w", err)
+		return "", fmt.Errorf("read from stdin: %v", err)
 	}
 
 	return strings.TrimSpace(string(bs)), nil
@@ -36,7 +36,7 @@ func ReadSecure(prompt string) (string, error) {
 
 	pb, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
-		return "", fmt.Errorf("term read password: %w", err)
+		return "", fmt.Errorf("term read password: %v", err)
 	}
 
 	return string(pb), nil
@@ -54,7 +54,7 @@ func PromptNewPassword() (string, error) {
 	for len(pass) < minPasswordLen {
 		p, err := ReadSecure("Enter new password: ")
 		if err != nil {
-			return "", fmt.Errorf("read password: %w", err)
+			return "", fmt.Errorf("read password: %v", err)
 		}
 
 		pass = p
@@ -66,7 +66,7 @@ func PromptNewPassword() (string, error) {
 
 	pass2, err := ReadSecure("Retype password: ")
 	if err != nil {
-		return "", fmt.Errorf("read password: %w", err)
+		return "", fmt.Errorf("read password: %v", err)
 	}
 
 	if pass2 != pass {

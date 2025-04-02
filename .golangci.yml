@@ -103,7 +103,6 @@ linters:
     - usetesting
     - wastedassign
     - whitespace
-    - wrapcheck
     - wsl
     - zerologlint
 

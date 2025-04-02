@@ -15,6 +15,7 @@ type vltOptions struct {
 	verbose bool
 }
 
+// NewDefaultVltCommand creates the `vlt` command with its sub-commands.
 func NewDefaultVltCommand() *cobra.Command {
 	o := vltOptions{}
 	cmd := &cobra.Command{
