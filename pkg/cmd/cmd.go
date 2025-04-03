@@ -7,36 +7,35 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/pkg/cmd/create"
 	"github.com/ladzaretti/vlt-cli/pkg/cmd/login"
+	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
 
 	"github.com/spf13/cobra"
 )
 
-type vltOptions struct {
-	verbose bool
-}
-
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.
 func NewDefaultVltCommand() *cobra.Command {
-	o := vltOptions{}
+	opts := genericclioptions.Opts{}
 	cmd := &cobra.Command{
 		Use:   "vlt",
-		Short: "Vault CLI for managing secrets",
+		Short: "vault CLI for managing secrets",
 		Long:  "vlt is a command-line password manager for securely storing and retrieving credentials.",
 		PersistentPreRun: func(_ *cobra.Command, _ []string) {
 			log.SetFlags(0)
 			log.SetOutput(io.Discard)
 
-			if o.verbose {
+			if opts.Verbose {
 				log.SetOutput(os.Stderr)
 			}
 		},
 	}
 
-	cmd.PersistentFlags().BoolVarP(&o.verbose, "verbose", "v", false,
-		"Enable verbose output")
+	cmd.PersistentFlags().BoolVarP(&opts.Verbose, "verbose", "v", false,
+		"enable verbose output")
+	cmd.PersistentFlags().StringVarP(&opts.File, "file", "f", "",
+		"path to the SQLite database file where credentials will be stored")
 
 	cmd.AddCommand(login.NewCmdLogin())
-	cmd.AddCommand(create.NewCmdCreate())
+	cmd.AddCommand(create.NewCmdCreate(opts))
 
 	return cmd
 }
