@@ -1,4 +1,4 @@
-package database
+package store
 
 import (
 	"context"
@@ -12,18 +12,18 @@ type DBTX interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-type Handler struct {
+type Store struct {
 	db DBTX
 }
 
-func NewHandler(db DBTX) *Handler {
-	return &Handler{
+func New(db DBTX) *Store {
+	return &Store{
 		db: db,
 	}
 }
 
-func (*Handler) WithTx(tx *sql.Tx) *Handler {
-	return &Handler{
+func (*Store) WithTx(tx *sql.Tx) *Store {
+	return &Store{
 		db: tx,
 	}
 }
@@ -35,8 +35,8 @@ const saveMasterKey = `
 		(0, $1) ON CONFLICT (id) DO NOTHING
 `
 
-func (h *Handler) SaveMasterKey(ctx context.Context, key string) error {
-	if _, err := h.db.ExecContext(ctx, saveMasterKey, key); err != nil {
+func (s *Store) SaveMasterKey(ctx context.Context, key string) error {
+	if _, err := s.db.ExecContext(ctx, saveMasterKey, key); err != nil {
 		return err
 	}
 

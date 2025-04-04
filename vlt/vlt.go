@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ladzaretti/vlt-cli/pkg/database"
+	"github.com/ladzaretti/vlt-cli/vlt/store"
+
+	"github.com/ladzaretti/migrate"
 
 	// Package sqlite is a CGo-free port of SQLite/SQLite3.
 	_ "modernc.org/sqlite"
-
-	"github.com/ladzaretti/migrate"
 )
 
 var (
@@ -26,8 +26,8 @@ var (
 )
 
 type Vault struct {
-	db          *sql.DB
-	dataHandler *database.Handler
+	db    *sql.DB
+	store *store.Store
 }
 
 func New(path string) (*Vault, error) {
@@ -45,7 +45,7 @@ func New(path string) (*Vault, error) {
 
 	log.Printf("Number migration scripts applied: %d", n)
 
-	vlt := &Vault{db: db, dataHandler: database.NewHandler(db)}
+	vlt := &Vault{db: db, store: store.New(db)}
 
 	return vlt, nil
 }
@@ -54,6 +54,6 @@ func errf(format string, a ...any) error {
 	return fmt.Errorf(format, a...)
 }
 
-func (v *Vault) SetMasterKey(k string) error {
-	return v.dataHandler.SaveMasterKey(context.Background(), k)
+func (vlt *Vault) SetMasterKey(k string) error {
+	return vlt.store.SaveMasterKey(context.Background(), k)
 }

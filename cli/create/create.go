@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/pkg/input"
+	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/input"
 	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"

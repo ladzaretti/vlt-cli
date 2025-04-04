@@ -1,4 +1,4 @@
-package cmd
+package cli
 
 import (
 	"errors"
@@ -8,9 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ladzaretti/vlt-cli/pkg/cmd/create"
-	"github.com/ladzaretti/vlt-cli/pkg/cmd/login"
-	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/cli/create"
+	"github.com/ladzaretti/vlt-cli/cli/login"
+	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"
