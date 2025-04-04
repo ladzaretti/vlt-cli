@@ -30,6 +30,8 @@ type VltOptions struct {
 	genericclioptions.IOStreams
 }
 
+var _ genericclioptions.CmdOptions = &VltOptions{}
+
 func NewVltOptions(iostreams genericclioptions.IOStreams) *VltOptions {
 	return &VltOptions{IOStreams: iostreams}
 }
@@ -80,15 +82,7 @@ func NewDefaultVltCommand(iostreams genericclioptions.IOStreams, args []string) 
 		Short: "vault CLI for managing secrets",
 		Long:  "vlt is a command-line password manager for securely storing and retrieving credentials.",
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-			if err := o.Complete(); err != nil {
-				return err
-			}
-
-			if err := o.Validate(); err != nil {
-				return err
-			}
-
-			return o.Run()
+			return genericclioptions.ExecuteCommand(o)
 		},
 	}
 

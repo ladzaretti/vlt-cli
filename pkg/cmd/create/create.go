@@ -25,6 +25,8 @@ type CreateOptions struct {
 	genericclioptions.IOStreams
 }
 
+var _ genericclioptions.CmdOptions = &CreateOptions{}
+
 // NewCreateOptions creates the options for create.
 func NewCreateOptions(iostreams genericclioptions.IOStreams, vault *vlt.Vault) *CreateOptions {
 	return &CreateOptions{IOStreams: iostreams, vault: vault}
@@ -39,15 +41,7 @@ func NewCmdCreate(iostreams genericclioptions.IOStreams, vault *vlt.Vault) *cobr
 		Short: "Initialize a new vault",
 		Long:  "Create a new vault by specifying the SQLite database file where credentials will be stored.",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			if err := o.Complete(); err != nil {
-				return err
-			}
-
-			if err := o.Validate(); err != nil {
-				return err
-			}
-
-			return o.Run()
+			return genericclioptions.ExecuteCommand(o)
 		},
 	}
 
