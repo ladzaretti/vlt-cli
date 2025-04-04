@@ -14,15 +14,14 @@ const (
 	minPasswordLen = 8
 )
 
-// IsPiped checks if stdin is piped.
-func IsPiped() bool {
-	stat, _ := os.Stdin.Stat()
-	return (stat.Mode() & os.ModeCharDevice) == 0
+// IsPiped checks if the given file is a pipe (not a character device).
+func IsPiped(fi os.FileInfo) bool {
+	return (fi.Mode() & os.ModeCharDevice) == 0
 }
 
-// ReadTrimStdin reads and trims input from stdin.
-func ReadTrimStdin() (string, error) {
-	bs, err := io.ReadAll(os.Stdin)
+// ReadTrim reads and trims input from stdin.
+func ReadTrim(r io.Reader) (string, error) {
+	bs, err := io.ReadAll(r)
 	if err != nil {
 		return "", fmt.Errorf("read from stdin: %v", err)
 	}
@@ -31,10 +30,10 @@ func ReadTrimStdin() (string, error) {
 }
 
 // ReadSecure prompts for input and reads it securely (hides input).
-func ReadSecure(prompt string) (string, error) {
+func ReadSecure(fd int, prompt string) (string, error) {
 	fmt.Println(prompt)
 
-	pb, err := term.ReadPassword(int(os.Stdin.Fd()))
+	pb, err := term.ReadPassword(fd)
 	if err != nil {
 		return "", fmt.Errorf("term read password: %v", err)
 	}
@@ -43,16 +42,16 @@ func ReadSecure(prompt string) (string, error) {
 }
 
 // PromptPassword asks for the current password.
-func PromptPassword() (string, error) {
-	return ReadSecure("Enter password: ")
+func PromptPassword(fd int) (string, error) {
+	return ReadSecure(fd, "Enter password: ")
 }
 
 // PromptNewPassword asks for a new password with confirmation.
-func PromptNewPassword() (string, error) {
+func PromptNewPassword(fd int) (string, error) {
 	pass := ""
 
 	for len(pass) < minPasswordLen {
-		p, err := ReadSecure("Enter new password: ")
+		p, err := ReadSecure(fd, "Enter new password: ")
 		if err != nil {
 			return "", fmt.Errorf("read password: %v", err)
 		}
@@ -64,7 +63,7 @@ func PromptNewPassword() (string, error) {
 		}
 	}
 
-	pass2, err := ReadSecure("Retype password: ")
+	pass2, err := ReadSecure(fd, "Retype password: ")
 	if err != nil {
 		return "", fmt.Errorf("read password: %v", err)
 	}

@@ -30,11 +30,7 @@ type Vault struct {
 	dataHandler *database.Handler
 }
 
-func errf(format string, a ...any) error {
-	return fmt.Errorf(format, a...)
-}
-
-func Open(path string) (*Vault, error) {
+func New(path string) (*Vault, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, errf("sqlite open: %v", err)
@@ -52,6 +48,10 @@ func Open(path string) (*Vault, error) {
 	vlt := &Vault{db: db, dataHandler: database.NewHandler(db)}
 
 	return vlt, nil
+}
+
+func errf(format string, a ...any) error {
+	return fmt.Errorf(format, a...)
 }
 
 func (v *Vault) SetMasterKey(k string) error {

@@ -1,13 +1,14 @@
 package main
 
 import (
-	"log"
+	"os"
 
 	"github.com/ladzaretti/vlt-cli/pkg/cmd"
+	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
 )
 
 func main() {
-	if err := cmd.NewDefaultVltCommand().Execute(); err != nil {
-		log.Fatalf("command execution failed: %v", err)
-	}
+	iostream := genericclioptions.NewDefaultIOStreams()
+	vlt := cmd.NewDefaultVltCommand(iostream, os.Args[1:])
+	_ = vlt.Execute()
 }

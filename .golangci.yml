@@ -135,6 +135,9 @@ linters:
       errorf: false
     paralleltest:
       ignore-missing: true
+    errcheck:
+      exclude-functions:
+        - fmt.Fprintf
 
 formatters:
   enable:
