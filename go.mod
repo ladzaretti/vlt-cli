@@ -3,7 +3,7 @@ module github.com/ladzaretti/vlt-cli
 go 1.24.0
 
 require (
-	github.com/ladzaretti/migrate v0.1.2
+	github.com/ladzaretti/migrate v0.1.3
 	github.com/spf13/cobra v1.9.1
 	golang.org/x/term v0.30.0
 	modernc.org/sqlite v1.36.2
