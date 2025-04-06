@@ -3,9 +3,10 @@ package create
 import (
 	"fmt"
 
-	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/input"
-	"github.com/ladzaretti/vlt-cli/vlt"
+	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
+	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
+	"github.com/ladzaretti/vlt-cli/pkg/util/input"
+	"github.com/ladzaretti/vlt-cli/pkg/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -35,8 +36,8 @@ func NewCmdCreate(iostreams genericclioptions.IOStreams, vault *vlt.Vault) *cobr
 		Use:   "create",
 		Short: "Initialize a new vault",
 		Long:  "Create a new vault by specifying the SQLite database file where credentials will be stored.",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return genericclioptions.ExecuteCommand(o)
+		Run: func(_ *cobra.Command, _ []string) {
+			cmdutil.CheckErr(genericclioptions.ExecuteCommand(o))
 		},
 	}
 

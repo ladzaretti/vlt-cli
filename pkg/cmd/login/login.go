@@ -1,8 +1,9 @@
 package login // replace with your actual package name
 
 import (
-	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/vlt"
+	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
+	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
+	"github.com/ladzaretti/vlt-cli/pkg/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -32,8 +33,8 @@ func NewCmdLogin(iostreams genericclioptions.IOStreams, vault *vlt.Vault) *cobra
 		Use:   "login",
 		Short: "Authenticate against the specified vault database",
 		Long:  "This command authenticates the user and grants access to the vault for subsequent operations.",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return genericclioptions.ExecuteCommand(o)
+		Run: func(_ *cobra.Command, _ []string) {
+			cmdutil.CheckErr(genericclioptions.ExecuteCommand(o))
 		},
 	}
 

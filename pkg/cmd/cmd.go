@@ -1,4 +1,4 @@
-package cli
+package cmd
 
 import (
 	"errors"
@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ladzaretti/vlt-cli/cli/create"
-	"github.com/ladzaretti/vlt-cli/cli/login"
-	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/vlt"
+	"github.com/ladzaretti/vlt-cli/pkg/cmd/create"
+	"github.com/ladzaretti/vlt-cli/pkg/cmd/login"
+	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
+	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
+	"github.com/ladzaretti/vlt-cli/pkg/vaulterrors"
+	"github.com/ladzaretti/vlt-cli/pkg/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -19,11 +21,6 @@ const (
 	// defaultFilename is the default name for the vault file,
 	// created under the user's home directory.
 	defaultFilename = ".vlt"
-)
-
-var (
-	ErrVaultFileExists   = errors.New("vault file path already exists")
-	ErrVaultFileNotFound = errors.New("vault file does not exist")
 )
 
 type VaultOptions struct {
@@ -102,7 +99,7 @@ func defaultVaultPath() (string, error) {
 
 func (o *VaultOptions) validateNewVault() error {
 	if _, err := os.Stat(o.File); !errors.Is(err, fs.ErrNotExist) {
-		return ErrVaultFileExists
+		return vaulterrors.ErrVaultFileExists
 	}
 
 	return nil
@@ -111,7 +108,7 @@ func (o *VaultOptions) validateNewVault() error {
 func (o *VaultOptions) validateExistingVault() error {
 	if _, err := os.Stat(o.File); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return ErrVaultFileNotFound
+			return vaulterrors.ErrVaultFileNotFound
 		}
 
 		return fmt.Errorf("stat vault file: %w", err)
@@ -144,11 +141,12 @@ func NewDefaultVltCommand(iostreams genericclioptions.IOStreams, args []string) 
 		Short:         "vault CLI for managing secrets",
 		Long:          "vlt is a command-line password manager for securely storing and retrieving credentials.",
 		SilenceErrors: true,
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			if cmd.Name() == "create" {
 				WithNewVault(true)(o.VaultOptions)
 			}
-			return genericclioptions.ExecuteCommand(o)
+
+			cmdutil.CheckErr(genericclioptions.ExecuteCommand(o))
 		},
 	}
 

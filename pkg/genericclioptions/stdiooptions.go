@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ladzaretti/vlt-cli/input"
+	"github.com/ladzaretti/vlt-cli/pkg/util/input"
 )
 
 // ErrInvalidStdinUsage indicates stdin flag is used incorrectly.
