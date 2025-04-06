@@ -24,15 +24,16 @@ var (
 	fprintf = fmt.Fprintf
 )
 
-// BehaviorOnFatal allows you to override the default behavior when a fatal
-// error occurs. By default, it calls os.Exit(1). You can pass 'panic' as a function
-// here if you prefer a panic() instead of os.Exit(1).
+// BehaviorOnFatal allows overriding the default behavior when a fatal
+// error occurs. By default, it calls os.Exit(1).
 func BehaviorOnFatal(f func(string, int)) {
 	fatalErrHandler = f
 }
 
 // DefaultBehaviorOnFatal restores the default behavior for fatal errors,
-// which is to call os.Exit(1). Useful for tests.
+// which is to call os.Exit(1).
+//
+// Useful for tests.
 func DefaultBehaviorOnFatal() {
 	fatalErrHandler = fatal
 }
@@ -42,7 +43,7 @@ func SetDefaultFprintf(f func(w io.Writer, format string, a ...any) (n int, err 
 	fprintf = f
 }
 
-// fatal prints the message (if provided) and then exits with the given code.
+// fatal prints the message provided and then exits with the given code.
 func fatal(msg string, code int) {
 	if len(msg) > 0 {
 		// add newline if needed
@@ -63,8 +64,6 @@ var ErrExit = errors.New("exit")
 
 // CheckErr prints a user friendly error and exits with a non-zero
 // exit code. Unrecognized errors will be printed with an "error: " prefix.
-//
-// This method is generic to the command in use.
 func CheckErr(err error) {
 	checkErr(err, fatalErrHandler)
 }
