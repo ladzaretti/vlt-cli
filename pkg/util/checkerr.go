@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/pkg/vaulterrors"
 )
 
@@ -81,6 +82,8 @@ func checkErr(err error, handleErr func(string, int)) {
 		handleErr("Vault file already exists.\nConsider deleting the file first before running `create` to create a new vault.", DefaultErrorExitCode)
 	case errors.Is(err, vaulterrors.ErrVaultFileNotFound):
 		handleErr("Vault file not found.\nUse the `create` command to create a new vault file.", DefaultErrorExitCode)
+	case errors.Is(err, genericclioptions.ErrInvalidStdinUsage):
+		handleErr("Invalid use of the --stdin flag.\nMake sure you're piping input into the command when using this flag.", DefaultErrorExitCode)
 	default:
 		msg, ok := StandardErrorMessage(err)
 		if !ok {

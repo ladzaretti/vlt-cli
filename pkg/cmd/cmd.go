@@ -30,7 +30,7 @@ type VaultOptions struct {
 	newVault bool
 }
 
-var _ genericclioptions.BaseOptions = &VaultOptions{}
+var _ genericclioptions.CmdOptions = &VaultOptions{}
 
 type VaultOptionsOpts func(*VaultOptions)
 
