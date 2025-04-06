@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"log"
 
 	"github.com/ladzaretti/vlt-cli/vlt/store"
 
@@ -30,6 +29,7 @@ type Vault struct {
 	store *store.Store
 }
 
+// New opens or creates a vault at the specified path and applies migrations.
 func New(path string) (*Vault, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -38,12 +38,10 @@ func New(path string) (*Vault, error) {
 
 	m := migrate.New(db, migrate.SQLiteDialect{})
 
-	n, err := m.Apply(embeddedMigrations)
+	_, err = m.Apply(embeddedMigrations)
 	if err != nil {
 		return nil, errf("migration: %v", err)
 	}
-
-	log.Printf("Number migration scripts applied: %d", n)
 
 	vlt := &Vault{db: db, store: store.New(db)}
 
@@ -55,5 +53,9 @@ func errf(format string, a ...any) error {
 }
 
 func (vlt *Vault) SetMasterKey(k string) error {
-	return vlt.store.SaveMasterKey(context.Background(), k)
+	return vlt.store.InsertMasterKey(context.Background(), k)
+}
+
+func (vlt *Vault) GetMasterKey() (string, error) {
+	return vlt.store.QueryMasterKey(context.Background())
 }
