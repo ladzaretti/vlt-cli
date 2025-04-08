@@ -19,7 +19,7 @@ func IsPiped(fi os.FileInfo) bool {
 	return (fi.Mode() & os.ModeCharDevice) == 0
 }
 
-// ReadTrim reads and trims input from stdin.
+// ReadTrim reads and trims input from r.
 func ReadTrim(r io.Reader) (string, error) {
 	bs, err := io.ReadAll(r)
 	if err != nil {
@@ -30,8 +30,9 @@ func ReadTrim(r io.Reader) (string, error) {
 }
 
 // ReadSecure prompts for input and reads it securely (hides input).
-func ReadSecure(fd int, prompt string) (string, error) {
-	fmt.Println(prompt)
+func ReadSecure(fd int, prompt string, a ...any) (string, error) {
+	fmt.Printf(prompt, a...)
+	defer fmt.Println()
 
 	pb, err := term.ReadPassword(fd)
 	if err != nil {

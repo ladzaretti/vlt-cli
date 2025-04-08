@@ -83,12 +83,14 @@ func checkErr(err error, handleErr func(string, int)) {
 		handleErr("Vault file not found.\nUse the `create` command to create a new vault file.", DefaultErrorExitCode)
 	case errors.Is(err, genericclioptions.ErrInvalidStdinUsage):
 		handleErr("Invalid use of the --stdin flag.\nMake sure you're piping input into the command when using this flag.", DefaultErrorExitCode)
+	case errors.Is(err, vaulterrors.ErrWrongPassword):
+		handleErr("Incorrect password.\nPlease check your password and try again.", DefaultErrorExitCode)
 	default:
 		msg, ok := StandardErrorMessage(err)
 		if !ok {
 			msg = err.Error()
-			if !strings.HasPrefix(msg, "error: ") {
-				msg = "error: " + msg
+			if !strings.HasPrefix(msg, "Error: ") {
+				msg = "Error: " + msg
 			}
 		}
 

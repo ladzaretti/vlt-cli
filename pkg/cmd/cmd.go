@@ -76,8 +76,13 @@ func (o *VaultOptions) Validate() error {
 	return o.validateExistingVault()
 }
 
-// Run initializes the Vault object from the specified file.
+// Run initializes the Vault object from the specified existing file.
 func (o *VaultOptions) Run() error {
+	// creating a new vault is handled internally by the create subcommand.
+	if o.newVault {
+		return nil
+	}
+
 	v, err := vlt.New(o.File)
 	if err != nil {
 		return err
@@ -137,10 +142,9 @@ func NewDefaultVltCommand(iostreams genericclioptions.IOStreams, args []string) 
 	o := NewDefaultVltOptions(iostreams, NewVaultOptions())
 
 	cmd := &cobra.Command{
-		Use:           "vlt",
-		Short:         "vault CLI for managing secrets",
-		Long:          "vlt is a command-line password manager for securely storing and retrieving credentials.",
-		SilenceErrors: true,
+		Use:   "vlt",
+		Short: "vault CLI for managing secrets",
+		Long:  "vlt is a command-line password manager for securely storing and retrieving credentials.",
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			if cmd.Name() == "create" {
 				WithNewVault(true)(o.VaultOptions)
@@ -155,8 +159,8 @@ func NewDefaultVltCommand(iostreams genericclioptions.IOStreams, args []string) 
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
 	cmd.PersistentFlags().StringVarP(&o.File, "file", "f", "", "path to the vault file")
 
-	cmd.AddCommand(create.NewCmdCreate(o.IOStreams, o.Vault))
-	cmd.AddCommand(login.NewCmdLogin(o.IOStreams, o.Vault))
+	cmd.AddCommand(create.NewCmdCreate(o.IOStreams, o.File))
+	cmd.AddCommand(login.NewCmdLogin(o.IOStreams, func() *vlt.Vault { return o.Vault }))
 
 	return cmd
 }

@@ -25,6 +25,7 @@ var (
 )
 
 type Vault struct {
+	Path  string
 	db    *sql.DB
 	store *store.Store
 }
@@ -43,7 +44,11 @@ func New(path string) (*Vault, error) {
 		return nil, errf("migration: %v", err)
 	}
 
-	vlt := &Vault{db: db, store: store.New(db)}
+	vlt := &Vault{
+		Path:  path,
+		db:    db,
+		store: store.New(db),
+	}
 
 	return vlt, nil
 }

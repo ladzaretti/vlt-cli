@@ -13,7 +13,7 @@ import (
 
 // CreateOptions have the data required to perform the create operation.
 type CreateOptions struct {
-	vault *vlt.Vault
+	path string
 
 	genericclioptions.StdioOptions
 }
@@ -21,16 +21,17 @@ type CreateOptions struct {
 var _ genericclioptions.CmdOptions = &CreateOptions{}
 
 // NewCreateOptions initializes the options struct.
-func NewCreateOptions(iostreams genericclioptions.IOStreams, vault *vlt.Vault) *CreateOptions {
+func NewCreateOptions(iostreams genericclioptions.IOStreams, path string) *CreateOptions {
 	return &CreateOptions{
+		path: path,
+
 		StdioOptions: genericclioptions.StdioOptions{IOStreams: iostreams},
-		vault:        vault,
 	}
 }
 
 // NewCmdCreate creates a new create command.
-func NewCmdCreate(iostreams genericclioptions.IOStreams, vault *vlt.Vault) *cobra.Command {
-	o := NewCreateOptions(iostreams, vault)
+func NewCmdCreate(iostreams genericclioptions.IOStreams, path string) *cobra.Command {
+	o := NewCreateOptions(iostreams, path)
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -62,7 +63,12 @@ func (o *CreateOptions) Run() error {
 		return fmt.Errorf("read user password: %v", err)
 	}
 
-	if err := o.vault.SetMasterKey(mk); err != nil {
+	vault, err := vlt.New(o.path)
+	if err != nil {
+		return err
+	}
+
+	if err := vault.SetMasterKey(mk); err != nil {
 		o.Debugf("Failure setting vault master key: %v\n", err)
 		return fmt.Errorf("set master key: %v", err)
 	}
