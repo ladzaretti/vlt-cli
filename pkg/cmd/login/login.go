@@ -58,12 +58,14 @@ func (o *LoginOptions) Validate() error {
 }
 
 func (o *LoginOptions) Run() error {
-	usrKey, err := input.ReadSecure(int(o.In.Fd()), "Password for %s:", o.vault().Path)
+	v := o.vault()
+
+	usrKey, err := input.ReadSecure(int(o.In.Fd()), "Password for %s:", v.Path)
 	if err != nil {
 		return fmt.Errorf("prompt password: %v", err)
 	}
 
-	dbKey, err := o.vault().GetMasterKey()
+	dbKey, err := v.GetMasterKey()
 	if err != nil {
 		return fmt.Errorf("get master key: %v", err)
 	}

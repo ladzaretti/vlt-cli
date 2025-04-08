@@ -78,7 +78,7 @@ func checkErr(err error, handleErr func(string, int)) {
 	case errors.Is(err, ErrExit):
 		handleErr("", DefaultErrorExitCode)
 	case errors.Is(err, vaulterrors.ErrVaultFileExists):
-		handleErr("Vault file already exists.\nConsider deleting the file first before running `create` to create a new vault.", DefaultErrorExitCode)
+		handleErr("Vault file already exists.\nConsider deleting the file first before running 'create' to create a new vault at the specified path.", DefaultErrorExitCode)
 	case errors.Is(err, vaulterrors.ErrVaultFileNotFound):
 		handleErr("Vault file not found.\nUse the `create` command to create a new vault file.", DefaultErrorExitCode)
 	case errors.Is(err, genericclioptions.ErrInvalidStdinUsage):

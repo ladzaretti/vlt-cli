@@ -13,7 +13,7 @@ import (
 
 // CreateOptions have the data required to perform the create operation.
 type CreateOptions struct {
-	path string
+	path func() string
 
 	genericclioptions.StdioOptions
 }
@@ -21,7 +21,7 @@ type CreateOptions struct {
 var _ genericclioptions.CmdOptions = &CreateOptions{}
 
 // NewCreateOptions initializes the options struct.
-func NewCreateOptions(iostreams genericclioptions.IOStreams, path string) *CreateOptions {
+func NewCreateOptions(iostreams genericclioptions.IOStreams, path func() string) *CreateOptions {
 	return &CreateOptions{
 		path: path,
 
@@ -30,7 +30,7 @@ func NewCreateOptions(iostreams genericclioptions.IOStreams, path string) *Creat
 }
 
 // NewCmdCreate creates a new create command.
-func NewCmdCreate(iostreams genericclioptions.IOStreams, path string) *cobra.Command {
+func NewCmdCreate(iostreams genericclioptions.IOStreams, path func() string) *cobra.Command {
 	o := NewCreateOptions(iostreams, path)
 
 	cmd := &cobra.Command{
@@ -63,7 +63,7 @@ func (o *CreateOptions) Run() error {
 		return fmt.Errorf("read user password: %v", err)
 	}
 
-	vault, err := vlt.New(o.path)
+	vault, err := vlt.New(o.path())
 	if err != nil {
 		return err
 	}

@@ -159,7 +159,7 @@ func NewDefaultVltCommand(iostreams genericclioptions.IOStreams, args []string) 
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
 	cmd.PersistentFlags().StringVarP(&o.File, "file", "f", "", "path to the vault file")
 
-	cmd.AddCommand(create.NewCmdCreate(o.IOStreams, o.File))
+	cmd.AddCommand(create.NewCmdCreate(o.IOStreams, func() string { return o.File }))
 	cmd.AddCommand(login.NewCmdLogin(o.IOStreams, func() *vlt.Vault { return o.Vault }))
 
 	return cmd

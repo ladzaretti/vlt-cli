@@ -62,3 +62,24 @@ func (s *Store) QueryMasterKey(ctx context.Context) (string, error) {
 
 	return masterKey, nil
 }
+
+const insertNewSecret = `
+	INSERT INTO
+		vault (name, secret)
+	VALUES
+		($1, $2) ON CONFLICT (name) DO NOTHING
+`
+
+func (s *Store) InsertNewSecret(ctx context.Context, name string, secret string) (int64, error) {
+	res, err := s.db.ExecContext(ctx, insertNewSecret, name, secret)
+	if err != nil {
+		return 0, err
+	}
+
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return n, nil
+}
