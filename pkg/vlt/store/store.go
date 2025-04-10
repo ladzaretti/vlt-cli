@@ -63,6 +63,7 @@ func (s *Store) QueryMasterKey(ctx context.Context) (string, error) {
 	return masterKey, nil
 }
 
+//nolint:gosec // false positive
 const insertNewSecret = `
 	INSERT INTO
 		vault (name, secret)
@@ -72,6 +73,32 @@ const insertNewSecret = `
 
 func (s *Store) InsertNewSecret(ctx context.Context, name string, secret string) (int64, error) {
 	res, err := s.db.ExecContext(ctx, insertNewSecret, name, secret)
+	if err != nil {
+		return 0, err
+	}
+
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return n, nil
+}
+
+//nolint:gosec // false positive
+//nolint:gosec // false positive
+const upsertNewSecret = `
+	INSERT INTO
+		vault (name, secret)
+	VALUES
+		($1, $2) ON CONFLICT (name) DO
+	UPDATE
+	SET
+		secret = EXCLUDED.secret;
+`
+
+func (s *Store) UpsertSecret(ctx context.Context, name string, secret string) (int64, error) {
+	res, err := s.db.ExecContext(ctx, upsertNewSecret, name, secret)
 	if err != nil {
 		return 0, err
 	}

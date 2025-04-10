@@ -68,3 +68,7 @@ func (vlt *Vault) GetMasterKey() (string, error) {
 func (vlt *Vault) InsertNewSecret(name, secret string) (int64, error) {
 	return vlt.store.InsertNewSecret(context.Background(), name, secret)
 }
+
+func (vlt *Vault) UpsertSecret(name, secret string) (int64, error) {
+	return vlt.store.UpsertSecret(context.Background(), name, secret)
+}

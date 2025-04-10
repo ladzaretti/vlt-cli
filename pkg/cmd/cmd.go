@@ -9,6 +9,7 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/pkg/cmd/create"
 	"github.com/ladzaretti/vlt-cli/pkg/cmd/login"
+	"github.com/ladzaretti/vlt-cli/pkg/cmd/save"
 	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
 	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
 	"github.com/ladzaretti/vlt-cli/pkg/vaulterrors"
@@ -142,9 +143,10 @@ func NewDefaultVltCommand(iostreams genericclioptions.IOStreams, args []string) 
 	o := NewDefaultVltOptions(iostreams, NewVaultOptions())
 
 	cmd := &cobra.Command{
-		Use:   "vlt",
-		Short: "vault CLI for managing secrets",
-		Long:  "vlt is a command-line password manager for securely storing and retrieving credentials.",
+		Use:          "vlt",
+		Short:        "vault CLI for managing secrets",
+		Long:         "vlt is a command-line password manager for securely storing and retrieving credentials.",
+		SilenceUsage: true,
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			if cmd.Name() == "create" {
 				WithNewVault(true)(o.VaultOptions)
@@ -161,6 +163,7 @@ func NewDefaultVltCommand(iostreams genericclioptions.IOStreams, args []string) 
 
 	cmd.AddCommand(create.NewCmdCreate(o.IOStreams, func() string { return o.File }))
 	cmd.AddCommand(login.NewCmdLogin(o.IOStreams, func() *vlt.Vault { return o.Vault }))
+	cmd.AddCommand(save.NewCmdSave(o.IOStreams, func() *vlt.Vault { return o.Vault }))
 
 	return cmd
 }

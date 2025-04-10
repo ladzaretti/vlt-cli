@@ -6,7 +6,7 @@ A command-line password manager backed by SQLite.
 - [ ] Implement all initial subcommands
   - [x] create
   - [x] login
-  - [ ] store
+  - [x] save
   - [ ] show
   - [ ] remove
   - [ ] list

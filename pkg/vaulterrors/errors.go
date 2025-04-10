@@ -8,4 +8,6 @@ var (
 	ErrVaultFileNotFound = errors.New("vault file not found")
 
 	ErrWrongPassword = errors.New("incorrect vault password")
+
+	ErrEmptyKey = errors.New("key cannot be empty")
 )

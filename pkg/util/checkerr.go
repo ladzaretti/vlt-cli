@@ -78,19 +78,19 @@ func checkErr(err error, handleErr func(string, int)) {
 	case errors.Is(err, ErrExit):
 		handleErr("", DefaultErrorExitCode)
 	case errors.Is(err, vaulterrors.ErrVaultFileExists):
-		handleErr("Vault file already exists.\nConsider deleting the file first before running 'create' to create a new vault at the specified path.", DefaultErrorExitCode)
+		handleErr("vlt: vault file already exists\nConsider deleting the file first before running 'create' to create a new vault at the specified path.", DefaultErrorExitCode)
 	case errors.Is(err, vaulterrors.ErrVaultFileNotFound):
-		handleErr("Vault file not found.\nUse the `create` command to create a new vault file.", DefaultErrorExitCode)
+		handleErr("vlt: vault file not found\nUse the `create` command to create a new vault file.", DefaultErrorExitCode)
 	case errors.Is(err, genericclioptions.ErrInvalidStdinUsage):
-		handleErr("Invalid use of the --stdin flag.\nMake sure you're piping input into the command when using this flag.", DefaultErrorExitCode)
+		handleErr("vlt: invalid use of the --stdin flag: no piped data\nMake sure you're piping input into the command when using this flag.", DefaultErrorExitCode)
 	case errors.Is(err, vaulterrors.ErrWrongPassword):
-		handleErr("Incorrect password.\nPlease check your password and try again.", DefaultErrorExitCode)
+		handleErr("vlt: incorrect password\nPlease check your password and try again.", DefaultErrorExitCode)
 	default:
 		msg, ok := StandardErrorMessage(err)
 		if !ok {
 			msg = err.Error()
-			if !strings.HasPrefix(msg, "Error: ") {
-				msg = "Error: " + msg
+			if !strings.HasPrefix(msg, "vlt: ") {
+				msg = "vlt: " + msg
 			}
 		}
 
