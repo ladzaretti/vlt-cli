@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ladzaretti/vlt-cli/pkg/clipboard"
 	"github.com/ladzaretti/vlt-cli/pkg/cmd/create"
 	"github.com/ladzaretti/vlt-cli/pkg/cmd/login"
 	"github.com/ladzaretti/vlt-cli/pkg/cmd/save"
@@ -124,6 +125,8 @@ func (o *VaultOptions) validateExistingVault() error {
 }
 
 type DefaultVltOptions struct {
+	config Config
+
 	*VaultOptions
 
 	genericclioptions.IOStreams
@@ -131,16 +134,49 @@ type DefaultVltOptions struct {
 
 var _ genericclioptions.CmdOptions = &DefaultVltOptions{}
 
-func NewDefaultVltOptions(iostreams genericclioptions.IOStreams, vaultOptions *VaultOptions) *DefaultVltOptions {
+func NewDefaultVltOptions(iostreams genericclioptions.IOStreams, vaultOptions *VaultOptions) (*DefaultVltOptions, error) {
+	config, err := LoadConfig()
+	if err != nil && !errors.Is(err, ErrNoConfigAvailable) {
+		return nil, err
+	}
+
 	return &DefaultVltOptions{
+		config:       config,
 		IOStreams:    iostreams,
 		VaultOptions: vaultOptions,
+	}, nil
+}
+
+func (o *DefaultVltOptions) Complete() error {
+	vaultPath := o.config.Vault.Path
+	if len(vaultPath) > 0 {
+		o.File = vaultPath
 	}
+
+	copyCmd, pasteCmd := o.config.Clipboard.CopyCmd, o.config.Clipboard.PasteCmd
+	if len(copyCmd) > 0 || len(pasteCmd) > 0 {
+		opts := []clipboard.Opt{
+			clipboard.WithCopyCmd(copyCmd),
+			clipboard.WithPasteCmd(pasteCmd),
+		}
+		clipboard.SetDefault(clipboard.New(opts...))
+	}
+
+	return o.VaultOptions.Complete()
+}
+
+func (o *DefaultVltOptions) Validate() error {
+	return o.VaultOptions.Validate()
+}
+
+func (o *DefaultVltOptions) Run() error {
+	return o.VaultOptions.Run()
 }
 
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.
 func NewDefaultVltCommand(iostreams genericclioptions.IOStreams, args []string) *cobra.Command {
-	o := NewDefaultVltOptions(iostreams, NewVaultOptions())
+	o, err := NewDefaultVltOptions(iostreams, NewVaultOptions())
+	cmdutil.CheckErr(err)
 
 	cmd := &cobra.Command{
 		Use:          "vlt",
