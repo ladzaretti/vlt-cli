@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ladzaretti/vlt-cli/pkg/clipboard"
 	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
 	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
 	"github.com/ladzaretti/vlt-cli/pkg/util/input"
@@ -35,10 +36,12 @@ type SaveOptions struct {
 
 	genericclioptions.StdioOptions
 
-	key      string // key is the name of the secret key to save in the vault.
+	key      string // key is the name of the secret to save in the vault.
 	generate bool   // generate indicates whether to auto-generate a random secret.
 	update   bool   // update determines whether to overwrite an existing secret.
 	output   bool   // output controls whether to print the saved secret to stdout.
+	copy     bool   // copy controls whether to copy the saved secret to the clipboard.
+	paste    bool   // paste controls whether to read the secret to save from the clipboard.
 }
 
 var _ genericclioptions.CmdOptions = &SaveOptions{}
@@ -71,6 +74,8 @@ Use --update to overwrite the existing value for a given key.`,
 	cmd.Flags().BoolVarP(&o.Stdin, "input", "i", false, "read password from stdin (useful with pipes or file redirects)")
 	cmd.Flags().BoolVarP(&o.update, "update", "u", false, "update the value of an existing key in the vault")
 	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (use with caution, intended primarily for piping)")
+	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to the clipboard")
+	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the password from the clipboard")
 
 	cmd.Flags().StringVarP(&o.key, "key", "", "", "The key to associate with the secret value (required)")
 	_ = cmd.MarkFlagRequired("key")
@@ -91,8 +96,8 @@ func (o *SaveOptions) Validate() error {
 		return fmt.Errorf("invalid --key value %q (must not start with '-')", o.key)
 	}
 
-	if o.generate && o.Stdin {
-		return &SaveError{errors.New("--generate and --input flags can't be used together")}
+	if err := o.validateInputSource(); err != nil {
+		return err
 	}
 
 	return o.StdioOptions.Validate()
@@ -110,9 +115,7 @@ func (o *SaveOptions) Run() (retErr error) {
 			return
 		}
 
-		if o.output {
-			o.Infof("%s\n", secret)
-		}
+		retErr = o.outputSecret(secret)
 	}()
 
 	if o.update {
@@ -134,8 +137,13 @@ func (o *SaveOptions) secret() (string, error) {
 }
 
 func (o *SaveOptions) readSecret() (string, error) {
+	if o.paste {
+		o.Debugf("Reading secret from clipboard")
+		return clipboard.Paste()
+	}
+
 	if o.Stdin {
-		o.Debugf("Reading Secret from stdin")
+		o.Debugf("Reading secret from stdin")
 
 		pass, err := input.ReadTrim(o.In)
 		if err != nil {
@@ -160,7 +168,7 @@ func (o *SaveOptions) updateSecret(s string) error {
 	}
 
 	if n == 0 {
-		return &SaveError{ErrNoSecretUpdated}
+		return ErrNoSecretUpdated
 	}
 
 	return nil
@@ -173,10 +181,43 @@ func (o *SaveOptions) insertNewSecret(s string) error {
 	}
 
 	if n == 0 {
-		return &SaveError{ErrNoSecretInserted}
+		return ErrNoSecretInserted
 	}
 
 	return nil
 }
 
-// TODO: copy to clipboard impl and flag
+func (o *SaveOptions) outputSecret(s string) error {
+	if o.output {
+		o.Infof("%s\n", s)
+		return nil
+	}
+
+	if o.copy {
+		o.Debugf("Coping secret to clipboard")
+		return clipboard.Copy(s)
+	}
+
+	return nil
+}
+
+func (o *SaveOptions) validateInputSource() error {
+	used := 0
+	if o.generate {
+		used++
+	}
+
+	if o.Stdin {
+		used++
+	}
+
+	if o.paste {
+		used++
+	}
+
+	if used > 1 {
+		return &SaveError{errors.New("only one of --generate, --input, or --clipboard-paste can be used at a time")}
+	}
+
+	return nil
+}
