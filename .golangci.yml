@@ -138,6 +138,7 @@ linters:
     errcheck:
       exclude-functions:
         - fmt.Fprintf
+        - fmt.Fprintln
 
 formatters:
   enable:

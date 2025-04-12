@@ -85,6 +85,8 @@ func checkErr(err error, handleErr func(string, int)) {
 		handleErr("vlt: invalid use of the --stdin flag: no piped data\nMake sure you're piping input into the command when using this flag.", DefaultErrorExitCode)
 	case errors.Is(err, vaulterrors.ErrWrongPassword):
 		handleErr("vlt: incorrect password\nPlease check your password and try again.", DefaultErrorExitCode)
+	case errors.Is(err, vaulterrors.ErrNonInteractiveUnsupported):
+		handleErr("vlt: this command supports interactive input only.", DefaultErrorExitCode)
 	default:
 		msg, ok := StandardErrorMessage(err)
 		if !ok {

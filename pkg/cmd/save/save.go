@@ -10,7 +10,6 @@ import (
 	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
 	"github.com/ladzaretti/vlt-cli/pkg/util/input"
 	"github.com/ladzaretti/vlt-cli/pkg/util/randstring"
-	"github.com/ladzaretti/vlt-cli/pkg/vaulterrors"
 
 	"github.com/ladzaretti/vlt-cli/pkg/vlt"
 
@@ -63,22 +62,26 @@ func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 		Short: "Save a new secret to the vault",
 		Long: `Save a new key-value pair to the vault.
 
-If the specified key already exists, the operation will fail unless the --update flag is set.
-Use --update to overwrite the existing value for a given key.`,
+The key can be provided via the --key flag or entered interactively.
+The secret can be piped, redirected, or entered interactively.
+
+Redirected or piped input is automatically detected and used as the secret value,
+before any other interactive action is performed.
+
+If the key already exists, the operation fails unless --update is specified.
+Use --update to overwrite the existing value for a key.`,
 		Run: func(_ *cobra.Command, _ []string) {
 			cmdutil.CheckErr(genericclioptions.ExecuteCommand(o))
 		},
 	}
 
 	cmd.Flags().BoolVarP(&o.generate, "generate", "g", false, "generate and save a random secret")
-	cmd.Flags().BoolVarP(&o.Stdin, "input", "i", false, "read the secret to be saved from stdin (useful with pipes or file redirects)")
 	cmd.Flags().BoolVarP(&o.update, "update", "u", false, "update the value of an existing key in the vault")
 	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (use with caution; intended primarily for piping)")
 	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to the clipboard")
 	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret to be saved from the clipboard")
 
-	cmd.Flags().StringVarP(&o.key, "key", "", "", "the key to use when saving the secret (required)")
-	_ = cmd.MarkFlagRequired("key")
+	cmd.Flags().StringVarP(&o.key, "key", "", "", "the key to use when saving the secret")
 
 	return cmd
 }
@@ -88,10 +91,6 @@ func (*SaveOptions) Complete() error {
 }
 
 func (o *SaveOptions) Validate() error {
-	if len(o.key) == 0 {
-		return &SaveError{vaulterrors.ErrEmptyKey}
-	}
-
 	if strings.HasPrefix(o.key, "-") {
 		return fmt.Errorf("invalid --key value %q (must not start with '-')", o.key)
 	}
@@ -100,10 +99,7 @@ func (o *SaveOptions) Validate() error {
 }
 
 func (o *SaveOptions) Run() (retErr error) {
-	secret, err := o.secret()
-	if err != nil {
-		return err
-	}
+	secret := ""
 
 	defer func() {
 		if retErr != nil {
@@ -111,50 +107,74 @@ func (o *SaveOptions) Run() (retErr error) {
 			return
 		}
 
-		retErr = o.outputSecret(secret)
+		if len(secret) > 0 {
+			if err := o.outputSecret(secret); err != nil {
+				retErr = &SaveError{err}
+				return
+			}
+		}
 	}()
 
-	if o.update {
-		retErr = o.updateSecret(secret)
-		return
+	s, err := o.readSecretNonInteractive()
+	if err != nil {
+		return fmt.Errorf("read secret non-interactive: %w", err)
 	}
 
-	retErr = o.insertNewSecret(secret)
+	secret = s
 
-	return
+	if len(o.key) == 0 {
+		k, err := o.readInteractive("Enter key: ")
+		if err != nil {
+			return fmt.Errorf("read interactive: %w", err)
+		}
+
+		o.key = k
+	}
+
+	if len(secret) == 0 {
+		if err := o.readSecretInteractive(&secret); err != nil {
+			return fmt.Errorf("read secret interactive: %w", err)
+		}
+	}
+
+	if o.update {
+		return o.updateSecret(secret)
+	}
+
+	return o.insertNewSecret(secret)
 }
 
-func (o *SaveOptions) secret() (string, error) {
+func (o *SaveOptions) readInteractive(prompt string, a ...any) (string, error) {
+	return input.PromptRead(o.Out, o.In, prompt, a...)
+}
+
+func (o *SaveOptions) readSecretInteractive(secret *string) error {
+	s, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "Enter secret for key %q: ", o.key)
+	if err != nil {
+		return err
+	}
+
+	*secret = s
+
+	return nil
+}
+
+func (o *SaveOptions) readSecretNonInteractive() (string, error) {
 	if o.generate {
 		return randstring.New(20)
 	}
 
-	return o.readSecret()
-}
-
-func (o *SaveOptions) readSecret() (string, error) {
 	if o.paste {
 		o.Debugf("Reading secret from clipboard")
 		return clipboard.Paste()
 	}
 
-	if o.Stdin {
-		o.Debugf("Reading secret from stdin")
-
-		pass, err := input.ReadTrim(o.In)
-		if err != nil {
-			return "", fmt.Errorf("read secret: %v", err)
-		}
-
-		return pass, nil
+	if o.NonInteractive {
+		o.Debugf("Reading non-interactive secret")
+		return input.ReadTrim(o.In)
 	}
 
-	pass, err := input.ReadSecure(int(o.In.Fd()), "Enter secret for key %q: ", o.key)
-	if err != nil {
-		return "", fmt.Errorf("prompt new secret: %v", err)
-	}
-
-	return pass, nil
+	return "", nil
 }
 
 func (o *SaveOptions) updateSecret(s string) error {
@@ -190,7 +210,7 @@ func (o *SaveOptions) outputSecret(s string) error {
 	}
 
 	if o.copy {
-		o.Debugf("Coping secret to clipboard")
+		o.Debugf("Copying secret to clipboard")
 		return clipboard.Copy(s)
 	}
 
@@ -203,7 +223,7 @@ func (o *SaveOptions) validateInputSource() error {
 		used++
 	}
 
-	if o.Stdin {
+	if o.NonInteractive {
 		used++
 	}
 

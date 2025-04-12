@@ -14,7 +14,7 @@ var ErrInvalidStdinUsage = errors.New("stdin flag can only be used with piped in
 // StdioOptions provides stdin-related CLI helpers,
 // intended to be embedded in option structs.
 type StdioOptions struct {
-	Stdin bool
+	NonInteractive bool
 
 	*IOStreams
 }
@@ -23,15 +23,15 @@ var _ BaseOptions = &StdioOptions{}
 
 // Complete sets default values, e.g., enabling Stdin if piped input is detected.
 func (o *StdioOptions) Complete() error {
-	if !o.Stdin {
+	if !o.NonInteractive {
 		fi, err := o.In.Stat()
 		if err != nil {
 			return fmt.Errorf("stat input: %v", err)
 		}
 
-		if input.IsPiped(fi) {
-			o.Debugf("Detected piped input, setting stdin flag")
-			o.Stdin = true
+		if input.IsPipedOrRedirected(fi) {
+			o.Debugf("Input is piped or redirected; enabling non-interactive mode for handling sensitive data.\n")
+			o.NonInteractive = true
 		}
 	}
 
@@ -49,7 +49,7 @@ func (o *StdioOptions) Validate() error {
 		return fmt.Errorf("stat input: %v", err)
 	}
 
-	if o.Stdin && !input.IsPiped(fi) {
+	if o.NonInteractive && !input.IsPipedOrRedirected(fi) {
 		return ErrInvalidStdinUsage
 	}
 

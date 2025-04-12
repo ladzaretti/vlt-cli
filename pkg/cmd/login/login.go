@@ -34,7 +34,7 @@ func NewLoginOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Va
 func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
 	o := NewLoginOptions(stdio, vault)
 
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "login",
 		Short: "Authenticate against the specified vault database",
 		Long:  "This command authenticates the user and grants access to the vault for subsequent operations.",
@@ -42,25 +42,24 @@ func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault)
 			cmdutil.CheckErr(genericclioptions.ExecuteCommand(o))
 		},
 	}
-
-	cmd.Flags().BoolVarP(&o.Stdin, "input", "i", false,
-		"read password from stdin (useful with pipes or file redirects)")
-
-	return cmd
 }
 
 func (*LoginOptions) Complete() error {
 	return nil
 }
 
-func (*LoginOptions) Validate() error {
+func (o *LoginOptions) Validate() error {
+	if o.NonInteractive {
+		return vaulterrors.ErrNonInteractiveUnsupported
+	}
+
 	return nil
 }
 
 func (o *LoginOptions) Run() error {
 	v := o.vault()
 
-	usrKey, err := input.ReadSecure(int(o.In.Fd()), "Password for %s:", v.Path)
+	usrKey, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "Password for vault at %q:", v.Path)
 	if err != nil {
 		return fmt.Errorf("prompt password: %v", err)
 	}
@@ -74,7 +73,7 @@ func (o *LoginOptions) Run() error {
 		return vaulterrors.ErrWrongPassword
 	}
 
-	o.Debugf("Login successful\n")
+	o.Infof("Login successful")
 
 	return nil
 }
