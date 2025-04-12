@@ -16,7 +16,7 @@ var ErrInvalidStdinUsage = errors.New("stdin flag can only be used with piped in
 type StdioOptions struct {
 	Stdin bool
 
-	IOStreams
+	*IOStreams
 }
 
 var _ BaseOptions = &StdioOptions{}

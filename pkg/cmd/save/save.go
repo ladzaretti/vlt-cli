@@ -34,7 +34,7 @@ func (e *SaveError) Unwrap() error { return e.Err }
 type SaveOptions struct {
 	vault func() *vlt.Vault
 
-	genericclioptions.StdioOptions
+	*genericclioptions.StdioOptions
 
 	key      string // key is the name of the secret to save in the vault.
 	generate bool   // generate indicates whether to auto-generate a random secret.
@@ -47,16 +47,16 @@ type SaveOptions struct {
 var _ genericclioptions.CmdOptions = &SaveOptions{}
 
 // NewSaveOptions initializes the options struct.
-func NewSaveOptions(iostreams genericclioptions.IOStreams, vault func() *vlt.Vault) *SaveOptions {
+func NewSaveOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *SaveOptions {
 	return &SaveOptions{
-		StdioOptions: genericclioptions.StdioOptions{IOStreams: iostreams},
+		StdioOptions: stdio,
 		vault:        vault,
 	}
 }
 
 // NewCmdSave creates the cobra command.
-func NewCmdSave(streams genericclioptions.IOStreams, vault func() *vlt.Vault) *cobra.Command {
-	o := NewSaveOptions(streams, vault)
+func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+	o := NewSaveOptions(stdio, vault)
 
 	cmd := &cobra.Command{
 		Use:   "save",
@@ -83,8 +83,8 @@ Use --update to overwrite the existing value for a given key.`,
 	return cmd
 }
 
-func (o *SaveOptions) Complete() error {
-	return o.StdioOptions.Complete()
+func (*SaveOptions) Complete() error {
+	return nil
 }
 
 func (o *SaveOptions) Validate() error {
@@ -96,11 +96,7 @@ func (o *SaveOptions) Validate() error {
 		return fmt.Errorf("invalid --key value %q (must not start with '-')", o.key)
 	}
 
-	if err := o.validateInputSource(); err != nil {
-		return err
-	}
-
-	return o.StdioOptions.Validate()
+	return o.validateInputSource()
 }
 
 func (o *SaveOptions) Run() (retErr error) {

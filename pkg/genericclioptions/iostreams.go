@@ -16,8 +16,8 @@ type IOStreams struct {
 }
 
 // NewDefaultIOStreams returns the default IOStreams (using os.Stdin, os.Stdout, os.Stderr).
-func NewDefaultIOStreams() IOStreams {
-	return IOStreams{
+func NewDefaultIOStreams() *IOStreams {
+	return &IOStreams{
 		In:     os.Stdin,
 		Out:    os.Stdout,
 		ErrOut: os.Stderr,
@@ -28,11 +28,11 @@ func NewDefaultIOStreams() IOStreams {
 // a [TestFdReader] and out and error buffers for unit tests.
 //
 //nolint:revive
-func NewTestIOStreams(in *TestFdReader) (IOStreams, *TestFdReader, *bytes.Buffer, *bytes.Buffer) {
+func NewTestIOStreams(in *TestFdReader) (*IOStreams, *TestFdReader, *bytes.Buffer, *bytes.Buffer) {
 	out := &bytes.Buffer{}
 	errOut := &bytes.Buffer{}
 
-	return IOStreams{
+	return &IOStreams{
 		In:     in,
 		Out:    out,
 		ErrOut: errOut,
@@ -41,8 +41,8 @@ func NewTestIOStreams(in *TestFdReader) (IOStreams, *TestFdReader, *bytes.Buffer
 
 // NewTestIOStreamsDiscard returns IOStreams with mocked input,
 // and discards both output and error output.
-func NewTestIOStreamsDiscard(in *TestFdReader) IOStreams {
-	return IOStreams{
+func NewTestIOStreamsDiscard(in *TestFdReader) *IOStreams {
+	return &IOStreams{
 		In:     in,
 		Out:    io.Discard,
 		ErrOut: io.Discard,

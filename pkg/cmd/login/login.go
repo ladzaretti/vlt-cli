@@ -17,22 +17,22 @@ import (
 type LoginOptions struct {
 	vault func() *vlt.Vault
 
-	genericclioptions.StdioOptions
+	*genericclioptions.StdioOptions
 }
 
 var _ genericclioptions.CmdOptions = &LoginOptions{}
 
 // NewLoginOptions initializes the options struct.
-func NewLoginOptions(iostreams genericclioptions.IOStreams, vault func() *vlt.Vault) *LoginOptions {
+func NewLoginOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *LoginOptions {
 	return &LoginOptions{
-		StdioOptions: genericclioptions.StdioOptions{IOStreams: iostreams},
+		StdioOptions: stdio,
 		vault:        vault,
 	}
 }
 
 // NewCmdLogin creates the cobra command.
-func NewCmdLogin(iostreams genericclioptions.IOStreams, vault func() *vlt.Vault) *cobra.Command {
-	o := NewLoginOptions(iostreams, vault)
+func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+	o := NewLoginOptions(stdio, vault)
 
 	cmd := &cobra.Command{
 		Use:   "login",
@@ -49,12 +49,12 @@ func NewCmdLogin(iostreams genericclioptions.IOStreams, vault func() *vlt.Vault)
 	return cmd
 }
 
-func (o *LoginOptions) Complete() error {
-	return o.StdioOptions.Complete()
+func (*LoginOptions) Complete() error {
+	return nil
 }
 
-func (o *LoginOptions) Validate() error {
-	return o.StdioOptions.Validate()
+func (*LoginOptions) Validate() error {
+	return nil
 }
 
 func (o *LoginOptions) Run() error {

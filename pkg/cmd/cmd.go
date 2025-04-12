@@ -26,7 +26,7 @@ const (
 )
 
 type VaultOptions struct {
-	File  string
+	Path  string
 	Vault *vlt.Vault
 
 	newVault bool
@@ -57,13 +57,13 @@ func WithNewVault(enabled bool) VaultOptionsOpts {
 
 // Complete sets the default vault file path if not provided.
 func (o *VaultOptions) Complete() error {
-	if len(o.File) == 0 {
+	if len(o.Path) == 0 {
 		p, err := defaultVaultPath()
 		if err != nil {
 			return err
 		}
 
-		o.File = p
+		o.Path = p
 	}
 
 	return nil
@@ -85,7 +85,7 @@ func (o *VaultOptions) Run() error {
 		return nil
 	}
 
-	v, err := vlt.New(o.File)
+	v, err := vlt.New(o.Path)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func defaultVaultPath() (string, error) {
 }
 
 func (o *VaultOptions) validateNewVault() error {
-	if _, err := os.Stat(o.File); !errors.Is(err, fs.ErrNotExist) {
+	if _, err := os.Stat(o.Path); !errors.Is(err, fs.ErrNotExist) {
 		return vaulterrors.ErrVaultFileExists
 	}
 
@@ -113,7 +113,7 @@ func (o *VaultOptions) validateNewVault() error {
 }
 
 func (o *VaultOptions) validateExistingVault() error {
-	if _, err := os.Stat(o.File); err != nil {
+	if _, err := os.Stat(o.Path); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return vaulterrors.ErrVaultFileNotFound
 		}
@@ -129,12 +129,12 @@ type DefaultVltOptions struct {
 
 	*VaultOptions
 
-	genericclioptions.IOStreams
+	*genericclioptions.StdioOptions
 }
 
 var _ genericclioptions.CmdOptions = &DefaultVltOptions{}
 
-func NewDefaultVltOptions(iostreams genericclioptions.IOStreams, vaultOptions *VaultOptions) (*DefaultVltOptions, error) {
+func NewDefaultVltOptions(iostreams *genericclioptions.IOStreams, vaultOptions *VaultOptions) (*DefaultVltOptions, error) {
 	config, err := LoadConfig()
 	if err != nil && !errors.Is(err, ErrNoConfigAvailable) {
 		return nil, err
@@ -142,7 +142,7 @@ func NewDefaultVltOptions(iostreams genericclioptions.IOStreams, vaultOptions *V
 
 	return &DefaultVltOptions{
 		config:       config,
-		IOStreams:    iostreams,
+		StdioOptions: &genericclioptions.StdioOptions{IOStreams: iostreams},
 		VaultOptions: vaultOptions,
 	}, nil
 }
@@ -150,7 +150,7 @@ func NewDefaultVltOptions(iostreams genericclioptions.IOStreams, vaultOptions *V
 func (o *DefaultVltOptions) Complete() error {
 	vaultPath := o.config.Vault.Path
 	if len(vaultPath) > 0 {
-		o.File = vaultPath
+		o.Path = vaultPath
 	}
 
 	copyCmd, pasteCmd := o.config.Clipboard.CopyCmd, o.config.Clipboard.PasteCmd
@@ -162,10 +162,18 @@ func (o *DefaultVltOptions) Complete() error {
 		clipboard.SetDefault(clipboard.New(opts...))
 	}
 
+	if err := o.StdioOptions.Complete(); err != nil {
+		return err
+	}
+
 	return o.VaultOptions.Complete()
 }
 
 func (o *DefaultVltOptions) Validate() error {
+	if err := o.StdioOptions.Validate(); err != nil {
+		return err
+	}
+
 	return o.VaultOptions.Validate()
 }
 
@@ -174,7 +182,7 @@ func (o *DefaultVltOptions) Run() error {
 }
 
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.
-func NewDefaultVltCommand(iostreams genericclioptions.IOStreams, args []string) *cobra.Command {
+func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string) *cobra.Command {
 	o, err := NewDefaultVltOptions(iostreams, NewVaultOptions())
 	cmdutil.CheckErr(err)
 
@@ -195,11 +203,11 @@ func NewDefaultVltCommand(iostreams genericclioptions.IOStreams, args []string) 
 	cmd.SetArgs(args)
 
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
-	cmd.PersistentFlags().StringVarP(&o.File, "file", "f", "", "path to the vault file")
+	cmd.PersistentFlags().StringVarP(&o.Path, "file", "f", "", "path to the vault file")
 
-	cmd.AddCommand(create.NewCmdCreate(o.IOStreams, func() string { return o.File }))
-	cmd.AddCommand(login.NewCmdLogin(o.IOStreams, func() *vlt.Vault { return o.Vault }))
-	cmd.AddCommand(save.NewCmdSave(o.IOStreams, func() *vlt.Vault { return o.Vault }))
+	cmd.AddCommand(create.NewCmdCreate(o.StdioOptions, func() string { return o.Path }))
+	cmd.AddCommand(login.NewCmdLogin(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
+	cmd.AddCommand(save.NewCmdSave(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
 
 	return cmd
 }

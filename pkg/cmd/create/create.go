@@ -13,25 +13,24 @@ import (
 
 // CreateOptions have the data required to perform the create operation.
 type CreateOptions struct {
-	path func() string
+	vaultPath func() string
 
-	genericclioptions.StdioOptions
+	*genericclioptions.StdioOptions
 }
 
 var _ genericclioptions.CmdOptions = &CreateOptions{}
 
 // NewCreateOptions initializes the options struct.
-func NewCreateOptions(iostreams genericclioptions.IOStreams, path func() string) *CreateOptions {
+func NewCreateOptions(stdio *genericclioptions.StdioOptions, vaultPath func() string) *CreateOptions {
 	return &CreateOptions{
-		path: path,
-
-		StdioOptions: genericclioptions.StdioOptions{IOStreams: iostreams},
+		StdioOptions: stdio,
+		vaultPath:    vaultPath,
 	}
 }
 
 // NewCmdCreate creates a new create command.
-func NewCmdCreate(iostreams genericclioptions.IOStreams, path func() string) *cobra.Command {
-	o := NewCreateOptions(iostreams, path)
+func NewCmdCreate(stdio *genericclioptions.StdioOptions, path func() string) *cobra.Command {
+	o := NewCreateOptions(stdio, path)
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -48,12 +47,12 @@ func NewCmdCreate(iostreams genericclioptions.IOStreams, path func() string) *co
 	return cmd
 }
 
-func (o *CreateOptions) Complete() error {
-	return o.StdioOptions.Complete()
+func (*CreateOptions) Complete() error {
+	return nil
 }
 
-func (o *CreateOptions) Validate() error {
-	return o.StdioOptions.Validate()
+func (*CreateOptions) Validate() error {
+	return nil
 }
 
 func (o *CreateOptions) Run() error {
@@ -63,7 +62,7 @@ func (o *CreateOptions) Run() error {
 		return fmt.Errorf("read user password: %v", err)
 	}
 
-	vault, err := vlt.New(o.path())
+	vault, err := vlt.New(o.vaultPath())
 	if err != nil {
 		return err
 	}
