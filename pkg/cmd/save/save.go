@@ -70,14 +70,14 @@ Use --update to overwrite the existing value for a given key.`,
 		},
 	}
 
-	cmd.Flags().BoolVarP(&o.generate, "generate", "g", false, "generate a random secret")
-	cmd.Flags().BoolVarP(&o.Stdin, "input", "i", false, "read password from stdin (useful with pipes or file redirects)")
+	cmd.Flags().BoolVarP(&o.generate, "generate", "g", false, "generate and save a random secret")
+	cmd.Flags().BoolVarP(&o.Stdin, "input", "i", false, "read the secret to be saved from stdin (useful with pipes or file redirects)")
 	cmd.Flags().BoolVarP(&o.update, "update", "u", false, "update the value of an existing key in the vault")
-	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (use with caution, intended primarily for piping)")
+	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (use with caution; intended primarily for piping)")
 	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to the clipboard")
-	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the password from the clipboard")
+	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret to be saved from the clipboard")
 
-	cmd.Flags().StringVarP(&o.key, "key", "", "", "The key to associate with the secret value (required)")
+	cmd.Flags().StringVarP(&o.key, "key", "", "", "the key to use when saving the secret (required)")
 	_ = cmd.MarkFlagRequired("key")
 
 	return cmd
