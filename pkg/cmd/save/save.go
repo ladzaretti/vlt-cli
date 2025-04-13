@@ -35,7 +35,7 @@ type SaveOptions struct {
 
 	*genericclioptions.StdioOptions
 
-	key      string // key is the name of the secret to save in the vault.
+	name     string // name is the name of the secret to save in the vault.
 	generate bool   // generate indicates whether to auto-generate a random secret.
 	update   bool   // update determines whether to overwrite an existing secret.
 	output   bool   // output controls whether to print the saved secret to stdout.
@@ -62,14 +62,14 @@ func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 		Short: "Save a new secret to the vault",
 		Long: `Save a new key-value pair to the vault.
 
-The key can be provided via the --key flag or entered interactively.
-The secret can be piped, redirected, or entered interactively.
+The name of the secret can be provided using the --name flag or entered interactively.
+The secret value can be piped, redirected, or typed manually when prompted.
 
-Redirected or piped input is automatically detected and used as the secret value,
-before any other interactive action is performed.
+If input is piped or redirected, it is automatically used as the secret value,
+taking precedence over interactive input.
 
-If the key already exists, the operation fails unless --update is specified.
-Use --update to overwrite the existing value for a key.`,
+If the name already exists, the command fails unless --update is set.
+Use --update to overwrite the existing secret for a given name.`,
 		Run: func(_ *cobra.Command, _ []string) {
 			cmdutil.CheckErr(genericclioptions.ExecuteCommand(o))
 		},
@@ -81,7 +81,7 @@ Use --update to overwrite the existing value for a key.`,
 	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to the clipboard")
 	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret to be saved from the clipboard")
 
-	cmd.Flags().StringVarP(&o.key, "key", "", "", "the key to use when saving the secret")
+	cmd.Flags().StringVarP(&o.name, "name", "", "", "the name to use when saving the secret")
 
 	return cmd
 }
@@ -91,8 +91,8 @@ func (*SaveOptions) Complete() error {
 }
 
 func (o *SaveOptions) Validate() error {
-	if strings.HasPrefix(o.key, "-") {
-		return fmt.Errorf("invalid --key value %q (must not start with '-')", o.key)
+	if strings.HasPrefix(o.name, "-") {
+		return fmt.Errorf("invalid --name value %q (must not start with '-')", o.name)
 	}
 
 	return o.validateInputSource()
@@ -122,13 +122,13 @@ func (o *SaveOptions) Run() (retErr error) {
 
 	secret = s
 
-	if len(o.key) == 0 {
+	if len(o.name) == 0 {
 		k, err := o.readInteractive("Enter key: ")
 		if err != nil {
 			return fmt.Errorf("read interactive: %w", err)
 		}
 
-		o.key = k
+		o.name = k
 	}
 
 	if len(secret) == 0 {
@@ -149,7 +149,7 @@ func (o *SaveOptions) readInteractive(prompt string, a ...any) (string, error) {
 }
 
 func (o *SaveOptions) readSecretInteractive(secret *string) error {
-	s, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "Enter secret for key %q: ", o.key)
+	s, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "Enter secret for name %q: ", o.name)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (o *SaveOptions) readSecretNonInteractive() (string, error) {
 }
 
 func (o *SaveOptions) updateSecret(s string) error {
-	n, err := o.vault().UpsertSecret(o.key, s)
+	n, err := o.vault().UpsertSecret(o.name, s)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (o *SaveOptions) updateSecret(s string) error {
 }
 
 func (o *SaveOptions) insertNewSecret(s string) error {
-	n, err := o.vault().InsertNewSecret(o.key, s)
+	n, err := o.vault().InsertNewSecret(o.name, s)
 	if err != nil {
 		return err
 	}
@@ -219,11 +219,11 @@ func (o *SaveOptions) outputSecret(s string) error {
 
 func (o *SaveOptions) validateInputSource() error {
 	used := 0
-	if o.generate {
+	if o.NonInteractive {
 		used++
 	}
 
-	if o.NonInteractive {
+	if o.generate {
 		used++
 	}
 
@@ -232,7 +232,7 @@ func (o *SaveOptions) validateInputSource() error {
 	}
 
 	if used > 1 {
-		return &SaveError{errors.New("only one of --generate, --input, or --clipboard-paste can be used at a time")}
+		return &SaveError{errors.New("only one of non-interactive input, --generate, or --paste-clipboard can be used at a time")}
 	}
 
 	return nil
