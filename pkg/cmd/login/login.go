@@ -1,6 +1,7 @@
 package login // replace with your actual package name
 
 import (
+	"context"
 	"crypto/subtle"
 	"fmt"
 
@@ -39,7 +40,7 @@ func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault)
 		Short: "Authenticate against the specified vault database",
 		Long:  "This command authenticates the user and grants access to the vault for subsequent operations.",
 		Run: func(_ *cobra.Command, _ []string) {
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(o))
+			cmdutil.CheckErr(genericclioptions.ExecuteCommand(context.Background(), o))
 		},
 	}
 }
@@ -56,7 +57,7 @@ func (o *LoginOptions) Validate() error {
 	return nil
 }
 
-func (o *LoginOptions) Run() error {
+func (o *LoginOptions) Run(ctx context.Context) error {
 	v := o.vault()
 
 	usrKey, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "Password for vault at %q:", v.Path)
@@ -64,7 +65,7 @@ func (o *LoginOptions) Run() error {
 		return fmt.Errorf("prompt password: %v", err)
 	}
 
-	dbKey, err := v.GetMasterKey()
+	dbKey, err := v.GetMasterKey(ctx)
 	if err != nil {
 		return fmt.Errorf("get master key: %v", err)
 	}

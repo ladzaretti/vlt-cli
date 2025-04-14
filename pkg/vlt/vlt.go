@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 
 	"github.com/ladzaretti/vlt-cli/pkg/vlt/store"
@@ -24,10 +25,11 @@ var (
 	}
 )
 
+// Vault represents a connection to a vault.
 type Vault struct {
-	Path  string
-	db    *sql.DB
-	store *store.Store
+	Path  string       // Path is the path to the underlying SQLite file.
+	db    *sql.DB      // db is the connection to the database.
+	store *store.Store // store provides methods to interact with the vault data.
 }
 
 // New opens or creates a vault at the specified path and applies migrations.
@@ -57,18 +59,56 @@ func errf(format string, a ...any) error {
 	return fmt.Errorf(format, a...)
 }
 
-func (vlt *Vault) SetMasterKey(k string) error {
-	return vlt.store.InsertMasterKey(context.Background(), k)
+func (vlt *Vault) SetMasterKey(ctx context.Context, k string) error {
+	return vlt.store.InsertMasterKey(ctx, k)
 }
 
-func (vlt *Vault) GetMasterKey() (string, error) {
-	return vlt.store.QueryMasterKey(context.Background())
+func (vlt *Vault) GetMasterKey(ctx context.Context) (string, error) {
+	return vlt.store.QueryMasterKey(ctx)
 }
 
-func (vlt *Vault) InsertNewSecret(name, secret string) (int64, error) {
-	return vlt.store.InsertNewSecret(context.Background(), name, secret)
+// InsertNewSecret inserts a new secret with its labels
+// into the vault using a transaction.
+//
+// Returns the ID of the inserted secret or an error if the operation fails.
+func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret string, labels []string) (id int64, retErr error) {
+	tx, err := vlt.db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return 0, err
+	}
+
+	storeTx := vlt.store.WithTx(tx)
+
+	secretID, err := storeTx.InsertNewSecret(ctx, name, secret)
+	if err != nil {
+		if err2 := tx.Rollback(); err2 != nil {
+			return 0, errf("insert new secret: rollback: %w", errors.Join(err2, err))
+		}
+
+		return 0, errf("insert new secret: %w", err)
+	}
+
+	for _, l := range labels {
+		if _, err := storeTx.InsertLabel(ctx, l, secretID); err != nil {
+			if err2 := tx.Rollback(); err2 != nil {
+				return 0, errf("insert label: rollback: %w", errors.Join(err2, err))
+			}
+
+			return 0, errf("insert label: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, errf("tx commit: %w", err)
+	}
+
+	return secretID, nil
 }
 
-func (vlt *Vault) UpsertSecret(name, secret string) (int64, error) {
-	return vlt.store.UpsertSecret(context.Background(), name, secret)
+func (vlt *Vault) UpsertSecret(ctx context.Context, name, secret string) (int64, error) {
+	return vlt.store.UpsertSecret(ctx, name, secret)
+}
+
+func (vlt *Vault) SecretsByLabels(ctx context.Context, labels []string) (map[int]store.LabeledSecret, error) {
+	return vlt.store.SecretsByLabels(ctx, labels)
 }

@@ -1,5 +1,7 @@
 package genericclioptions
 
+import "context"
+
 // BaseOptions defines the interface for shared setup and validation logic.
 type BaseOptions interface {
 	Complete() error // Complete prepares the options for the command by setting required values.
@@ -10,12 +12,12 @@ type BaseOptions interface {
 type CmdOptions interface {
 	BaseOptions
 
-	Run() error
+	Run(ctx context.Context) error
 }
 
 // ExecuteCommand executes the provided command options by first completing,
 // then validating, and finally running the command.
-func ExecuteCommand(cmd CmdOptions) error {
+func ExecuteCommand(ctx context.Context, cmd CmdOptions) error {
 	if err := cmd.Complete(); err != nil {
 		return err
 	}
@@ -24,5 +26,5 @@ func ExecuteCommand(cmd CmdOptions) error {
 		return err
 	}
 
-	return cmd.Run()
+	return cmd.Run(ctx)
 }

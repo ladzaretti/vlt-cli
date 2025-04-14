@@ -1,6 +1,7 @@
 package save // replace with your actual package name
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
 	"github.com/ladzaretti/vlt-cli/pkg/util/input"
 	"github.com/ladzaretti/vlt-cli/pkg/util/randstring"
+	"github.com/ladzaretti/vlt-cli/pkg/vaulterrors"
 
 	"github.com/ladzaretti/vlt-cli/pkg/vlt"
 
@@ -35,12 +37,12 @@ type SaveOptions struct {
 
 	*genericclioptions.StdioOptions
 
-	name     string // name is the name of the secret to save in the vault.
-	generate bool   // generate indicates whether to auto-generate a random secret.
-	update   bool   // update determines whether to overwrite an existing secret.
-	output   bool   // output controls whether to print the saved secret to stdout.
-	copy     bool   // copy controls whether to copy the saved secret to the clipboard.
-	paste    bool   // paste controls whether to read the secret to save from the clipboard.
+	name     string   // name is the name of the secret to save in the vault.
+	labels   []string // labels to associate with the a given secret.
+	generate bool     // generate indicates whether to auto-generate a random secret.
+	output   bool     // output controls whether to print the saved secret to stdout.
+	copy     bool     // copy controls whether to copy the saved secret to the clipboard.
+	paste    bool     // paste controls whether to read the secret to save from the clipboard.
 }
 
 var _ genericclioptions.CmdOptions = &SaveOptions{}
@@ -66,22 +68,19 @@ The name of the secret can be provided using the --name flag or entered interact
 The secret value can be piped, redirected, or typed manually when prompted.
 
 If input is piped or redirected, it is automatically used as the secret value,
-taking precedence over interactive input.
-
-If the name already exists, the command fails unless --update is set.
-Use --update to overwrite the existing secret for a given name.`,
+taking precedence over interactive input.`,
 		Run: func(_ *cobra.Command, _ []string) {
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(o))
+			cmdutil.CheckErr(genericclioptions.ExecuteCommand(context.Background(), o))
 		},
 	}
 
-	cmd.Flags().BoolVarP(&o.generate, "generate", "g", false, "generate and save a random secret")
-	cmd.Flags().BoolVarP(&o.update, "update", "u", false, "update the value of an existing key in the vault")
+	cmd.Flags().BoolVarP(&o.generate, "generate", "g", false, "generate a random secret")
 	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (use with caution; intended primarily for piping)")
-	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to the clipboard")
+	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to clipboard")
 	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret to be saved from the clipboard")
 
-	cmd.Flags().StringVarP(&o.name, "name", "", "", "the name to use when saving the secret")
+	cmd.Flags().StringVarP(&o.name, "name", "", "", "The name of the secret (e.g., username).")
+	cmd.Flags().StringSliceVarP(&o.labels, "label", "", nil, "labels to associate with the secret (can be specified multiple times)")
 
 	return cmd
 }
@@ -98,9 +97,10 @@ func (o *SaveOptions) Validate() error {
 	return o.validateInputSource()
 }
 
-func (o *SaveOptions) Run() (retErr error) {
+func (o *SaveOptions) Run(ctx context.Context) (retErr error) {
 	secret := ""
 
+	// ensure error is wrapped and output is printed if everything succeeded
 	defer func() {
 		if retErr != nil {
 			retErr = &SaveError{retErr}
@@ -125,10 +125,14 @@ func (o *SaveOptions) Run() (retErr error) {
 	if len(o.name) == 0 {
 		k, err := o.readInteractive("Enter key: ")
 		if err != nil {
-			return fmt.Errorf("read interactive: %w", err)
+			return fmt.Errorf("name read interactive: %w", err)
 		}
 
 		o.name = k
+	}
+
+	if len(o.name) == 0 {
+		return vaulterrors.ErrEmptyName
 	}
 
 	if len(secret) == 0 {
@@ -137,11 +141,24 @@ func (o *SaveOptions) Run() (retErr error) {
 		}
 	}
 
-	if o.update {
-		return o.updateSecret(secret)
+	if len(secret) == 0 {
+		return vaulterrors.ErrEmptySecret
 	}
 
-	return o.insertNewSecret(secret)
+	if len(o.labels) == 0 {
+		labels, err := o.readInteractive("Enter label(s), comma-separated: ")
+		if err != nil {
+			return fmt.Errorf("label read interactive: %w", err)
+		}
+
+		o.labels = append(o.labels, cmdutil.ParseCommaSeparated(labels)...)
+	}
+
+	if len(o.labels) == 0 {
+		return vaulterrors.ErrMissingLabels
+	}
+
+	return o.insertNewSecret(ctx, secret)
 }
 
 func (o *SaveOptions) readInteractive(prompt string, a ...any) (string, error) {
@@ -177,21 +194,8 @@ func (o *SaveOptions) readSecretNonInteractive() (string, error) {
 	return "", nil
 }
 
-func (o *SaveOptions) updateSecret(s string) error {
-	n, err := o.vault().UpsertSecret(o.name, s)
-	if err != nil {
-		return err
-	}
-
-	if n == 0 {
-		return ErrNoSecretUpdated
-	}
-
-	return nil
-}
-
-func (o *SaveOptions) insertNewSecret(s string) error {
-	n, err := o.vault().InsertNewSecret(o.name, s)
+func (o *SaveOptions) insertNewSecret(ctx context.Context, s string) error {
+	n, err := o.vault().InsertNewSecret(ctx, o.name, s, o.labels)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package create
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
@@ -38,7 +39,7 @@ func NewCmdCreate(stdio *genericclioptions.StdioOptions, path func() string) *co
 		Short: "Initialize a new vault",
 		Long:  "Create a new vault by specifying the SQLite database file where credentials will be stored.",
 		Run: func(_ *cobra.Command, _ []string) {
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(o))
+			cmdutil.CheckErr(genericclioptions.ExecuteCommand(context.Background(), o))
 		},
 	}
 }
@@ -55,7 +56,7 @@ func (o *CreateOptions) Validate() error {
 	return nil
 }
 
-func (o *CreateOptions) Run() error {
+func (o *CreateOptions) Run(ctx context.Context) error {
 	mk, err := input.PromptNewPassword(o.Out, int(o.In.Fd()))
 	if err != nil {
 		return fmt.Errorf("read new master key: %w", err)
@@ -66,7 +67,7 @@ func (o *CreateOptions) Run() error {
 		return fmt.Errorf("create vault: %w", err)
 	}
 
-	if err := vault.SetMasterKey(mk); err != nil {
+	if err := vault.SetMasterKey(ctx, mk); err != nil {
 		return fmt.Errorf("set master key: %w", err)
 	}
 

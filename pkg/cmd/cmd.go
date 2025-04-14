@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -79,7 +80,7 @@ func (o *VaultOptions) Validate() error {
 }
 
 // Run initializes the Vault object from the specified existing file.
-func (o *VaultOptions) Run() error {
+func (o *VaultOptions) Run(_ context.Context) error {
 	// creating a new vault is handled internally by the create subcommand.
 	if o.newVault {
 		return nil
@@ -177,8 +178,8 @@ func (o *DefaultVltOptions) Validate() error {
 	return o.VaultOptions.Validate()
 }
 
-func (o *DefaultVltOptions) Run() error {
-	return o.VaultOptions.Run()
+func (o *DefaultVltOptions) Run(ctx context.Context) error {
+	return o.VaultOptions.Run(ctx)
 }
 
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.
@@ -196,7 +197,7 @@ func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string)
 				WithNewVault(true)(o.VaultOptions)
 			}
 
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(o))
+			cmdutil.CheckErr(genericclioptions.ExecuteCommand(context.Background(), o))
 		},
 	}
 

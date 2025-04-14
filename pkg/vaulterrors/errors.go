@@ -11,5 +11,9 @@ var (
 
 	ErrNonInteractiveUnsupported = errors.New("non-interactive input not supported")
 
-	ErrEmptyKey = errors.New("key cannot be empty")
+	ErrEmptyName = errors.New("name cannot be empty")
+
+	ErrEmptySecret = errors.New("secret cannot be empty")
+
+	ErrMissingLabels = errors.New("missing required labels")
 )
