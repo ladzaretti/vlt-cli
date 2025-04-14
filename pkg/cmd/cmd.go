@@ -197,7 +197,7 @@ func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string)
 				WithNewVault(true)(o.VaultOptions)
 			}
 
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(context.Background(), o))
+			cmdutil.CheckErr(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 

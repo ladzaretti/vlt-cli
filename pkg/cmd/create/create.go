@@ -38,8 +38,8 @@ func NewCmdCreate(stdio *genericclioptions.StdioOptions, path func() string) *co
 		Use:   "create",
 		Short: "Initialize a new vault",
 		Long:  "Create a new vault by specifying the SQLite database file where credentials will be stored.",
-		Run: func(_ *cobra.Command, _ []string) {
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(context.Background(), o))
+		Run: func(cmd *cobra.Command, _ []string) {
+			cmdutil.CheckErr(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 }

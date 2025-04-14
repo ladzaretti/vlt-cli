@@ -39,8 +39,8 @@ func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault)
 		Use:   "login",
 		Short: "Authenticate against the specified vault database",
 		Long:  "This command authenticates the user and grants access to the vault for subsequent operations.",
-		Run: func(_ *cobra.Command, _ []string) {
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(context.Background(), o))
+		Run: func(cmd *cobra.Command, _ []string) {
+			cmdutil.CheckErr(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 }

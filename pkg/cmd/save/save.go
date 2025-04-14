@@ -69,8 +69,8 @@ The secret value can be piped, redirected, or typed manually when prompted.
 
 If input is piped or redirected, it is automatically used as the secret value,
 taking precedence over interactive input.`,
-		Run: func(_ *cobra.Command, _ []string) {
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(context.Background(), o))
+		Run: func(cmd *cobra.Command, _ []string) {
+			cmdutil.CheckErr(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 
