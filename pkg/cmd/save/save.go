@@ -77,9 +77,9 @@ taking precedence over interactive input.`,
 	cmd.Flags().BoolVarP(&o.generate, "generate", "g", false, "generate a random secret")
 	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (use with caution; intended primarily for piping)")
 	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to clipboard")
-	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret to be saved from the clipboard")
+	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret from clipboard")
 
-	cmd.Flags().StringVarP(&o.name, "name", "", "", "The name of the secret (e.g., username).")
+	cmd.Flags().StringVarP(&o.name, "name", "", "", "the secret name (e.g., username)")
 	cmd.Flags().StringSliceVarP(&o.labels, "label", "", nil, "labels to associate with the secret (can be specified multiple times)")
 
 	return cmd

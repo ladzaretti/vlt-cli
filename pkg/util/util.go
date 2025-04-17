@@ -15,12 +15,6 @@ func ParseCommaSeparated(raw string) []string {
 	return res
 }
 
-func Fill[T any](slice []T, v T) {
-	for i := range slice {
-		slice[i] = v
-	}
-}
-
 func ToAnySlice[T any](ts []T) []any {
 	args := make([]any, len(ts))
 

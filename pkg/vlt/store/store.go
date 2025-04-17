@@ -4,14 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"strings"
 
 	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
 )
 
-// ErrNoLabelsProvided indicates that no labels were provided as an argument.
-var ErrNoLabelsProvided = errors.New("no labels provided")
+var (
+	// ErrNoLabelsProvided indicates that no labels were provided as an argument.
+	ErrNoLabelsProvided = errors.New("no labels provided")
+
+	// ErrNoIDsProvided indicates that no ids were provided as an argument.
+	ErrNoIDsProvided = errors.New("no IDs provided")
+)
 
 // DBTX defines the subset of database operations used by [Store].
 type DBTX interface {
@@ -120,6 +124,28 @@ func (s *Store) UpsertSecret(ctx context.Context, id string, secret string) (n i
 	return n, nil
 }
 
+//nolint:gosec
+const selectSecret = `
+	SELECT
+		secret
+	FROM
+		secrets
+	WHERE
+		id = $1
+`
+
+// secret returns the secret associated with the given secret id.
+func (s *Store) Secret(ctx context.Context, id int) (string, error) {
+	var secret string
+
+	err := s.db.QueryRowContext(ctx, selectSecret, id).Scan(&secret)
+	if err != nil {
+		return "", err
+	}
+
+	return secret, nil
+}
+
 const insertLabel = `
 	INSERT INTO
 		labels (name, secret_id)
@@ -155,8 +181,38 @@ type LabeledSecret struct {
 	Labels []string
 }
 
-//nolint:gosec
-const querySecretsByLabels = `
+// SecretsByColumn returns secrets with labels that
+// match all glob patterns for the given col.
+//
+// If no patterns are provided, it returns all secrets along with all their labels.
+func (s *Store) SecretsByColumn(ctx context.Context, col string, patterns ...string) (map[int]LabeledSecret, error) {
+	query := `
+	SELECT
+		s.id,
+		s.name,
+		l.name AS label
+	FROM
+		secrets s
+		JOIN labels l ON s.id = l.secret_id
+	` + whereGlobOrClause(col, patterns...)
+
+	return s.secretsJoinLabels(ctx, query, cmdutil.ToAnySlice(patterns)...)
+}
+
+// SecretsByIDs returns a map of secrets and their labels for the given IDs.
+//
+// If the IDs slice is empty, the function returns [ErrNoIDsProvided].
+func (s *Store) SecretsByIDs(ctx context.Context, ids []int) (map[int]LabeledSecret, error) {
+	if len(ids) == 0 {
+		return nil, ErrNoIDsProvided
+	}
+
+	placeholders := make([]string, len(ids))
+	for i := range ids {
+		placeholders[i] = "?"
+	}
+
+	query := `
 	SELECT
 		s.id,
 		s.name,
@@ -165,25 +221,39 @@ const querySecretsByLabels = `
 		secrets s
 		JOIN labels l ON s.id = l.secret_id
 	WHERE
-		l.name IN (%s)
-`
+		s.id IN (` + strings.Join(placeholders, ",") + ")"
 
-// SecretsByLabels returns a map of secrets that have any of the provided labels.
-// The returned map is keyed by secret ID, and each map value contains
-// all labels from the provided labels slice that reference the given secret.
+	return s.secretsJoinLabels(ctx, query, cmdutil.ToAnySlice(ids)...)
+}
+
+// SecretsByLabelsAndName returns secrets with labels that match any of the
+// provided label and name glob patterns.
 //
-// If the labels slice is empty, the function returns [ErrNoLabelsProvided].
-func (s *Store) SecretsByLabels(ctx context.Context, labels []string) (map[int]LabeledSecret, error) {
+// If no label patterns are provided, it returns [ErrNoLabelsProvided].
+func (s *Store) SecretsByLabelsAndName(ctx context.Context, name string, labels ...string) (map[int]LabeledSecret, error) {
 	if len(labels) == 0 {
 		return nil, ErrNoLabelsProvided
 	}
 
-	placeholders := make([]string, len(labels))
-	cmdutil.Fill(placeholders, "?")
+	query := `
+	SELECT
+		s.id,
+		s.name AS secret_name,
+		l.name AS label
+	FROM
+		secrets s
+		JOIN labels l ON s.id = l.secret_id
+	` + whereGlobOrClause("label", labels...) +
+		"AND secret_name GLOB ?"
 
-	query := fmt.Sprintf(querySecretsByLabels, strings.Join(placeholders, ","))
+	args := append(cmdutil.ToAnySlice(labels), name)
 
-	rows, err := s.db.QueryContext(ctx, query, cmdutil.ToAnySlice(labels)...)
+	return s.secretsJoinLabels(ctx, query, args...)
+}
+
+// secretsJoinLabels executes a query to join secrets with their labels.
+func (s *Store) secretsJoinLabels(ctx context.Context, query string, args ...any) (map[int]LabeledSecret, error) {
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -204,6 +274,21 @@ func (s *Store) SecretsByLabels(ctx context.Context, labels []string) (map[int]L
 	}
 
 	return reduce(secrets), nil
+}
+
+// whereGlobOrClause generates a WHERE GLOB OR clause
+// for the given column and patterns.
+func whereGlobOrClause(col string, patterns ...string) string {
+	if len(patterns) == 0 {
+		return ""
+	}
+
+	clauses := make([]string, len(patterns))
+	for i := range clauses {
+		clauses[i] = col + " GLOB ?"
+	}
+
+	return "WHERE " + strings.Join(clauses, " OR ")
 }
 
 func reduce(secrets []secretLabelRow) map[int]LabeledSecret {

@@ -105,10 +105,31 @@ func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret strin
 	return secretID, nil
 }
 
-func (vlt *Vault) UpsertSecret(ctx context.Context, name, secret string) (int64, error) {
-	return vlt.store.UpsertSecret(ctx, name, secret)
+// SecretsByLabels returns secrets that match any of the provided label patterns,
+// along with all labels associated with each secret.
+//
+// If no patterns are provided, it returns all secrets along with all their labels.
+func (vlt *Vault) SecretsByLabels(ctx context.Context, labelPatterns ...string) (map[int]store.LabeledSecret, error) {
+	return vlt.store.SecretsByColumn(ctx, "label", labelPatterns...)
 }
 
-func (vlt *Vault) SecretsByLabels(ctx context.Context, labels []string) (map[int]store.LabeledSecret, error) {
-	return vlt.store.SecretsByLabels(ctx, labels)
+// SecretsByName returns secrets that match the provided name pattern,
+// along with all labels associated with it.
+//
+// If no pattern is provided, it returns all secrets along with all their labels.
+func (vlt *Vault) SecretsByName(ctx context.Context, namePattern string) (map[int]store.LabeledSecret, error) {
+	return vlt.store.SecretsByColumn(ctx, "name", namePattern)
+}
+
+// SecretsByIDs returns a map of secrets that match any of the provided IDs,
+// along with all labels associated with each.
+//
+// If the IDs slice is empty, the function returns [store.ErrNoIDsProvided].
+func (vlt *Vault) SecretsByIDs(ctx context.Context, ids []int) (map[int]store.LabeledSecret, error) {
+	return vlt.store.SecretsByIDs(ctx, ids)
+}
+
+// Secret retrieves the secret for the given secret ID.
+func (vlt *Vault) Secret(ctx context.Context, id int) (string, error) {
+	return vlt.store.Secret(ctx, id)
 }

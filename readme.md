@@ -8,8 +8,13 @@ A command-line password manager backed by SQLite.
   - [x] login
   - [x] save
   - [ ] show
+    - by --label strings, --name string, --id. + all other output related flags.
   - [ ] remove
-  - [ ] list
+    - by --label strings, --name string, --id.
   - [ ] find
+    - by --label strings, --name string, --id. print to stdout.
 - [ ] Add a cryptographic layer
 - [ ] Add session support
+
+searching by labels is ORed.
+searching by name and labels, return the intersection between the two queries.
