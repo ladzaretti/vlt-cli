@@ -31,7 +31,7 @@ func NewLoginOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Va
 	}
 }
 
-// NewCmdLogin creates the cobra command.
+// NewCmdLogin creates the login cobra command.
 func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
 	o := NewLoginOptions(stdio, vault)
 

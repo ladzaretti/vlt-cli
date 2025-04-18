@@ -30,7 +30,7 @@ func NewCreateOptions(stdio *genericclioptions.StdioOptions, vaultPath func() st
 	}
 }
 
-// NewCmdCreate creates a new create command.
+// NewCmdCreate creates the create cobra command.
 func NewCmdCreate(stdio *genericclioptions.StdioOptions, path func() string) *cobra.Command {
 	o := NewCreateOptions(stdio, path)
 

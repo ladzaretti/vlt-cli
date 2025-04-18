@@ -55,7 +55,7 @@ func NewSaveOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vau
 	}
 }
 
-// NewCmdSave creates the cobra command.
+// NewCmdSave creates the save cobra command.
 func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
 	o := NewSaveOptions(stdio, vault)
 
@@ -80,7 +80,7 @@ taking precedence over interactive input.`,
 	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret from clipboard")
 
 	cmd.Flags().StringVarP(&o.name, "name", "", "", "the secret name (e.g., username)")
-	cmd.Flags().StringSliceVarP(&o.labels, "label", "", nil, "labels to associate with the secret (can be specified multiple times)")
+	cmd.Flags().StringSliceVarP(&o.labels, "label", "", nil, "label to associate with the secret (comma-separated or repeated)")
 
 	return cmd
 }

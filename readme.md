@@ -11,7 +11,7 @@ A command-line password manager backed by SQLite.
     - by --label strings, --name string, --id. + all other output related flags.
   - [ ] remove
     - by --label strings, --name string, --id.
-  - [ ] find
+  - [x] find
     - by --label strings, --name string, --id. print to stdout.
 - [ ] Add a cryptographic layer
 - [ ] Add session support

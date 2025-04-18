@@ -189,7 +189,7 @@ func (s *Store) SecretsByColumn(ctx context.Context, col string, patterns ...str
 	query := `
 	SELECT
 		s.id,
-		s.name,
+		s.name AS secret_name,
 		l.name AS label
 	FROM
 		secrets s

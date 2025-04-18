@@ -10,6 +10,7 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/pkg/clipboard"
 	"github.com/ladzaretti/vlt-cli/pkg/cmd/create"
+	"github.com/ladzaretti/vlt-cli/pkg/cmd/find"
 	"github.com/ladzaretti/vlt-cli/pkg/cmd/login"
 	"github.com/ladzaretti/vlt-cli/pkg/cmd/save"
 	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
@@ -209,6 +210,7 @@ func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string)
 	cmd.AddCommand(create.NewCmdCreate(o.StdioOptions, func() string { return o.Path }))
 	cmd.AddCommand(login.NewCmdLogin(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
 	cmd.AddCommand(save.NewCmdSave(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
+	cmd.AddCommand(find.NewCmdFind(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
 
 	return cmd
 }
