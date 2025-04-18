@@ -9,10 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/ladzaretti/vlt-cli/pkg/clipboard"
-	"github.com/ladzaretti/vlt-cli/pkg/cmd/create"
-	"github.com/ladzaretti/vlt-cli/pkg/cmd/find"
-	"github.com/ladzaretti/vlt-cli/pkg/cmd/login"
-	"github.com/ladzaretti/vlt-cli/pkg/cmd/save"
 	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
 	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
 	"github.com/ladzaretti/vlt-cli/pkg/vaulterrors"
@@ -207,10 +203,10 @@ func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string)
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
 	cmd.PersistentFlags().StringVarP(&o.Path, "file", "f", "", "path to the vault file")
 
-	cmd.AddCommand(create.NewCmdCreate(o.StdioOptions, func() string { return o.Path }))
-	cmd.AddCommand(login.NewCmdLogin(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
-	cmd.AddCommand(save.NewCmdSave(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
-	cmd.AddCommand(find.NewCmdFind(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
+	cmd.AddCommand(NewCmdCreate(o.StdioOptions, func() string { return o.Path }))
+	cmd.AddCommand(NewCmdLogin(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
+	cmd.AddCommand(NewCmdSave(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
+	cmd.AddCommand(NewCmdFind(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
 
 	return cmd
 }

@@ -1,11 +1,10 @@
-package find
+package cmd
 
 import (
 	"context"
 
 	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/pkg/vlt"
-	"github.com/ladzaretti/vlt-cli/pkg/vlt/store"
 
 	"github.com/spf13/cobra"
 )
@@ -14,7 +13,7 @@ import (
 type FindOptions struct {
 	vault func() *vlt.Vault
 	*genericclioptions.StdioOptions
-	search *genericclioptions.SearchOptions
+	search *SearchableOptions
 }
 
 var _ genericclioptions.CmdOptions = &FindOptions{}
@@ -24,7 +23,7 @@ func NewFindOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vau
 	return &FindOptions{
 		StdioOptions: stdio,
 		vault:        vault,
-		search:       &genericclioptions.SearchOptions{},
+		search:       &SearchableOptions{&genericclioptions.SearchOptions{}},
 	}
 }
 
@@ -62,32 +61,12 @@ func (*FindOptions) Validate() error {
 }
 
 func (o *FindOptions) Run(ctx context.Context) error {
-	var (
-		m   map[int]store.LabeledSecret
-		err error
-	)
-
-	switch {
-	case len(o.search.IDs) > 0:
-		m, err = o.vault().SecretsByIDs(ctx, o.search.IDs)
-
-	case len(o.search.Name) > 0 && len(o.search.Labels) > 0:
-		m, err = o.vault().SecretsByLabelsAndName(ctx, o.search.Name, o.search.Labels...)
-
-	case len(o.search.Name) > 0:
-		m, err = o.vault().SecretsByName(ctx, o.search.Name)
-
-	case len(o.search.Labels) > 0:
-		m, err = o.vault().SecretsByLabels(ctx, o.search.Labels...)
-
-	default:
-		m, err = o.vault().SecretsWithLabels(ctx)
-	}
-
+	m, err := o.search.Search(ctx, o.vault())
 	if err != nil {
 		return err
 	}
 
+	// TODO: pretty print using tabwriter
 	o.Infof("%v", m)
 
 	return nil

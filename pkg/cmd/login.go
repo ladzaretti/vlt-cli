@@ -1,4 +1,4 @@
-package login // replace with your actual package name
+package cmd
 
 import (
 	"context"
