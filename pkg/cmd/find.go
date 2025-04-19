@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
@@ -81,7 +82,7 @@ func printTable(w io.Writer, markedLabeledSecrets []markedLabeledSecret) {
 	fmt.Fprintln(tw, "ID\tNAME\tLABELS")
 
 	for _, marked := range markedLabeledSecrets {
-		// FIXME: pretty print marked labels
-		fmt.Fprintf(tw, "%d\t%s\t%v\n", marked.id, marked.name, marked.labels)
+		highlightedLabels := highlightMarked(marked.labels)
+		fmt.Fprintf(tw, "%d\t%s\t%s\n", marked.id, marked.name, strings.Join(highlightedLabels, ", "))
 	}
 }

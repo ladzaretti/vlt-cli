@@ -160,3 +160,27 @@ func markMatchedLabels(labels []string, matchingLabels []string) []markedLabel {
 
 	return marked
 }
+
+// ANSI color codes for formatting.
+const (
+	greenBold = "\033[1;32m"
+	reset     = "\033[0m"
+)
+
+// highlight adds bold green formatting to a string.
+func highlight(s string) string {
+	return greenBold + s + reset
+}
+
+func highlightMarked(labels []markedLabel) []string {
+	hl := make([]string, len(labels))
+	for i, l := range labels {
+		if l.matched {
+			hl[i] = highlight(l.value)
+		} else {
+			hl[i] = l.value
+		}
+	}
+
+	return hl
+}
