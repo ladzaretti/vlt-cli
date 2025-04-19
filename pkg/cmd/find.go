@@ -41,9 +41,9 @@ func NewCmdFind(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 		Short:   "Find secrets by ID, name, or labels",
 		Long: `Find secrets stored in the vault using various filters.
 
-You can search by secret ID, name, or one or more labels.
+Supports filtering by secret ID, name, or one or more labels.
 Multiple label filters are matched using a logical OR.
-Name and label values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
+Name and label values accept UNIX glob patterns (e.g., "foo*", "*bar*").`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return genericclioptions.ExecuteCommand(cmd.Context(), o)
 		},
@@ -70,6 +70,7 @@ func (o *FindOptions) Run(ctx context.Context) error {
 		return err
 	}
 
+	// TODO1: mark matched labels somehow (bold?)
 	printTable(o.Out, labeledSecrets)
 
 	return nil

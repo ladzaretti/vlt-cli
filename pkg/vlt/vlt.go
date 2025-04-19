@@ -130,7 +130,7 @@ func (vlt *Vault) SecretsByName(ctx context.Context, namePattern string) (map[in
 // along with all labels associated with each.
 //
 // If the IDs slice is empty, the function returns [store.ErrNoIDsProvided].
-func (vlt *Vault) SecretsByIDs(ctx context.Context, ids []int) (map[int]store.LabeledSecret, error) {
+func (vlt *Vault) SecretsByIDs(ctx context.Context, ids ...int) (map[int]store.LabeledSecret, error) {
 	return vlt.store.SecretsByIDs(ctx, ids)
 }
 
