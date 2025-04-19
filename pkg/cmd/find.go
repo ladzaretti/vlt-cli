@@ -2,6 +2,10 @@ package cmd
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"strings"
+	"text/tabwriter"
 
 	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/pkg/vlt"
@@ -52,22 +56,32 @@ Name and label values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
 	return cmd
 }
 
-func (*FindOptions) Complete() error {
-	return nil
+func (o *FindOptions) Complete() error {
+	return o.search.Complete()
 }
 
-func (*FindOptions) Validate() error {
-	return nil
+func (o *FindOptions) Validate() error {
+	return o.search.Validate()
 }
 
 func (o *FindOptions) Run(ctx context.Context) error {
-	m, err := o.search.Search(ctx, o.vault())
+	labeledSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err
 	}
 
-	// TODO: pretty print using tabwriter
-	o.Infof("%v", m)
+	printTable(o.Out, labeledSecrets)
 
 	return nil
+}
+
+func printTable(w io.Writer, labeledSecrets []labeledSecretPair) {
+	tw := tabwriter.NewWriter(w, 0, 0, 5, ' ', 0)
+	defer func() { _ = tw.Flush() }()
+
+	fmt.Fprintln(tw, "ID\tNAME\tLABELS")
+
+	for _, ls := range labeledSecrets {
+		fmt.Fprintf(tw, "%d\t%s\t%s\n", ls.id, ls.secret.Name, strings.Join(ls.secret.Labels, ","))
+	}
 }
