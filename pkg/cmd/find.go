@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
@@ -65,24 +64,24 @@ func (o *FindOptions) Validate() error {
 }
 
 func (o *FindOptions) Run(ctx context.Context) error {
-	labeledSecrets, err := o.search.search(ctx, o.vault())
+	markedLabeledSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err
 	}
 
-	// TODO1: mark matched labels somehow (bold?)
-	printTable(o.Out, labeledSecrets)
+	printTable(o.Out, markedLabeledSecrets)
 
 	return nil
 }
 
-func printTable(w io.Writer, labeledSecrets []labeledSecretPair) {
+func printTable(w io.Writer, markedLabeledSecrets []markedLabeledSecret) {
 	tw := tabwriter.NewWriter(w, 0, 0, 5, ' ', 0)
 	defer func() { _ = tw.Flush() }()
 
 	fmt.Fprintln(tw, "ID\tNAME\tLABELS")
 
-	for _, ls := range labeledSecrets {
-		fmt.Fprintf(tw, "%d\t%s\t%s\n", ls.id, ls.secret.Name, strings.Join(ls.secret.Labels, ","))
+	for _, marked := range markedLabeledSecrets {
+		// FIXME: pretty print marked labels
+		fmt.Fprintf(tw, "%d\t%s\t%v\n", marked.id, marked.name, marked.labels)
 	}
 }

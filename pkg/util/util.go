@@ -1,6 +1,8 @@
 package util
 
-import "strings"
+import (
+	"strings"
+)
 
 func ParseCommaSeparated(raw string) []string {
 	res := make([]string, 0, 8)
