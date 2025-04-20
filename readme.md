@@ -6,6 +6,7 @@ A command-line password manager backed by SQLite.
 - [ ] Implement all initial subcommands
   - [x] create
   - [x] login
+  - [ ] logout (session)
   - [x] save
   - [ ] update
   - [ ] show
@@ -16,6 +17,3 @@ A command-line password manager backed by SQLite.
   - [x] find
 - [ ] Add a cryptographic layer
 - [ ] Add session support
-
-searching by labels is ORed.
-searching by name and labels, return the intersection between the two queries.
