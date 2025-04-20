@@ -161,6 +161,15 @@ func markMatchedLabels(labels []string, matchingLabels []string) []markedLabel {
 	return marked
 }
 
+func extractIDs(secrets []markedLabeledSecret) []int {
+	ids := make([]int, len(secrets))
+	for i, s := range secrets {
+		ids[i] = s.id
+	}
+
+	return ids
+}
+
 // ANSI color codes for formatting.
 const (
 	greenBold = "\033[1;32m"

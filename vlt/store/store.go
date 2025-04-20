@@ -276,6 +276,37 @@ func (s *Store) secretsJoinLabels(ctx context.Context, query string, args ...any
 	return reduce(secrets), nil
 }
 
+// DeleteByIDs deletes secrets by their IDs, along with their labels.
+func (s *Store) DeleteByIDs(ctx context.Context, ids []int) (int64, error) {
+	if len(ids) == 0 {
+		return 0, ErrNoIDsProvided
+	}
+
+	placeholders := make([]string, len(ids))
+	for i := range ids {
+		placeholders[i] = "?"
+	}
+
+	query := `
+	DELETE 
+	FROM 
+		secrets
+	WHERE
+		id IN (` + strings.Join(placeholders, ",") + ")"
+
+	res, err := s.db.ExecContext(ctx, query, cmdutil.ToAnySlice(ids)...)
+	if err != nil {
+		return 0, err
+	}
+
+	n, err := res.RowsAffected()
+	if err != nil {
+		return n, err
+	}
+
+	return n, nil
+}
+
 // whereGlobOrClause generates a WHERE GLOB OR clause
 // for the given column and patterns.
 func whereGlobOrClause(col string, patterns ...string) string {

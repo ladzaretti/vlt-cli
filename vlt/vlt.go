@@ -146,3 +146,8 @@ func (vlt *Vault) SecretsByLabelsAndName(ctx context.Context, name string, label
 func (vlt *Vault) Secret(ctx context.Context, id int) (string, error) {
 	return vlt.store.Secret(ctx, id)
 }
+
+// DeleteByIDs deletes secrets by their IDs, along with their labels.
+func (vlt *Vault) DeleteByIDs(ctx context.Context, ids ...int) (int64, error) {
+	return vlt.store.DeleteByIDs(ctx, ids)
+}

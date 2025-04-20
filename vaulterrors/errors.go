@@ -16,4 +16,6 @@ var (
 	ErrEmptySecret = errors.New("secret cannot be empty")
 
 	ErrMissingLabels = errors.New("missing required labels")
+
+	ErrSearchNoMatch = errors.New("no match found")
 )

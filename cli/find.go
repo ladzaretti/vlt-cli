@@ -7,6 +7,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/vlt"
 
@@ -44,8 +45,8 @@ func NewCmdFind(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 Supports filtering by secret ID, name, or one or more labels.
 Multiple label filters are matched using a logical OR.
 Name and label values accept UNIX glob patterns (e.g., "foo*", "*bar*").`,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return genericclioptions.ExecuteCommand(cmd.Context(), o)
+		Run: func(cmd *cobra.Command, _ []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 
@@ -65,12 +66,12 @@ func (o *FindOptions) Validate() error {
 }
 
 func (o *FindOptions) Run(ctx context.Context) error {
-	markedLabeledSecrets, err := o.search.search(ctx, o.vault())
+	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err
 	}
 
-	printTable(o.Out, markedLabeledSecrets)
+	printTable(o.Out, matchingSecrets)
 
 	return nil
 }

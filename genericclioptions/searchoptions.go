@@ -1,5 +1,9 @@
 package genericclioptions
 
+import "errors"
+
+var ErrNoSearchParams = errors.New("no search parameters provided; specify at least one of --id, --label, or --name")
+
 // SearchOptions defines common filtering options for CLI commands that
 // support filtering secrets.
 type SearchOptions struct {
@@ -18,9 +22,9 @@ const (
 )
 
 var usage = map[Usage]string{
-	ID:     "filter by secret ID (comma-separated or repeated)",
-	NAME:   "filter by secret name",
-	LABELS: "filter by secret label (comma-separated or repeated)",
+	ID:     "match secret by ID (comma-separated or repeated)",
+	NAME:   "match secret by name",
+	LABELS: "match secret by label (comma-separated or repeated)",
 }
 
 var _ BaseOptions = &SearchOptions{}
@@ -31,6 +35,10 @@ func (*SearchOptions) Usage(field Usage) string {
 	}
 
 	return "unknown usage"
+}
+
+func (s *SearchOptions) IsUnset() bool {
+	return len(s.Name) == 0 && len(s.Labels) == 0 && len(s.IDs) == 0
 }
 
 func (*SearchOptions) Complete() error {
