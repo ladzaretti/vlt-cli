@@ -10,9 +10,10 @@ A command-line password manager backed by SQLite.
   - [ ] update
   - [ ] show
     - by --label strings, --name string, --id. + all other output related flags.
+    - only accept a single match. error otherwise.
+    - print table for matches with more than one matching secret.
   - [x] remove
   - [x] find
-    - by --label strings, --name string, --id. print to stdout.
 - [ ] Add a cryptographic layer
 - [ ] Add session support
 
