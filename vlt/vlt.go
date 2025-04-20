@@ -39,6 +39,10 @@ func New(path string) (*Vault, error) {
 		return nil, errf("sqlite open: %v", err)
 	}
 
+	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		return nil, err
+	}
+
 	m := migrate.New(db, migrate.SQLiteDialect{})
 
 	_, err = m.Apply(embeddedMigrations)
