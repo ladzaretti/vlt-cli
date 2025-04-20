@@ -1,4 +1,4 @@
-package util
+package clierror
 
 import (
 	"errors"
@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/pkg/vaulterrors"
+	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/vaulterrors"
 )
 
 const (
@@ -62,14 +62,14 @@ func fatal(msg string, code int) {
 // status code 1.
 var ErrExit = errors.New("exit")
 
-// CheckErr prints a user friendly error and exits with a non-zero
+// Check prints a user friendly error and exits with a non-zero
 // exit code. Unrecognized errors will be printed with an "error: " prefix.
-func CheckErr(err error) {
-	checkErr(err, fatalErrHandler)
+func Check(err error) {
+	check(err, fatalErrHandler)
 }
 
 //nolint:revive
-func checkErr(err error, handleErr func(string, int)) {
+func check(err error, handleErr func(string, int)) {
 	if err == nil {
 		return
 	}

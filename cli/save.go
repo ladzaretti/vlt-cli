@@ -1,4 +1,4 @@
-package cmd
+package cli
 
 import (
 	"context"
@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ladzaretti/vlt-cli/pkg/clipboard"
-	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
-	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
-	"github.com/ladzaretti/vlt-cli/pkg/util/input"
-	"github.com/ladzaretti/vlt-cli/pkg/util/randstring"
-	"github.com/ladzaretti/vlt-cli/pkg/vaulterrors"
+	"github.com/ladzaretti/vlt-cli/clierror"
+	"github.com/ladzaretti/vlt-cli/clipboard"
+	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/input"
+	"github.com/ladzaretti/vlt-cli/randstring"
+	cmdutil "github.com/ladzaretti/vlt-cli/util"
+	"github.com/ladzaretti/vlt-cli/vaulterrors"
 
-	"github.com/ladzaretti/vlt-cli/pkg/vlt"
+	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -70,7 +71,7 @@ The secret value can be piped, redirected, or typed manually when prompted.
 If input is piped or redirected, it is automatically used as the secret value,
 taking precedence over interactive input.`,
 		Run: func(cmd *cobra.Command, _ []string) {
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(cmd.Context(), o))
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 
@@ -123,7 +124,7 @@ func (o *SaveOptions) Run(ctx context.Context) (retErr error) {
 	secret = s
 
 	if len(o.name) == 0 {
-		k, err := o.readInteractive("Enter key: ")
+		k, err := o.readInteractive("Enter name: ")
 		if err != nil {
 			return fmt.Errorf("name read interactive: %w", err)
 		}

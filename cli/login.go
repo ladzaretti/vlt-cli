@@ -1,15 +1,15 @@
-package cmd
+package cli
 
 import (
 	"context"
 	"crypto/subtle"
 	"fmt"
 
-	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
-	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
-	"github.com/ladzaretti/vlt-cli/pkg/util/input"
-	"github.com/ladzaretti/vlt-cli/pkg/vaulterrors"
-	"github.com/ladzaretti/vlt-cli/pkg/vlt"
+	"github.com/ladzaretti/vlt-cli/clierror"
+	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/input"
+	"github.com/ladzaretti/vlt-cli/vaulterrors"
+	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -40,7 +40,7 @@ func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault)
 		Short: "Authenticate against the specified vault database",
 		Long:  "This command authenticates the user and grants access to the vault for subsequent operations.",
 		Run: func(cmd *cobra.Command, _ []string) {
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(cmd.Context(), o))
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 }

@@ -1,14 +1,14 @@
-package cmd
+package cli
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
-	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
-	"github.com/ladzaretti/vlt-cli/pkg/util/input"
-	"github.com/ladzaretti/vlt-cli/pkg/vaulterrors"
-	"github.com/ladzaretti/vlt-cli/pkg/vlt"
+	"github.com/ladzaretti/vlt-cli/clierror"
+	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/input"
+	"github.com/ladzaretti/vlt-cli/vaulterrors"
+	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -39,7 +39,7 @@ func NewCmdCreate(stdio *genericclioptions.StdioOptions, path func() string) *co
 		Short: "Initialize a new vault",
 		Long:  "Create a new vault by specifying the SQLite database file where credentials will be stored.",
 		Run: func(cmd *cobra.Command, _ []string) {
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(cmd.Context(), o))
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 }
@@ -71,7 +71,7 @@ func (o *CreateOptions) Run(ctx context.Context) error {
 		return fmt.Errorf("set master key: %w", err)
 	}
 
-	o.Infof("New vault successfully created at %q", o.vaultPath())
+	o.Infof("New vault successfully created at %q\n", o.vaultPath())
 
 	return nil
 }

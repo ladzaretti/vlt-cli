@@ -6,7 +6,7 @@ import (
 	"errors"
 	"strings"
 
-	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
+	cmdutil "github.com/ladzaretti/vlt-cli/util"
 )
 
 var (

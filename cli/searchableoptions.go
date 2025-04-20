@@ -1,12 +1,12 @@
-package cmd
+package cli
 
 import (
 	"context"
 	"slices"
 
-	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/pkg/vlt"
-	"github.com/ladzaretti/vlt-cli/pkg/vlt/store"
+	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/vlt"
+	"github.com/ladzaretti/vlt-cli/vlt/store"
 )
 
 type SearchableOptions struct {

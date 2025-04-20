@@ -7,6 +7,7 @@ A command-line password manager backed by SQLite.
   - [x] create
   - [x] login
   - [x] save
+  - [ ] update
   - [ ] show
     - by --label strings, --name string, --id. + all other output related flags.
   - [ ] remove

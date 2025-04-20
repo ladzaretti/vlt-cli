@@ -1,4 +1,4 @@
-package cmd
+package cli
 
 import (
 	"context"
@@ -8,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ladzaretti/vlt-cli/pkg/clipboard"
-	"github.com/ladzaretti/vlt-cli/pkg/genericclioptions"
-	cmdutil "github.com/ladzaretti/vlt-cli/pkg/util"
-	"github.com/ladzaretti/vlt-cli/pkg/vaulterrors"
-	"github.com/ladzaretti/vlt-cli/pkg/vlt"
+	"github.com/ladzaretti/vlt-cli/clierror"
+	"github.com/ladzaretti/vlt-cli/clipboard"
+	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/vaulterrors"
+	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -182,7 +182,7 @@ func (o *DefaultVltOptions) Run(ctx context.Context) error {
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.
 func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string) *cobra.Command {
 	o, err := NewDefaultVltOptions(iostreams, NewVaultOptions())
-	cmdutil.CheckErr(err)
+	clierror.Check(err)
 
 	cmd := &cobra.Command{
 		Use:          "vlt",
@@ -194,7 +194,7 @@ func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string)
 				WithNewVault(true)(o.VaultOptions)
 			}
 
-			cmdutil.CheckErr(genericclioptions.ExecuteCommand(cmd.Context(), o))
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 

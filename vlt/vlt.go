@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ladzaretti/vlt-cli/pkg/vlt/store"
+	"github.com/ladzaretti/vlt-cli/vlt/store"
 
 	"github.com/ladzaretti/migrate"
 
