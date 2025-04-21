@@ -51,7 +51,7 @@ func NewCmdRemove(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault
 
 	cmd := &cobra.Command{
 		Use:     "remove",
-		Aliases: []string{"rm"},
+		Aliases: []string{"rm", "delete"},
 		Short:   "Remove secrets from the vault",
 		Long: `Remove one or more secrets from the vault.
 

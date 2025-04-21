@@ -5,15 +5,18 @@ A command-line password manager backed by SQLite.
 
 - [ ] Implement all initial subcommands
   - [x] login
-  - [ ] logout (session)
-  - [x] new
-  - [x] put     (alias: save)
-  - [ ] get     (alias: show)
+  - [ ] logout  (session)
+  - [x] create  (alias: new)
+  - [x] save    (alias: put)
+  - [ ] show    (alias: get)
   - [ ] update
-    - by --label strings, --name string, --id. + all other output related flags.
-    - only accept a single match. error otherwise.
-    - print table for matches with more than one matching secret.
-  - [x] delete  (alias: remove, rm)
+    - by id (required), update --secret --name, or interactive, support clipboard and piping (secret only).
+  - [ ] labels 
+    - [ ] add 
+      - by id
+    - [ ] remove 
+      - by id
+  - [x] remove  (alias: rm, delete)
   - [x] find    (alias: list, ls)
 - [ ] Add a cryptographic layer
 - [ ] Add session support
