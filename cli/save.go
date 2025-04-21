@@ -81,7 +81,7 @@ taking precedence over interactive input.`,
 	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret from clipboard")
 
 	cmd.Flags().StringVarP(&o.name, "name", "", "", "the secret name (e.g., username)")
-	cmd.Flags().StringSliceVarP(&o.labels, "label", "", nil, "label to associate with the secret (comma-separated or repeated)")
+	cmd.Flags().StringSliceVarP(&o.labels, "label", "", nil, "optional label to associate with the secret (comma-separated or repeated)")
 
 	return cmd
 }
@@ -147,16 +147,12 @@ func (o *SaveOptions) Run(ctx context.Context) (retErr error) {
 	}
 
 	if len(o.labels) == 0 {
-		labels, err := o.readInteractive("Enter label(s), comma-separated: ")
+		labels, err := o.readInteractive("Enter labels (comma-separated), or press Enter to skip: ")
 		if err != nil {
 			return fmt.Errorf("label read interactive: %w", err)
 		}
 
 		o.labels = append(o.labels, cmdutil.ParseCommaSeparated(labels)...)
-	}
-
-	if len(o.labels) == 0 {
-		return vaulterrors.ErrMissingLabels
 	}
 
 	return o.insertNewSecret(ctx, secret)

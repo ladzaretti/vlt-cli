@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 
 	cmdutil "github.com/ladzaretti/vlt-cli/util"
+	"github.com/ladzaretti/vlt-cli/vaulterrors"
 )
 
 var (
@@ -172,7 +174,7 @@ func (s *Store) InsertLabel(ctx context.Context, name string, secretID int64) (i
 type secretLabelRow struct {
 	id    int
 	name  string
-	label string
+	label sql.NullString
 }
 
 // LabeledSecret represents a secret with some of its associated labels.
@@ -181,20 +183,46 @@ type LabeledSecret struct {
 	Labels []string
 }
 
-// SecretsByColumn returns secrets with labels that
-// match all glob patterns for the given col.
+// SecretsWithLabels returns all secrets along with all labels associated with each.
+func (s *Store) SecretsWithLabels(ctx context.Context) (map[int]LabeledSecret, error) {
+	return s.secretsByColumn(ctx, "", "LEFT JOIN")
+}
+
+// SecretsByName returns secrets that match the provided name pattern,
+// along with all labels associated with it.
 //
-// If no patterns are provided, it returns all secrets along with all their labels.
-func (s *Store) SecretsByColumn(ctx context.Context, col string, patterns ...string) (map[int]LabeledSecret, error) {
-	query := `
+// If no pattern is provided, it returns all secrets along with all their labels.
+func (s *Store) SecretsByName(ctx context.Context, namePattern string) (map[int]LabeledSecret, error) {
+	return s.secretsByColumn(ctx, "secret_name", "LEFT JOIN", namePattern)
+}
+
+// SecretsByLabels returns secrets that match any of the provided label patterns,
+// along with all labels associated with each secret.
+//
+// If no patterns are provided, an [vaulterrors.ErrMissingLabels] error is returned.
+func (s *Store) SecretsByLabels(ctx context.Context, labelPatterns ...string) (map[int]LabeledSecret, error) {
+	if len(labelPatterns) == 0 {
+		return nil, vaulterrors.ErrMissingLabels
+	}
+
+	return s.secretsByColumn(ctx, "label", "INNER JOIN", labelPatterns...)
+}
+
+// secretsByColumn returns secrets with labels that
+// match a where clause with all glob patterns for the given col.
+//
+// If no patterns are provided, no where clause is generated.
+func (s *Store) secretsByColumn(ctx context.Context, col string, join string, patterns ...string) (map[int]LabeledSecret, error) {
+	query := fmt.Sprintf(`
 	SELECT
 		s.id,
 		s.name AS secret_name,
 		l.name AS label
 	FROM
 		secrets s
-		JOIN labels l ON s.id = l.secret_id
-	` + whereGlobOrClause(col, patterns...)
+		%s labels l ON s.id = l.secret_id
+	%s
+	`, join, whereGlobOrClause(col, patterns...))
 
 	return s.secretsJoinLabels(ctx, query, cmdutil.ToAnySlice(patterns)...)
 }
@@ -219,7 +247,7 @@ func (s *Store) SecretsByIDs(ctx context.Context, ids []int) (map[int]LabeledSec
 		l.name AS label
 	FROM
 		secrets s
-		JOIN labels l ON s.id = l.secret_id
+		LEFT JOIN labels l ON s.id = l.secret_id
 	WHERE
 		s.id IN (` + strings.Join(placeholders, ",") + ")"
 
@@ -330,10 +358,12 @@ func reduce(secrets []secretLabelRow) map[int]LabeledSecret {
 		if !ok {
 			v = LabeledSecret{
 				Name:   s.name,
-				Labels: []string{s.label},
+				Labels: []string{},
 			}
-		} else {
-			v.Labels = append(v.Labels, s.label)
+		}
+
+		if s.label.Valid {
+			v.Labels = append(v.Labels, s.label.String)
 		}
 
 		m[s.id] = v

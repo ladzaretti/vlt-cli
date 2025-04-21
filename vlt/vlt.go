@@ -111,7 +111,7 @@ func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret strin
 
 // SecretsWithLabels returns all secrets along with all labels associated with each.
 func (vlt *Vault) SecretsWithLabels(ctx context.Context) (map[int]store.LabeledSecret, error) {
-	return vlt.store.SecretsByColumn(ctx, "")
+	return vlt.store.SecretsWithLabels(ctx)
 }
 
 // SecretsByLabels returns secrets that match any of the provided label patterns,
@@ -119,7 +119,7 @@ func (vlt *Vault) SecretsWithLabels(ctx context.Context) (map[int]store.LabeledS
 //
 // If no patterns are provided, it returns all secrets along with all their labels.
 func (vlt *Vault) SecretsByLabels(ctx context.Context, labelPatterns ...string) (map[int]store.LabeledSecret, error) {
-	return vlt.store.SecretsByColumn(ctx, "label", labelPatterns...)
+	return vlt.store.SecretsByLabels(ctx, labelPatterns...)
 }
 
 // SecretsByName returns secrets that match the provided name pattern,
@@ -127,7 +127,7 @@ func (vlt *Vault) SecretsByLabels(ctx context.Context, labelPatterns ...string) 
 //
 // If no pattern is provided, it returns all secrets along with all their labels.
 func (vlt *Vault) SecretsByName(ctx context.Context, namePattern string) (map[int]store.LabeledSecret, error) {
-	return vlt.store.SecretsByColumn(ctx, "secret_name", namePattern)
+	return vlt.store.SecretsByName(ctx, namePattern)
 }
 
 // SecretsByIDs returns a map of secrets that match any of the provided IDs,
