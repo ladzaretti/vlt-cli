@@ -36,8 +36,8 @@ func NewCmdCreate(stdio *genericclioptions.StdioOptions, path func() string) *co
 
 	return &cobra.Command{
 		Use:     "create",
-		Short:   "Initialize a new vault",
 		Aliases: []string{"new"},
+		Short:   "Initialize a new vault",
 		Long:    "Create a new vault by specifying the SQLite database file where credentials will be stored.",
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))

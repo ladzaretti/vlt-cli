@@ -62,8 +62,8 @@ func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 
 	cmd := &cobra.Command{
 		Use:     "save",
-		Short:   "Save a new secret to the vault",
 		Aliases: []string{"put"},
+		Short:   "Save a new secret to the vault",
 		Long: `Save a new key-value pair to the vault.
 
 The name of the secret can be provided using the --name flag or entered interactively.
@@ -212,7 +212,7 @@ func (o *SaveOptions) outputSecret(s string) error {
 	}
 
 	if o.copy {
-		o.Debugf("Copying secret to clipboard")
+		o.Debugf("Copying secret to clipboard\n")
 		return clipboard.Copy(s)
 	}
 

@@ -27,6 +27,7 @@ func (e *RemoveError) Unwrap() error { return e.Err }
 // RemoveOptions holds data required to run the command.
 type RemoveOptions struct {
 	vault func() *vlt.Vault
+
 	*genericclioptions.StdioOptions
 	search *SearchableOptions
 
@@ -93,15 +94,14 @@ func (o *RemoveOptions) Run(ctx context.Context) error {
 
 	if count > 0 {
 		printTable(o.Out, matchingSecrets)
-		fmt.Println()
 	}
 
 	switch count {
-	case 0:
-		o.Infof("No secrets match the search settings.\n")
-		return &RemoveError{vaulterrors.ErrSearchNoMatch}
 	case 1:
 		o.Infof("1 secret matches the search settings.\n")
+	case 0:
+		o.Warnf("No secrets match the search settings.\n")
+		return &RemoveError{vaulterrors.ErrSearchNoMatch}
 	default:
 		o.Infof("%d secrets match the search settings.\n", count)
 

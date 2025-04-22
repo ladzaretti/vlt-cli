@@ -18,4 +18,6 @@ var (
 	ErrMissingLabels = errors.New("missing required labels")
 
 	ErrSearchNoMatch = errors.New("no match found")
+
+	ErrAmbiguousSecretMatch = errors.New("ambiguous secret match: multiple secrets match the search criteria")
 )

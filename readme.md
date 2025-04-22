@@ -8,7 +8,7 @@ A command-line password manager backed by SQLite.
   - [ ] logout  (session)
   - [x] create  (alias: new)
   - [x] save    (alias: put)
-  - [ ] show    (alias: get)
+  - [x] show    (alias: get)
   - [ ] update
     - by id (required), update --secret --name, or interactive, support clipboard and piping (secret only).
   - [ ] labels 

@@ -3,7 +3,6 @@ package genericclioptions
 import (
 	"errors"
 	"fmt"
-	"io"
 
 	"github.com/ladzaretti/vlt-cli/input"
 )
@@ -33,10 +32,6 @@ func (o *StdioOptions) Complete() error {
 			o.Debugf("Input is piped or redirected; enabling non-interactive mode for handling sensitive data.\n")
 			o.NonInteractive = true
 		}
-	}
-
-	if !o.Verbose {
-		o.ErrOut = io.Discard
 	}
 
 	return nil

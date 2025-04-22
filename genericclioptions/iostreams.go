@@ -49,15 +49,20 @@ func NewTestIOStreamsDiscard(in *TestFdReader) *IOStreams {
 	}
 }
 
-// Debugf writes formatted debug output if Verbose is enabled.
+// Debugf writes formatted debug output to the error stream.
+// if Verbose is enabled.
 func (s IOStreams) Debugf(format string, args ...any) {
 	if s.Verbose {
 		fmt.Fprintf(s.ErrOut, format, args...)
 	}
 }
 
-// Infof writes a formatted message to standard output.
-// Use this for user-facing informational messages.
+// Infof writes a formatted message to the standard output stream.
 func (s IOStreams) Infof(format string, args ...any) {
 	fmt.Fprintf(s.Out, format, args...)
+}
+
+// Warnf writes a formatted message to the error stream.
+func (s IOStreams) Warnf(format string, args ...any) {
+	fmt.Fprintf(s.ErrOut, format, args...)
 }

@@ -2,7 +2,11 @@ package cli
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"slices"
+	"strings"
+	"text/tabwriter"
 
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/vlt"
@@ -192,4 +196,18 @@ func highlightMarked(labels []markedLabel) []string {
 	}
 
 	return hl
+}
+
+func printTable(w io.Writer, markedLabeledSecrets []markedLabeledSecret) {
+	tw := tabwriter.NewWriter(w, 0, 0, 5, ' ', 0)
+	defer func() { _ = tw.Flush() }()
+
+	fmt.Fprintln(tw, "ID\tNAME\tLABELS")
+
+	for _, marked := range markedLabeledSecrets {
+		highlightedLabels := highlightMarked(marked.labels)
+		fmt.Fprintf(tw, "%d\t%s\t%s\n", marked.id, marked.name, strings.Join(highlightedLabels, ", "))
+	}
+
+	fmt.Fprintln(tw) // add padding
 }

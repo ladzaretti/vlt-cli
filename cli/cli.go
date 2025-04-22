@@ -208,6 +208,7 @@ func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string)
 	cmd.AddCommand(NewCmdSave(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
 	cmd.AddCommand(NewCmdFind(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
 	cmd.AddCommand(NewCmdRemove(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
+	cmd.AddCommand(NewCmdShow(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
 
 	return cmd
 }

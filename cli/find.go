@@ -2,10 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
-	"io"
-	"strings"
-	"text/tabwriter"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
@@ -17,6 +13,7 @@ import (
 // FindOptions holds data required to run the command.
 type FindOptions struct {
 	vault func() *vlt.Vault
+
 	*genericclioptions.StdioOptions
 	search *SearchableOptions
 }
@@ -74,16 +71,4 @@ func (o *FindOptions) Run(ctx context.Context) error {
 	printTable(o.Out, matchingSecrets)
 
 	return nil
-}
-
-func printTable(w io.Writer, markedLabeledSecrets []markedLabeledSecret) {
-	tw := tabwriter.NewWriter(w, 0, 0, 5, ' ', 0)
-	defer func() { _ = tw.Flush() }()
-
-	fmt.Fprintln(tw, "ID\tNAME\tLABELS")
-
-	for _, marked := range markedLabeledSecrets {
-		highlightedLabels := highlightMarked(marked.labels)
-		fmt.Fprintf(tw, "%d\t%s\t%s\n", marked.id, marked.name, strings.Join(highlightedLabels, ", "))
-	}
 }
