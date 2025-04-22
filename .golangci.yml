@@ -112,6 +112,9 @@ linters:
     revive:
       enable-all-rules: true
       rules:
+        - name: struct-tag
+          arguments: 
+            - "toml,commented"
         - name: add-constant
           disabled: true
         - name: bare-return

@@ -18,5 +18,8 @@ A command-line password manager backed by SQLite.
       - by id
   - [x] remove  (alias: rm, delete)
   - [x] find    (alias: list, ls)
+  - [x] config 
+    - [x] generate
+    - [x] validate
 - [ ] Add a cryptographic layer
 - [ ] Add session support

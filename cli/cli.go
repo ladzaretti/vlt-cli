@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/clipboard"
@@ -126,20 +127,16 @@ type DefaultVltOptions struct {
 	config Config
 
 	*VaultOptions
-
 	*genericclioptions.StdioOptions
+
+	configPath string
 }
 
 var _ genericclioptions.CmdOptions = &DefaultVltOptions{}
 
 func NewDefaultVltOptions(iostreams *genericclioptions.IOStreams, vaultOptions *VaultOptions) (*DefaultVltOptions, error) {
-	config, err := LoadConfig()
-	if err != nil && !errors.Is(err, ErrNoConfigAvailable) {
-		return nil, err
-	}
-
 	return &DefaultVltOptions{
-		config:       config,
+		config:       Config{},
 		StdioOptions: &genericclioptions.StdioOptions{IOStreams: iostreams},
 		VaultOptions: vaultOptions,
 	}, nil
@@ -185,11 +182,26 @@ func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string)
 	clierror.Check(err)
 
 	cmd := &cobra.Command{
-		Use:          "vlt",
-		Short:        "vault CLI for managing secrets",
-		Long:         "vlt is a command-line password manager for securely storing and retrieving credentials.",
+		Use:   "vlt",
+		Short: "Command-line tool for managing secrets",
+		Long: `vlt is a command-line tool for securely managing secrets.
+
+Environment Variables:
+    VLT_CONFIG_PATH: overrides the default config path ~/.vlt.toml.`,
 		SilenceUsage: true,
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			if slices.Contains([]string{"config", "generate", "validate"}, cmd.Name()) {
+				return
+			}
+
+			path, err := ResolveConfigPath()
+			clierror.Check(err)
+
+			c, err := LoadConfig(path)
+			clierror.Check(err)
+
+			o.config = c
+
 			if cmd.Name() == "create" {
 				WithNewVault(true)(o.VaultOptions)
 			}
@@ -202,7 +214,15 @@ func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string)
 
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
 	cmd.PersistentFlags().StringVarP(&o.Path, "file", "f", "", "path to the vault file")
+	cmd.PersistentFlags().StringVarP(
+		&o.configPath,
+		"config",
+		"c",
+		"",
+		fmt.Sprintf("path to the configuration file (default: ~/%s). Overrides %s if set.", defaultConfigName, envConfigPathKey),
+	)
 
+	cmd.AddCommand(NewCmdConfig(o.StdioOptions))
 	cmd.AddCommand(NewCmdCreate(o.StdioOptions, func() string { return o.Path }))
 	cmd.AddCommand(NewCmdLogin(o.StdioOptions, func() *vlt.Vault { return o.Vault }))
 	cmd.AddCommand(NewCmdSave(o.StdioOptions, func() *vlt.Vault { return o.Vault }))

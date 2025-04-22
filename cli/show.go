@@ -50,7 +50,8 @@ func NewCmdShow(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 	cmd := &cobra.Command{
 		Use:     "show",
 		Aliases: []string{"get"},
-		Short: `Retrieve and display the value of a secret.
+		Short:   "Retrieve a secret's value by search criteria.",
+		Long: `Retrieve and display the value of a secret.
 
 Search using --id, --name, or --label. Exactly one secret must match.
 
