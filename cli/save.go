@@ -56,37 +56,6 @@ func NewSaveOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vau
 	}
 }
 
-// NewCmdSave creates the save cobra command.
-func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
-	o := NewSaveOptions(stdio, vault)
-
-	cmd := &cobra.Command{
-		Use:     "save",
-		Aliases: []string{"put"},
-		Short:   "Save a new secret to the vault",
-		Long: `Save a new key-value pair to the vault.
-
-The name of the secret can be provided using the --name flag or entered interactively.
-The secret value can be piped, redirected, or typed manually when prompted.
-
-If input is piped or redirected, it is automatically used as the secret value,
-taking precedence over interactive input.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
-		},
-	}
-
-	cmd.Flags().BoolVarP(&o.generate, "generate", "g", false, "generate a random secret")
-	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (use with caution; intended primarily for piping)")
-	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to clipboard")
-	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret from clipboard")
-
-	cmd.Flags().StringVarP(&o.name, "name", "", "", "the secret name (e.g., username)")
-	cmd.Flags().StringSliceVarP(&o.labels, "label", "", nil, "optional label to associate with the secret (comma-separated or repeated)")
-
-	return cmd
-}
-
 func (*SaveOptions) Complete() error {
 	return nil
 }
@@ -238,4 +207,35 @@ func (o *SaveOptions) validateInputSource() error {
 	}
 
 	return nil
+}
+
+// NewCmdSave creates the save cobra command.
+func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+	o := NewSaveOptions(stdio, vault)
+
+	cmd := &cobra.Command{
+		Use:     "save",
+		Aliases: []string{"put"},
+		Short:   "Save a new secret to the vault",
+		Long: `Save a new key-value pair to the vault.
+
+The name of the secret can be provided using the --name flag or entered interactively.
+The secret value can be piped, redirected, or typed manually when prompted.
+
+If input is piped or redirected, it is automatically used as the secret value,
+taking precedence over interactive input.`,
+		Run: func(cmd *cobra.Command, _ []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		},
+	}
+
+	cmd.Flags().BoolVarP(&o.generate, "generate", "g", false, "generate a random secret")
+	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (use with caution; intended primarily for piping)")
+	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to clipboard")
+	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret from clipboard")
+
+	cmd.Flags().StringVarP(&o.name, "name", "", "", "the secret name (e.g., username)")
+	cmd.Flags().StringSliceVarP(&o.labels, "label", "", nil, "optional label to associate with the secret (comma-separated or repeated)")
+
+	return cmd
 }

@@ -30,21 +30,6 @@ func NewCreateOptions(stdio *genericclioptions.StdioOptions, vaultPath func() st
 	}
 }
 
-// NewCmdCreate creates the create cobra command.
-func NewCmdCreate(stdio *genericclioptions.StdioOptions, path func() string) *cobra.Command {
-	o := NewCreateOptions(stdio, path)
-
-	return &cobra.Command{
-		Use:     "create",
-		Aliases: []string{"new"},
-		Short:   "Initialize a new vault",
-		Long:    "Create a new vault by specifying the SQLite database file where credentials will be stored.",
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
-		},
-	}
-}
-
 func (*CreateOptions) Complete() error {
 	return nil
 }
@@ -75,4 +60,19 @@ func (o *CreateOptions) Run(ctx context.Context) error {
 	o.Infof("New vault successfully created at %q\n", o.vaultPath())
 
 	return nil
+}
+
+// NewCmdCreate creates the create cobra command.
+func NewCmdCreate(stdio *genericclioptions.StdioOptions, path func() string) *cobra.Command {
+	o := NewCreateOptions(stdio, path)
+
+	return &cobra.Command{
+		Use:     "create",
+		Aliases: []string{"new"},
+		Short:   "Initialize a new vault",
+		Long:    "Create a new vault by specifying the SQLite database file where credentials will be stored.",
+		Run: func(cmd *cobra.Command, _ []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		},
+	}
 }

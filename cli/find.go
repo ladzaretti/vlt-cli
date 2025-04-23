@@ -29,6 +29,25 @@ func NewFindOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vau
 	}
 }
 
+func (o *FindOptions) Complete() error {
+	return o.search.Complete()
+}
+
+func (o *FindOptions) Validate() error {
+	return o.search.Validate()
+}
+
+func (o *FindOptions) Run(ctx context.Context) error {
+	matchingSecrets, err := o.search.search(ctx, o.vault())
+	if err != nil {
+		return err
+	}
+
+	printTable(o.Out, matchingSecrets)
+
+	return nil
+}
+
 // NewCmdFind creates the find cobra command.
 func NewCmdFind(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
 	o := NewFindOptions(stdio, vault)
@@ -52,23 +71,4 @@ Name and label values accept UNIX glob patterns (e.g., "foo*", "*bar*").`,
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
 
 	return cmd
-}
-
-func (o *FindOptions) Complete() error {
-	return o.search.Complete()
-}
-
-func (o *FindOptions) Validate() error {
-	return o.search.Validate()
-}
-
-func (o *FindOptions) Run(ctx context.Context) error {
-	matchingSecrets, err := o.search.search(ctx, o.vault())
-	if err != nil {
-		return err
-	}
-
-	printTable(o.Out, matchingSecrets)
-
-	return nil
 }

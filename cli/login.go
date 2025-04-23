@@ -31,20 +31,6 @@ func NewLoginOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Va
 	}
 }
 
-// NewCmdLogin creates the login cobra command.
-func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
-	o := NewLoginOptions(stdio, vault)
-
-	return &cobra.Command{
-		Use:   "login",
-		Short: "Authenticate against the specified vault database",
-		Long:  "This command authenticates the user and grants access to the vault for subsequent operations.",
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
-		},
-	}
-}
-
 func (*LoginOptions) Complete() error {
 	return nil
 }
@@ -77,4 +63,18 @@ func (o *LoginOptions) Run(ctx context.Context) error {
 	o.Infof("Login successful")
 
 	return nil
+}
+
+// NewCmdLogin creates the login cobra command.
+func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+	o := NewLoginOptions(stdio, vault)
+
+	return &cobra.Command{
+		Use:   "login",
+		Short: "Authenticate against the specified vault database",
+		Long:  "This command authenticates the user and grants access to the vault for subsequent operations.",
+		Run: func(cmd *cobra.Command, _ []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		},
+	}
 }

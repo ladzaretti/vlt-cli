@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -92,7 +93,7 @@ func LoadConfig(path string) (Config, error) {
 	return config, config.Validate()
 }
 
-// NewCmdConfig creates the config cobra command.
+// NewCmdConfig creates the cobra config command tree.
 func NewCmdConfig(o *genericclioptions.StdioOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -100,23 +101,53 @@ func NewCmdConfig(o *genericclioptions.StdioOptions) *cobra.Command {
 		Long:  "Utilities for generating and validating vlt's configuration file.",
 	}
 
-	cmd.AddCommand(NewGenerateCmd(o), newValidateCmd(o))
+	cmd.AddCommand(NewGenerateCmd(o), NewValidateCmd(o))
 	genericclioptions.MarkFlagsHidden(cmd, "file", "verbose", "config")
 
 	return cmd
 }
 
+type GenerateOptions struct {
+	*genericclioptions.StdioOptions
+}
+
+var _ genericclioptions.CmdOptions = &GenerateOptions{}
+
+// NewGenerateOptions initializes the options struct.
+func NewGenerateOptions(stdio *genericclioptions.StdioOptions) *GenerateOptions {
+	return &GenerateOptions{
+		StdioOptions: stdio,
+	}
+}
+
+func (*GenerateOptions) Complete() error {
+	return nil
+}
+
+func (*GenerateOptions) Validate() error {
+	return nil
+}
+
+func (o *GenerateOptions) Run(context.Context) error {
+	out, err := toml.Marshal(&Config{})
+	clierror.Check(err)
+
+	o.Infof("%s", string(out))
+
+	return nil
+}
+
 // NewGenerateCmd creates the 'generate' subcommand for generating default config.
-func NewGenerateCmd(o *genericclioptions.StdioOptions) *cobra.Command {
+func NewGenerateCmd(stdio *genericclioptions.StdioOptions) *cobra.Command {
+	o := NewGenerateOptions(stdio)
+
 	cmd := &cobra.Command{
 		Use:   "generate",
 		Short: "Print a default config file",
 		Long: `Generate and print a default configuration file in TOML format.
 This command does not take any arguments. It prints the configuration to stdout.`,
-		Run: func(_ *cobra.Command, _ []string) {
-			out, err := toml.Marshal(&Config{})
-			clierror.Check(err)
-			o.Infof("%s", string(out))
+		Run: func(cmd *cobra.Command, _ []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 
@@ -125,23 +156,56 @@ This command does not take any arguments. It prints the configuration to stdout.
 	return cmd
 }
 
-// newValidateCmd creates the 'validate' subcommand for validating the config file.
-func newValidateCmd(o *genericclioptions.StdioOptions) *cobra.Command {
+type ValidateOptions struct {
+	*genericclioptions.StdioOptions
+
+	file string
+}
+
+var _ genericclioptions.CmdOptions = &ValidateOptions{}
+
+// NewValidateOptions initializes the options struct.
+func NewValidateOptions(stdio *genericclioptions.StdioOptions) *ValidateOptions {
+	return &ValidateOptions{
+		StdioOptions: stdio,
+	}
+}
+
+func (o *ValidateOptions) Complete() error {
+	if len(o.file) == 0 {
+		f, err := ResolveConfigPath()
+		clierror.Check(err)
+
+		o.file = f
+	}
+
+	return nil
+}
+
+func (*ValidateOptions) Validate() error {
+	return nil
+}
+
+func (o *ValidateOptions) Run(context.Context) error {
+	_, err := LoadConfig(o.file)
+	clierror.Check(err)
+
+	o.Infof("%s: OK\n", o.file)
+
+	return nil
+}
+
+// NewValidateCmd creates the 'validate' subcommand for validating the config file.
+func NewValidateCmd(stdio *genericclioptions.StdioOptions) *cobra.Command {
+	o := NewValidateOptions(stdio)
+
 	cmd := &cobra.Command{
 		Use:   "validate",
 		Short: "Check config validity",
 		Long: `Validate the configuration file by loading and checking for common errors.
 Defaults to the standard config path if --file is not provided.`,
 		Run: func(cmd *cobra.Command, _ []string) {
-			file, _ := cmd.Flags().GetString("file")
-			if len(file) == 0 {
-				f, err := ResolveConfigPath()
-				clierror.Check(err)
-				file = f
-			}
-			_, err := LoadConfig(file)
-			clierror.Check(err)
-			o.Infof("%s: OK\n", file)
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 

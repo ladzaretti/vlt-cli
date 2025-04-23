@@ -46,32 +46,6 @@ func NewRemoveOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.V
 	}
 }
 
-// NewCmdRemove creates the remove cobra command.
-func NewCmdRemove(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
-	o := NewRemoveOptions(stdio, vault)
-
-	cmd := &cobra.Command{
-		Use:     "remove",
-		Aliases: []string{"rm", "delete"},
-		Short:   "Remove secrets from the vault",
-		Long: `Remove one or more secrets from the vault.
-
-Secrets can be matched for removal using filters such as ID, name, or label.
-Use the --yes flag to skip confirmation prompts.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
-		},
-	}
-
-	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
-	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
-	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
-	cmd.Flags().BoolVarP(&o.assumeYes, "yes", "y", false, "automatically answer yes to all questions")
-	cmd.Flags().BoolVar(&o.removeAll, "all", false, "remove all matching secrets")
-
-	return cmd
-}
-
 func (o *RemoveOptions) Complete() error {
 	return o.search.Complete()
 }
@@ -145,4 +119,30 @@ func confirm(out io.Writer, in io.Reader, prompt string, a ...any) (bool, error)
 	normalized := strings.ToLower(strings.TrimSpace(response))
 
 	return slices.Contains([]string{"y", "yes"}, normalized), nil
+}
+
+// NewCmdRemove creates the remove cobra command.
+func NewCmdRemove(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+	o := NewRemoveOptions(stdio, vault)
+
+	cmd := &cobra.Command{
+		Use:     "remove",
+		Aliases: []string{"rm", "delete"},
+		Short:   "Remove secrets from the vault",
+		Long: `Remove one or more secrets from the vault.
+
+Secrets can be matched for removal using filters such as ID, name, or label.
+Use the --yes flag to skip confirmation prompts.`,
+		Run: func(cmd *cobra.Command, _ []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		},
+	}
+
+	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
+	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
+	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
+	cmd.Flags().BoolVarP(&o.assumeYes, "yes", "y", false, "automatically answer yes to all questions")
+	cmd.Flags().BoolVar(&o.removeAll, "all", false, "remove all matching secrets")
+
+	return cmd
 }

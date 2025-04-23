@@ -43,33 +43,6 @@ func NewShowOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vau
 	}
 }
 
-// NewCmdShow creates the Show cobra command.
-func NewCmdShow(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
-	o := NewShowOptions(stdio, vault)
-
-	cmd := &cobra.Command{
-		Use:     "show",
-		Aliases: []string{"get"},
-		Short:   "Retrieve a secret's value by search criteria.",
-		Long: `Retrieve and display the value of a secret.
-
-Search using --id, --name, or --label. Exactly one secret must match.
-
-Use --output to print to stdout, or --copy-clipboard to copy the value to the clipboard.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
-		},
-	}
-
-	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
-	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
-	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
-	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the secret to stdout (use with caution; intended primarily for piping)")
-	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the secret to clipboard")
-
-	return cmd
-}
-
 func (o *ShowOptions) Complete() error {
 	return o.search.Complete()
 }
@@ -134,4 +107,31 @@ func (o *ShowOptions) outputSecret(s string) error {
 	}
 
 	return nil
+}
+
+// NewCmdShow creates the Show cobra command.
+func NewCmdShow(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+	o := NewShowOptions(stdio, vault)
+
+	cmd := &cobra.Command{
+		Use:     "show",
+		Aliases: []string{"get"},
+		Short:   "Retrieve a secret's value by search criteria.",
+		Long: `Retrieve and display the value of a secret.
+
+Search using --id, --name, or --label. Exactly one secret must match.
+
+Use --output to print to stdout, or --copy-clipboard to copy the value to the clipboard.`,
+		Run: func(cmd *cobra.Command, _ []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		},
+	}
+
+	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
+	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
+	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
+	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the secret to stdout (use with caution; intended primarily for piping)")
+	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the secret to clipboard")
+
+	return cmd
 }
