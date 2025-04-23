@@ -9,13 +9,11 @@ A command-line password manager backed by SQLite.
   - [x] create  (alias: new)
   - [x] save    (alias: put)
   - [x] show    (alias: get)
-  - [ ] update
-    - by id (required), update --secret --name, or interactive, support clipboard and piping (secret only).
-  - [ ] labels 
-    - [ ] add 
-      - by id
-    - [ ] remove 
-      - by id
+  - [ ] update (requires --id, supports CLI args or interactive mode)
+    - [ ] --name <new name>
+    - [ ] --secret (reads from stdin if piped or redirected, otherwise prompts interactively)
+    - [ ] --add-label <label> (repeatable)
+    - [ ] --remove-label <label> (repeatable)
   - [x] remove  (alias: rm, delete)
   - [x] find    (alias: list, ls)
   - [x] config 
