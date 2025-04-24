@@ -114,6 +114,10 @@ func (o *VaultOptions) validateExistingVault() error {
 	return nil
 }
 
+func (o *VaultOptions) VaultFunc() *vlt.Vault {
+	return o.Vault
+}
+
 func defaultVaultPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -203,7 +207,7 @@ func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string)
 		Long: `vlt is a command-line tool for securely managing secrets.
 
 Environment Variables:
-    VLT_CONFIG_PATH: overrides the default config path ~/.vlt.toml.`,
+    VLT_CONFIG_PATH: overrides the default config path: "~/.vlt.toml".`,
 		SilenceUsage: true,
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			if slices.Contains([]string{"config", "generate", "validate"}, cmd.Name()) {
@@ -231,12 +235,14 @@ Environment Variables:
 	)
 
 	cmd.AddCommand(NewCmdConfig(o.StdioOptions))
+	cmd.AddCommand(NewCmdGenerate(o.StdioOptions))
+
 	cmd.AddCommand(NewCmdCreate(o.StdioOptions, func() string { return o.vaultOptions.Path }))
-	cmd.AddCommand(NewCmdRemove(o.StdioOptions, func() *vlt.Vault { return o.vaultOptions.Vault }))
-	cmd.AddCommand(NewCmdLogin(o.StdioOptions, func() *vlt.Vault { return o.vaultOptions.Vault }))
-	cmd.AddCommand(NewCmdSave(o.StdioOptions, func() *vlt.Vault { return o.vaultOptions.Vault }))
-	cmd.AddCommand(NewCmdFind(o.StdioOptions, func() *vlt.Vault { return o.vaultOptions.Vault }))
-	cmd.AddCommand(NewCmdShow(o.StdioOptions, func() *vlt.Vault { return o.vaultOptions.Vault }))
+	cmd.AddCommand(NewCmdLogin(o.StdioOptions, o.vaultOptions.VaultFunc))
+	cmd.AddCommand(NewCmdSave(o.StdioOptions, o.vaultOptions.VaultFunc))
+	cmd.AddCommand(NewCmdFind(o.StdioOptions, o.vaultOptions.VaultFunc))
+	cmd.AddCommand(NewCmdShow(o.StdioOptions, o.vaultOptions.VaultFunc))
+	cmd.AddCommand(NewCmdRemove(o.StdioOptions, o.vaultOptions.VaultFunc))
 
 	return cmd
 }

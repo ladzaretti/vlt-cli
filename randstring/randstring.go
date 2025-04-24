@@ -11,20 +11,28 @@ var (
 	ErrEmptyAlphabet = errors.New("alphabet must not be empty")
 )
 
+var DefaultPasswordPolicy = PasswordPolicy{
+	MinLowercase: 2,
+	MinUppercase: 2,
+	MinNumeric:   2,
+	MinSpecial:   2,
+	MinLength:    12,
+}
+
 const (
 	lower           = "abcdefghijklmnopqrstuvwxyz"
 	upper           = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	symbols         = "~`!@#$%^&*()_-+={[}]|\\:;\"'<,>.?/"
-	digits          = "0123456789"
-	defaultAlphabet = digits + upper + lower + symbols
+	special         = "~`!@#$%^&*()_-+={[}]|\\:;\"'<,>.?/"
+	numeric         = "0123456789"
+	defaultAlphabet = numeric + upper + lower + special
 )
 
 type PasswordPolicy struct {
-	MinLowercase int // Minimum number of lowercase letters required.
-	MinUppercase int // Minimum number of uppercase letters required.
-	MinDigits    int // Minimum number of numeric digits required.
-	MinSymbols   int // Minimum number of special symbols required.
-	MinLength    int // Minimum total length of the password.
+	MinLowercase int // MinLowercase is the minimum number of lowercase letters required.
+	MinUppercase int // MinUppercase is the minimum number of uppercase letters required.
+	MinNumeric   int // MinDigits is the minimum number of numeric digits required.
+	MinSpecial   int // MinSymbols is the minimum number of special symbols required.
+	MinLength    int // MinLength is the minimum total length of the password.
 }
 
 // New returns a securely generated random string of the given length.
@@ -47,11 +55,15 @@ func NewWithPolicy(p PasswordPolicy) (string, error) {
 	}{
 		{p.MinLowercase, lower},
 		{p.MinUppercase, upper},
-		{p.MinDigits, digits},
-		{p.MinSymbols, symbols},
+		{p.MinNumeric, numeric},
+		{p.MinSpecial, special},
 	}
 
 	for _, p := range policy {
+		if p.count <= 0 {
+			continue
+		}
+
 		s, err := generateRandomString(p.count, p.charset)
 		if err != nil {
 			return "", err

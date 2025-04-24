@@ -29,7 +29,7 @@ var ErrPartialClipboardConfig = errors.New("invalid partial clipboard config")
 
 //nolint:tagalign
 type VaultConfig struct {
-	Path string `toml:"path,commented" comment:"Vlt database path (default: ~/.vlt if not set)"`
+	Path string `toml:"path,commented" comment:"Vlt database path (default: '~/.vlt' if not set)"`
 }
 
 //nolint:tagalign
@@ -186,36 +186,36 @@ func NewCmdConfig(stdio *genericclioptions.StdioOptions) *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(newGenerateCmd(stdio))
-	cmd.AddCommand(newValidateCmd(stdio))
+	cmd.AddCommand(newGenerateConfigCmd(stdio))
+	cmd.AddCommand(newValidateConfigCmd(stdio))
 
 	genericclioptions.MarkFlagsHidden(cmd, hiddenFlags...)
 
 	return cmd
 }
 
-type generateOptions struct {
+type generateConfigOptions struct {
 	*genericclioptions.StdioOptions
 }
 
-var _ genericclioptions.CmdOptions = &generateOptions{}
+var _ genericclioptions.CmdOptions = &generateConfigOptions{}
 
-// newGenerateOptions initializes the options struct.
-func newGenerateOptions(stdio *genericclioptions.StdioOptions) *generateOptions {
-	return &generateOptions{
+// newGenerateConfigOptions initializes the options struct.
+func newGenerateConfigOptions(stdio *genericclioptions.StdioOptions) *generateConfigOptions {
+	return &generateConfigOptions{
 		StdioOptions: stdio,
 	}
 }
 
-func (*generateOptions) Complete() error {
+func (*generateConfigOptions) Complete() error {
 	return nil
 }
 
-func (*generateOptions) Validate() error {
+func (*generateConfigOptions) Validate() error {
 	return nil
 }
 
-func (o *generateOptions) Run(context.Context) error {
+func (o *generateConfigOptions) Run(context.Context) error {
 	out, err := toml.Marshal(&Config{})
 	clierror.Check(err)
 
@@ -224,10 +224,10 @@ func (o *generateOptions) Run(context.Context) error {
 	return nil
 }
 
-// newGenerateCmd creates the 'generate' subcommand for generating default config.
-func newGenerateCmd(stdio *genericclioptions.StdioOptions) *cobra.Command {
+// newGenerateConfigCmd creates the 'generate' subcommand for generating default config.
+func newGenerateConfigCmd(stdio *genericclioptions.StdioOptions) *cobra.Command {
 	hiddenFlags := []string{"file", "config"}
-	o := newGenerateOptions(stdio)
+	o := newGenerateConfigOptions(stdio)
 
 	cmd := &cobra.Command{
 		Use:   "generate",
@@ -245,30 +245,30 @@ This command does not take any arguments. It prints the configuration to stdout.
 	return cmd
 }
 
-type validateOptions struct {
+type validateConfigOptions struct {
 	*genericclioptions.StdioOptions
 
 	configPath string
 }
 
-var _ genericclioptions.CmdOptions = &validateOptions{}
+var _ genericclioptions.CmdOptions = &validateConfigOptions{}
 
-// newValidateOptions initializes the options struct.
-func newValidateOptions(stdio *genericclioptions.StdioOptions) *validateOptions {
-	return &validateOptions{
+// newValidateConfigOptions initializes the options struct.
+func newValidateConfigOptions(stdio *genericclioptions.StdioOptions) *validateConfigOptions {
+	return &validateConfigOptions{
 		StdioOptions: stdio,
 	}
 }
 
-func (*validateOptions) Complete() error {
+func (*validateConfigOptions) Complete() error {
 	return nil
 }
 
-func (*validateOptions) Validate() error {
+func (*validateConfigOptions) Validate() error {
 	return nil
 }
 
-func (o *validateOptions) Run(context.Context) error {
+func (o *validateConfigOptions) Run(context.Context) error {
 	c, err := LoadConfig(o.configPath)
 	clierror.Check(err)
 
@@ -282,10 +282,10 @@ func (o *validateOptions) Run(context.Context) error {
 	return nil
 }
 
-// newValidateCmd creates the 'validate' subcommand for validating the config file.
-func newValidateCmd(stdio *genericclioptions.StdioOptions) *cobra.Command {
+// newValidateConfigCmd creates the 'validate' subcommand for validating the config file.
+func newValidateConfigCmd(stdio *genericclioptions.StdioOptions) *cobra.Command {
 	hiddenFlags := []string{"file"}
-	o := newValidateOptions(stdio)
+	o := newValidateConfigOptions(stdio)
 
 	cmd := &cobra.Command{
 		Use:   "validate",

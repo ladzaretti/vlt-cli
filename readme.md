@@ -19,5 +19,6 @@ A command-line password manager backed by SQLite.
   - [x] config 
     - [x] generate
     - [x] validate
+  - [x] generate (alias: rand, gen)
 - [ ] Add a cryptographic layer
 - [ ] Add session support

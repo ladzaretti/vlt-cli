@@ -24,14 +24,6 @@ var (
 	ErrNoSecretInserted = errors.New("no secret was inserted")
 )
 
-var defaultPasswordPolicy = randstring.PasswordPolicy{
-	MinLowercase: 2,
-	MinUppercase: 2,
-	MinDigits:    2,
-	MinSymbols:   2,
-	MinLength:    12,
-}
-
 type SaveError struct {
 	Err error
 }
@@ -153,7 +145,7 @@ func (o *SaveOptions) readSecretInteractive(secret *string) error {
 
 func (o *SaveOptions) readSecretNonInteractive() (string, error) {
 	if o.generate {
-		return randstring.NewWithPolicy(defaultPasswordPolicy)
+		return randstring.NewWithPolicy(randstring.DefaultPasswordPolicy)
 	}
 
 	if o.paste {
