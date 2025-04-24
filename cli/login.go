@@ -16,9 +16,9 @@ import (
 
 // LoginOptions holds data required to run the command.
 type LoginOptions struct {
-	vault func() *vlt.Vault
-
 	*genericclioptions.StdioOptions
+
+	vault func() *vlt.Vault
 }
 
 var _ genericclioptions.CmdOptions = &LoginOptions{}

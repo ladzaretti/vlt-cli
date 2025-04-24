@@ -26,11 +26,10 @@ func (e *RemoveError) Unwrap() error { return e.Err }
 
 // RemoveOptions holds data required to run the command.
 type RemoveOptions struct {
-	vault func() *vlt.Vault
-
 	*genericclioptions.StdioOptions
-	search *SearchableOptions
 
+	vault     func() *vlt.Vault
+	search    *SearchableOptions
 	assumeYes bool
 	removeAll bool
 }

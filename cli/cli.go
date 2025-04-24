@@ -124,19 +124,16 @@ func defaultVaultPath() (string, error) {
 }
 
 type DefaultVltOptions struct {
-	config Config
+	*genericclioptions.StdioOptions
 
 	vaultOptions  *VaultOptions
 	configOptions *ConfigOptions
-
-	*genericclioptions.StdioOptions
 }
 
 var _ genericclioptions.CmdOptions = &DefaultVltOptions{}
 
 func NewDefaultVltOptions(iostreams *genericclioptions.IOStreams, vaultOptions *VaultOptions) (*DefaultVltOptions, error) {
 	return &DefaultVltOptions{
-		config:        Config{},
 		configOptions: &ConfigOptions{},
 		StdioOptions:  &genericclioptions.StdioOptions{IOStreams: iostreams},
 		vaultOptions:  vaultOptions,
@@ -144,7 +141,7 @@ func NewDefaultVltOptions(iostreams *genericclioptions.IOStreams, vaultOptions *
 }
 
 func (o *DefaultVltOptions) Complete() error {
-	copyCmd, pasteCmd := o.config.Clipboard.CopyCmd, o.config.Clipboard.PasteCmd
+	copyCmd, pasteCmd := o.configOptions.Clipboard.CopyCmd, o.configOptions.Clipboard.PasteCmd
 
 	var opts []clipboard.Opt
 	if len(copyCmd) > 0 {
@@ -187,7 +184,7 @@ func (o *DefaultVltOptions) Run(ctx context.Context) error {
 		return err
 	}
 
-	p := o.config.Vault.Path
+	p := o.configOptions.Vault.Path
 	if len(p) > 0 {
 		o.vaultOptions.Path = p
 	}
@@ -226,7 +223,7 @@ Environment Variables:
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
 	cmd.PersistentFlags().StringVarP(&o.vaultOptions.Path, "file", "f", "", "path to the vault file")
 	cmd.PersistentFlags().StringVarP(
-		&o.configOptions.configPath,
+		&o.configOptions.userPath,
 		"config",
 		"c",
 		"",

@@ -29,18 +29,21 @@ var ErrPartialClipboardConfig = errors.New("invalid partial clipboard config")
 
 //nolint:tagalign
 type VaultConfig struct {
-	Path string `toml:"path,commented" comment:"Default path to look for the SQLite backing database"`
+	Path string `toml:"path,commented" comment:"Vlt database path (default: ~/.vlt if not set)"`
 }
 
 //nolint:tagalign
 type ClipboardConfig struct {
-	CopyCmd  string `toml:"copy_cmd,commented"  comment:"The command used for copying to the clipboard"`
-	PasteCmd string `toml:"paste_cmd,commented" comment:"The command used for pasting from the clipboard"`
+	CopyCmd  string `toml:"copy_cmd,commented"  comment:"The command used for copying to the clipboard (default: 'xsel -ib' if not set)"`
+	PasteCmd string `toml:"paste_cmd,commented" comment:"The command used for pasting from the clipboard (default: 'xsel -ob' if not set)"`
 }
 
+//nolint:tagalign
 type Config struct {
 	Vault     VaultConfig     `toml:"vault"`
-	Clipboard ClipboardConfig `toml:"clipboard"`
+	Clipboard ClipboardConfig `toml:"clipboard,commented" comment:"Clipboard configuration: both copy and paste commands must be provided."`
+
+	path string // path is the resolved file path from which this config was loaded
 }
 
 func (c Config) String() string {
@@ -68,7 +71,7 @@ func (c Config) Validate() error {
 	return nil
 }
 
-func ResolveConfigPath() (string, error) {
+func defaultConfigPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("config: user home dir: %w", err)
@@ -82,10 +85,29 @@ func ResolveConfigPath() (string, error) {
 	return path, nil
 }
 
-// LoadConfig loads the configuration from a file and validates it.
-func LoadConfig(path string) (Config, error) {
+// LoadConfig reads the configuration from the given file path.
+// If no path is provided, it uses the default config path (~/.vlt.toml).
+//
+// Returns an empty Config if no config file is found and no path was explicitly given.
+func LoadConfig(userPath string) (Config, error) {
+	path := userPath
+	userProvided := len(userPath) > 0
+
+	if !userProvided {
+		f, err := defaultConfigPath()
+		if err != nil {
+			return Config{}, err
+		}
+
+		path = f
+	}
+
 	if _, err := os.Stat(path); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
+			if !userProvided {
+				return Config{}, nil
+			}
+
 			return Config{}, fmt.Errorf("config: no config file found at %q", path)
 		}
 
@@ -97,7 +119,7 @@ func LoadConfig(path string) (Config, error) {
 		return Config{}, err
 	}
 
-	config := Config{}
+	config := Config{path: path}
 	if err := toml.Unmarshal(raw, &config); err != nil {
 		return Config{}, fmt.Errorf("config: parse file: %w", err)
 	}
@@ -108,9 +130,8 @@ func LoadConfig(path string) (Config, error) {
 type ConfigOptions struct {
 	*genericclioptions.StdioOptions
 
-	configPath string
-
-	config Config
+	Config
+	userPath string // userPath is the config file path explicitly provided by the user, if any.
 }
 
 var _ genericclioptions.CmdOptions = &ConfigOptions{}
@@ -122,34 +143,21 @@ func NewConfigOptions(stdio *genericclioptions.StdioOptions) *ConfigOptions {
 	}
 }
 
-func (o *ConfigOptions) Complete() error {
-	if len(o.configPath) == 0 {
-		f, err := ResolveConfigPath()
-		if err != nil {
-			return err
-		}
-
-		o.configPath = f
-	}
-
+func (*ConfigOptions) Complete() error {
 	return nil
 }
 
-func (o *ConfigOptions) Validate() error {
-	if len(o.configPath) == 0 {
-		return errors.New("config options: missing path")
-	}
-
+func (*ConfigOptions) Validate() error {
 	return nil
 }
 
 func (o *ConfigOptions) Run(context.Context) error {
-	c, err := LoadConfig(o.configPath)
+	c, err := LoadConfig(o.userPath)
 	if err != nil {
 		return err
 	}
 
-	o.config = c
+	o.Config = c
 
 	return nil
 }
@@ -164,12 +172,17 @@ func NewCmdConfig(stdio *genericclioptions.StdioOptions) *cobra.Command {
 		Short: "Manage vlt configuration",
 		Long:  "Utilities for generating and validating vlt's configuration file.",
 		Run: func(cmd *cobra.Command, _ []string) {
-			o.configPath, _ = cmd.InheritedFlags().GetString("config")
+			o.userPath, _ = cmd.InheritedFlags().GetString("config")
 
 			clierror.Check(genericclioptions.RejectGlobalFlags(cmd, hiddenFlags...))
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 
-			o.Infof("Resolved config at %q:\n\n%s\n", o.configPath, o.config)
+			if len(o.path) == 0 {
+				o.Infof("No config file found; using default values.\n")
+				return
+			}
+
+			o.Infof("Resolved config at %q:\n\n%s\n", o.path, o.Config)
 		},
 	}
 
@@ -247,16 +260,7 @@ func newValidateOptions(stdio *genericclioptions.StdioOptions) *validateOptions 
 	}
 }
 
-func (o *validateOptions) Complete() error {
-	if len(o.configPath) == 0 {
-		f, err := ResolveConfigPath()
-		if err != nil {
-			return err
-		}
-
-		o.configPath = f
-	}
-
+func (*validateOptions) Complete() error {
 	return nil
 }
 
@@ -265,10 +269,15 @@ func (*validateOptions) Validate() error {
 }
 
 func (o *validateOptions) Run(context.Context) error {
-	_, err := LoadConfig(o.configPath)
+	c, err := LoadConfig(o.configPath)
 	clierror.Check(err)
 
-	o.Infof("%s: OK\n", o.configPath)
+	if len(c.path) == 0 {
+		o.Infof("No config file found; Nothing to validate.\n")
+		return nil
+	}
+
+	o.Infof("%s: OK\n", c.path)
 
 	return nil
 }

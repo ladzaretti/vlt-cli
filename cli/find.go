@@ -12,9 +12,9 @@ import (
 
 // FindOptions holds data required to run the command.
 type FindOptions struct {
-	vault func() *vlt.Vault
-
 	*genericclioptions.StdioOptions
+
+	vault  func() *vlt.Vault
 	search *SearchableOptions
 }
 

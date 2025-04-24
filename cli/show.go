@@ -23,11 +23,10 @@ func (e *ShowError) Unwrap() error { return e.Err }
 
 // ShowOptions holds data required to run the command.
 type ShowOptions struct {
-	vault func() *vlt.Vault
-
 	*genericclioptions.StdioOptions
-	search *SearchableOptions
 
+	vault  func() *vlt.Vault
+	search *SearchableOptions
 	output bool // output controls whether to print the secret to stdout.
 	copy   bool // copy controls whether to copy the secret to the clipboard.
 }

@@ -34,9 +34,9 @@ func (e *SaveError) Unwrap() error { return e.Err }
 
 // SaveOptions holds data required to run the command.
 type SaveOptions struct {
-	vault func() *vlt.Vault
-
 	*genericclioptions.StdioOptions
+
+	vault func() *vlt.Vault
 
 	name     string   // name is the name of the secret to save in the vault.
 	labels   []string // labels to associate with the a given secret.

@@ -15,9 +15,9 @@ import (
 
 // CreateOptions have the data required to perform the create operation.
 type CreateOptions struct {
-	vaultPath func() string
-
 	*genericclioptions.StdioOptions
+
+	vaultPath func() string
 }
 
 var _ genericclioptions.CmdOptions = &CreateOptions{}
