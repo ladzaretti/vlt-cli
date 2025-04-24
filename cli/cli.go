@@ -225,7 +225,7 @@ Environment Variables:
 	cmd.PersistentFlags().StringVarP(
 		&o.configOptions.userPath,
 		"config",
-		"c",
+		"",
 		"",
 		fmt.Sprintf("path to the configuration file (default: ~/%s). overrides %s if set", defaultConfigName, envConfigPathKey),
 	)

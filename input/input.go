@@ -11,10 +11,6 @@ import (
 	"golang.org/x/term"
 )
 
-const (
-	minPasswordLen = 8
-)
-
 // IsPipedOrRedirected reports whether the given file is from a pipe
 // or file redirect (i.e. not a terminal or interactive input).
 func IsPipedOrRedirected(fi os.FileInfo) bool {
@@ -56,7 +52,7 @@ func PromptReadSecure(w io.Writer, fd int, prompt string, a ...any) (string, err
 		return "", fmt.Errorf("term read password: %w", err)
 	}
 
-	return string(bs), nil
+	return strings.TrimSpace(string(bs)), nil
 }
 
 // PromptPassword prompts the user to enter the current password securely.
@@ -66,14 +62,12 @@ func PromptPassword(w io.Writer, fd int) (string, error) {
 	return PromptReadSecure(w, fd, "Enter password: ")
 }
 
-// PromptNewPassword prompts the user for a new password, validates its length,
-// and asks for confirmation by re-entering the password.
-// The prompt is displayed via the writer w, and input is read from the
-// given file descriptor fd.
-func PromptNewPassword(w io.Writer, fd int) (string, error) {
+// PromptNewPassword prompts the user to enter a new password of the specified length.
+// The prompt is displayed via the writer w, and input is read from the given file descriptor fd.
+func PromptNewPassword(w io.Writer, fd int, length int) (string, error) {
 	pass := ""
 
-	for len(pass) < minPasswordLen {
+	for len(pass) < length {
 		p, err := PromptReadSecure(w, fd, "Enter new password: ")
 		if err != nil {
 			return "", fmt.Errorf("prompt new password: %w", err)
@@ -81,8 +75,8 @@ func PromptNewPassword(w io.Writer, fd int) (string, error) {
 
 		pass = p
 
-		if len(pass) < minPasswordLen {
-			fmt.Fprintf(w, "Password must be at least %d characters. Please try again.\n", minPasswordLen)
+		if len(pass) < length {
+			fmt.Fprintf(w, "Password must be at least %d characters. Please try again.\n", length)
 		}
 	}
 
