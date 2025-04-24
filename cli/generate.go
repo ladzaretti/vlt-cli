@@ -54,7 +54,7 @@ func (o *GenerateOptions) Run(context.Context) error {
 		return clipboard.Copy(s)
 	}
 
-	o.Infof("%s\n", s)
+	o.Infof("%s", s)
 
 	return nil
 }

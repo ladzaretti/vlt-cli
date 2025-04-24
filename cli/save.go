@@ -91,9 +91,10 @@ func (o *SaveOptions) Run(ctx context.Context) (retErr error) {
 		return fmt.Errorf("read secret non-interactive: %w", err)
 	}
 
-	secret = s
+	interactive := len(s) == 0
+	secret = strings.TrimSpace(s)
 
-	if len(o.name) == 0 {
+	if len(o.name) == 0 && interactive {
 		k, err := o.readInteractive("Enter name: ")
 		if err != nil {
 			return fmt.Errorf("name read interactive: %w", err)
@@ -116,13 +117,18 @@ func (o *SaveOptions) Run(ctx context.Context) (retErr error) {
 		return vaulterrors.ErrEmptySecret
 	}
 
-	if len(o.labels) == 0 {
+	if len(o.labels) == 0 && interactive {
 		labels, err := o.readInteractive("Enter labels (comma-separated), or press Enter to skip: ")
 		if err != nil {
 			return fmt.Errorf("label read interactive: %w", err)
 		}
 
 		o.labels = append(o.labels, cmdutil.ParseCommaSeparated(labels)...)
+	}
+
+	if len(o.labels) == 0 && !interactive {
+		o.Warnf(`No labels were provided for the secret in non-interactive mode. 
+You may want to add labels using the '--label' flag or interactively.\n`)
 	}
 
 	return o.insertNewSecret(ctx, secret)
@@ -176,7 +182,7 @@ func (o *SaveOptions) insertNewSecret(ctx context.Context, s string) error {
 
 func (o *SaveOptions) outputSecret(s string) error {
 	if o.output {
-		o.Infof("%s\n", s)
+		o.Infof("%s", s)
 		return nil
 	}
 
@@ -219,11 +225,16 @@ func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 		Short:   "Save a new secret to the vault",
 		Long: `Save a new key-value pair to the vault.
 
-The name of the secret can be provided using the --name flag or entered interactively.
-The secret value can be piped, redirected, or typed manually when prompted.
+The secret value can be piped, redirected, or prompted.
+Secret metadata (i.e, name and labels) can be provided via command line arguments or prompted.
 
-If input is piped or redirected, it is automatically used as the secret value,
-taking precedence over interactive input.`,
+
+Note 1:
+	If input is piped or redirected, it will be automatically used as the secret value.
+
+Note 2:
+	If data is piped or redirected into the command (i.e., stdin is not a TTY),
+	metadata must be provided as command-line arguments. Interactive prompts will be skipped in this case.`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},

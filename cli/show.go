@@ -96,7 +96,7 @@ func (o *ShowOptions) Run(ctx context.Context) error {
 
 func (o *ShowOptions) outputSecret(s string) error {
 	if o.output {
-		o.Infof("%s\n", s)
+		o.Infof("%s", s)
 		return nil
 	}
 
