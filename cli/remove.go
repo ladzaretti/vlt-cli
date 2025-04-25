@@ -71,12 +71,12 @@ func (o *RemoveOptions) Run(ctx context.Context) error {
 
 	switch count {
 	case 1:
-		o.Infof("1 secret matches the search settings.\n")
+		o.Infof("Found one match.\n")
 	case 0:
-		o.Warnf("No secrets match the search settings.\n")
+		o.Warnf("No match found.\n")
 		return &RemoveError{vaulterrors.ErrSearchNoMatch}
 	default:
-		o.Infof("%d secrets match the search settings.\n", count)
+		o.Infof("Found %d matching secrets.\n", count)
 
 		if !o.removeAll {
 			return &RemoveError{fmt.Errorf("%d matching secrets found, use --all to delete all", count)}

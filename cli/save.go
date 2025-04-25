@@ -94,13 +94,11 @@ func (o *SaveOptions) Run(ctx context.Context) (retErr error) {
 	interactive := len(s) == 0
 	secret = strings.TrimSpace(s)
 
-	if len(o.name) == 0 && interactive {
-		k, err := o.readInteractive("Enter name: ")
+	if interactive {
+		err := o.readInteractive(&secret)
 		if err != nil {
-			return fmt.Errorf("name read interactive: %w", err)
+			return err
 		}
-
-		o.name = k
 	}
 
 	if len(o.name) == 0 {
@@ -108,22 +106,7 @@ func (o *SaveOptions) Run(ctx context.Context) (retErr error) {
 	}
 
 	if len(secret) == 0 {
-		if err := o.readSecretInteractive(&secret); err != nil {
-			return fmt.Errorf("read secret interactive: %w", err)
-		}
-	}
-
-	if len(secret) == 0 {
 		return vaulterrors.ErrEmptySecret
-	}
-
-	if len(o.labels) == 0 && interactive {
-		labels, err := o.readInteractive("Enter labels (comma-separated), or press Enter to skip: ")
-		if err != nil {
-			return fmt.Errorf("label read interactive: %w", err)
-		}
-
-		o.labels = append(o.labels, cmdutil.ParseCommaSeparated(labels)...)
 	}
 
 	if len(o.labels) == 0 && !interactive {
@@ -132,21 +115,6 @@ You may want to add labels using the '--label' flag or interactively.\n`)
 	}
 
 	return o.insertNewSecret(ctx, secret)
-}
-
-func (o *SaveOptions) readInteractive(prompt string, a ...any) (string, error) {
-	return input.PromptRead(o.Out, o.In, prompt, a...)
-}
-
-func (o *SaveOptions) readSecretInteractive(secret *string) error {
-	s, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "Enter secret for name %q: ", o.name)
-	if err != nil {
-		return err
-	}
-
-	*secret = s
-
-	return nil
 }
 
 func (o *SaveOptions) readSecretNonInteractive() (string, error) {
@@ -165,6 +133,45 @@ func (o *SaveOptions) readSecretNonInteractive() (string, error) {
 	}
 
 	return "", nil
+}
+
+func (o *SaveOptions) readInteractive(secret *string) error {
+	if len(o.name) == 0 {
+		k, err := o.promptRead("Enter name: ")
+		if err != nil {
+			return fmt.Errorf("name read interactive: %w", err)
+		}
+
+		o.name = k
+	}
+
+	if len(*secret) == 0 {
+		s, err := o.promptReadSecure("Enter secret for name %q: ", o.name)
+		if err != nil {
+			return err
+		}
+
+		*secret = s
+	}
+
+	if len(o.labels) == 0 {
+		labels, err := o.promptRead("Enter labels (comma-separated), or press Enter to skip: ")
+		if err != nil {
+			return fmt.Errorf("label read interactive: %w", err)
+		}
+
+		o.labels = append(o.labels, cmdutil.ParseCommaSeparated(labels)...)
+	}
+
+	return nil
+}
+
+func (o *SaveOptions) promptRead(prompt string, a ...any) (string, error) {
+	return input.PromptRead(o.Out, o.In, prompt, a...)
+}
+
+func (o *SaveOptions) promptReadSecure(prompt string, a ...any) (string, error) {
+	return input.PromptReadSecure(o.Out, int(o.In.Fd()), prompt, a...)
 }
 
 func (o *SaveOptions) insertNewSecret(ctx context.Context, s string) error {
