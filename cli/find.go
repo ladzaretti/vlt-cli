@@ -55,7 +55,7 @@ func NewCmdFind(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 	cmd := &cobra.Command{
 		Use:     "find",
 		Aliases: []string{"list", "ls"},
-		Short:   "Find secrets by ID, name, or labels",
+		Short:   "Find secrets in the vault",
 		Long: `Find secrets stored in the vault using various filters.
 
 Supports filtering by secret ID, name, or one or more labels.

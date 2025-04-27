@@ -22,9 +22,9 @@ const (
 )
 
 var usage = map[Usage]string{
-	ID:     "match secret by ID (comma-separated or repeated)",
-	NAME:   "match secret by name",
-	LABELS: "match secret by label (comma-separated or repeated)",
+	ID:     "search by ID (comma-separated or repeated)",
+	NAME:   "search by name",
+	LABELS: "search by label (comma-separated or repeated)",
 }
 
 var _ BaseOptions = &SearchOptions{}

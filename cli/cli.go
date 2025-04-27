@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	// defaultFilename is the default name for the vault file,
+	// defaultDatabaseFilename is the default name for the vault file,
 	// created under the user's home directory.
-	defaultFilename = ".vlt"
+	defaultDatabaseFilename = ".vlt"
 )
 
 type VaultOptions struct {
@@ -124,7 +124,7 @@ func defaultVaultPath() (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(home, defaultFilename), nil
+	return filepath.Join(home, defaultDatabaseFilename), nil
 }
 
 type DefaultVltOptions struct {
@@ -225,13 +225,14 @@ Environment Variables:
 	cmd.SetArgs(args)
 
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
-	cmd.PersistentFlags().StringVarP(&o.vaultOptions.Path, "file", "f", "", "path to the vault file")
+	cmd.PersistentFlags().StringVarP(&o.vaultOptions.Path, "file", "f", "",
+		fmt.Sprintf("database file path (default: ~/%s)", defaultDatabaseFilename))
 	cmd.PersistentFlags().StringVarP(
 		&o.configOptions.userPath,
 		"config",
 		"",
 		"",
-		fmt.Sprintf("path to the configuration file (default: ~/%s). overrides %s if set", defaultConfigName, envConfigPathKey),
+		fmt.Sprintf("configuration file path (default: ~/%s)", defaultConfigName),
 	)
 
 	cmd.AddCommand(NewCmdConfig(o.StdioOptions))

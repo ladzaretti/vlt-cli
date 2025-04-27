@@ -47,6 +47,40 @@ func (o *ShowOptions) Complete() error {
 }
 
 func (o *ShowOptions) Validate() error {
+	if err := o.validateSearchCriteria(); err != nil {
+		return err
+	}
+
+	if err := o.validateConfigOptions(); err != nil {
+		return err
+	}
+
+	return o.search.Validate()
+}
+
+func (o *ShowOptions) validateSearchCriteria() error {
+	c := 0
+
+	if len(o.search.IDs) > 0 {
+		c++
+	}
+
+	if len(o.search.Labels) > 0 {
+		c++
+	}
+
+	if len(o.search.Name) > 0 {
+		c++
+	}
+
+	if c == 0 {
+		return &ShowError{errors.New("at least one search criteria has to be provided")}
+	}
+
+	return nil
+}
+
+func (o *ShowOptions) validateConfigOptions() error {
 	c := 0
 
 	if o.copy {
@@ -61,7 +95,7 @@ func (o *ShowOptions) Validate() error {
 		return &ShowError{errors.New("either --output or --copy-clipboard must be set (but not both)")}
 	}
 
-	return o.search.Validate()
+	return nil
 }
 
 // Run performs a secret lookup and outputs the result based on user flags.
@@ -87,7 +121,7 @@ func (o *ShowOptions) Run(ctx context.Context) error {
 		o.Warnf("No secrets match the search settings.\n")
 		return &ShowError{vaulterrors.ErrSearchNoMatch}
 	default:
-		o.Warnf("Expected exactly one match, but found %d.\n\n", count)
+		o.Warnf("Expecting exactly one match, but found %d.\n\n", count)
 		printTable(o.ErrOut, matchingSecrets)
 
 		return &ShowError{vaulterrors.ErrAmbiguousSecretMatch}
@@ -115,10 +149,11 @@ func NewCmdShow(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 	cmd := &cobra.Command{
 		Use:     "show",
 		Aliases: []string{"get"},
-		Short:   "Retrieve a secret's value by search criteria.",
-		Long: `Retrieve and display the value of a secret.
+		Short:   "Retrieve a secret value from the vault",
+		Long: `Retrieve and display a secret value.
 
-Search using --id, --name, or --label. Exactly one secret must match.
+The secret value is retrieved and displayed 
+only if there is exactly one match for the given search criteria.
 
 Use --output to print to stdout, or --copy-clipboard to copy the value to the clipboard.`,
 		Run: func(cmd *cobra.Command, _ []string) {
@@ -129,8 +164,8 @@ Use --output to print to stdout, or --copy-clipboard to copy the value to the cl
 	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
-	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the secret to stdout (use with caution; intended primarily for piping)")
-	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the secret to clipboard")
+	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the secret value to stdout (unsafe)")
+	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the secret value to the system's clipboard")
 
 	return cmd
 }

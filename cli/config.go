@@ -164,16 +164,14 @@ func (o *ConfigOptions) Run(context.Context) error {
 
 // NewCmdConfig creates the cobra config command tree.
 func NewCmdConfig(stdio *genericclioptions.StdioOptions) *cobra.Command {
-	hiddenFlags := []string{"file"}
+	hiddenFlags := []string{"config"}
 	o := NewConfigOptions(stdio)
 
 	cmd := &cobra.Command{
 		Use:   "config",
-		Short: "Manage vlt configuration",
-		Long:  "Utilities for generating and validating vlt's configuration file.",
+		Short: "Resolve and output vlt configuration",
+		Long:  "",
 		Run: func(cmd *cobra.Command, _ []string) {
-			o.userPath, _ = cmd.InheritedFlags().GetString("config")
-
 			clierror.Check(genericclioptions.RejectGlobalFlags(cmd, hiddenFlags...))
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 
@@ -185,6 +183,9 @@ func NewCmdConfig(stdio *genericclioptions.StdioOptions) *cobra.Command {
 			o.Infof("Resolved config at %q:\n\n%s\n", o.path, o.Config)
 		},
 	}
+
+	cmd.PersistentFlags().StringVarP(&o.userPath, "file", "f", "",
+		fmt.Sprintf("path to the configuration file (default: ~/%s)", defaultConfigName))
 
 	cmd.AddCommand(newGenerateConfigCmd(stdio))
 	cmd.AddCommand(newValidateConfigCmd(stdio))
@@ -284,7 +285,7 @@ func (o *validateConfigOptions) Run(context.Context) error {
 
 // newValidateConfigCmd creates the 'validate' subcommand for validating the config file.
 func newValidateConfigCmd(stdio *genericclioptions.StdioOptions) *cobra.Command {
-	hiddenFlags := []string{"file"}
+	hiddenFlags := []string{"config"}
 	o := newValidateConfigOptions(stdio)
 
 	cmd := &cobra.Command{
