@@ -101,19 +101,34 @@ func (s *Store) InsertNewSecret(ctx context.Context, name string, secret string)
 	return id, nil
 }
 
-//nolint:gosec
-const upsertNewSecret = `
-	INSERT INTO
-		secrets (id, secret)
-	VALUES
-		($1, $2) ON CONFLICT (id) DO
-	UPDATE
+const updateSecret = `
+	UPDATE secrets
 	SET
-		secret = EXCLUDED.secret;
+		secret = $1;
 `
 
-func (s *Store) UpsertSecret(ctx context.Context, id string, secret string) (n int64, retErr error) {
-	res, err := s.db.ExecContext(ctx, upsertNewSecret, id, secret)
+func (s *Store) UpdateSecret(ctx context.Context, id string, secret string) (n int64, retErr error) {
+	res, err := s.db.ExecContext(ctx, updateSecret, id, secret)
+	if err != nil {
+		return 0, err
+	}
+
+	n, err = res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return n, nil
+}
+
+const updateName = `
+	UPDATE secrets
+	SET
+		name = $1;
+`
+
+func (s *Store) UpdateName(ctx context.Context, id string, name string) (n int64, retErr error) {
+	res, err := s.db.ExecContext(ctx, updateName, id, name)
 	if err != nil {
 		return 0, err
 	}
@@ -169,22 +184,43 @@ func (s *Store) InsertLabel(ctx context.Context, name string, secretID int64) (i
 	return id, nil
 }
 
-// secretLabelRow represents a row resulting from a join
+const deleteLabel = `
+	DELETE FROM labels
+	WHERE
+		name = $1
+		AND secret_id = $2
+`
+
+func (s *Store) DeleteLabel(ctx context.Context, name string, secretID int64) (int64, error) {
+	res, err := s.db.ExecContext(ctx, deleteLabel, name, secretID)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
+// secretWithLabelRow represents a row resulting from a join
 // between the secrets and labels tables.
-type secretLabelRow struct {
+type secretWithLabelRow struct {
 	id    int
 	name  string
 	label sql.NullString
 }
 
-// LabeledSecret represents a secret with some of its associated labels.
-type LabeledSecret struct {
+// SecretWithLabels represents a secret with some of its associated labels.
+type SecretWithLabels struct {
 	Name   string
 	Labels []string
 }
 
 // SecretsWithLabels returns all secrets along with all labels associated with each.
-func (s *Store) SecretsWithLabels(ctx context.Context) (map[int]LabeledSecret, error) {
+func (s *Store) SecretsWithLabels(ctx context.Context) (map[int]SecretWithLabels, error) {
 	return s.secretsByColumn(ctx, "", "LEFT JOIN")
 }
 
@@ -192,15 +228,15 @@ func (s *Store) SecretsWithLabels(ctx context.Context) (map[int]LabeledSecret, e
 // along with all labels associated with it.
 //
 // If no pattern is provided, it returns all secrets along with all their labels.
-func (s *Store) SecretsByName(ctx context.Context, namePattern string) (map[int]LabeledSecret, error) {
+func (s *Store) SecretsByName(ctx context.Context, namePattern string) (map[int]SecretWithLabels, error) {
 	return s.secretsByColumn(ctx, "secret_name", "LEFT JOIN", namePattern)
 }
 
 // SecretsByLabels returns secrets that match any of the provided label patterns,
-// along with all labels associated with each secret.
+// along with all labels associated with each secret that matches the labelPatterns.
 //
 // If no patterns are provided, an [vaulterrors.ErrMissingLabels] error is returned.
-func (s *Store) SecretsByLabels(ctx context.Context, labelPatterns ...string) (map[int]LabeledSecret, error) {
+func (s *Store) SecretsByLabels(ctx context.Context, labelPatterns ...string) (map[int]SecretWithLabels, error) {
 	if len(labelPatterns) == 0 {
 		return nil, vaulterrors.ErrMissingLabels
 	}
@@ -212,7 +248,7 @@ func (s *Store) SecretsByLabels(ctx context.Context, labelPatterns ...string) (m
 // match a where clause with all glob patterns for the given col.
 //
 // If no patterns are provided, no where clause is generated.
-func (s *Store) secretsByColumn(ctx context.Context, col string, join string, patterns ...string) (map[int]LabeledSecret, error) {
+func (s *Store) secretsByColumn(ctx context.Context, col string, join string, patterns ...string) (map[int]SecretWithLabels, error) {
 	query := fmt.Sprintf(`
 	SELECT
 		s.id,
@@ -230,7 +266,7 @@ func (s *Store) secretsByColumn(ctx context.Context, col string, join string, pa
 // SecretsByIDs returns a map of secrets and their labels for the given IDs.
 //
 // If the IDs slice is empty, the function returns [ErrNoIDsProvided].
-func (s *Store) SecretsByIDs(ctx context.Context, ids []int) (map[int]LabeledSecret, error) {
+func (s *Store) SecretsByIDs(ctx context.Context, ids []int) (map[int]SecretWithLabels, error) {
 	if len(ids) == 0 {
 		return nil, ErrNoIDsProvided
 	}
@@ -258,7 +294,7 @@ func (s *Store) SecretsByIDs(ctx context.Context, ids []int) (map[int]LabeledSec
 // provided label and name glob patterns.
 //
 // If no label patterns are provided, it returns [ErrNoLabelsProvided].
-func (s *Store) SecretsByLabelsAndName(ctx context.Context, name string, labels ...string) (map[int]LabeledSecret, error) {
+func (s *Store) SecretsByLabelsAndName(ctx context.Context, name string, labels ...string) (map[int]SecretWithLabels, error) {
 	if len(labels) == 0 {
 		return nil, ErrNoLabelsProvided
 	}
@@ -280,16 +316,16 @@ func (s *Store) SecretsByLabelsAndName(ctx context.Context, name string, labels 
 }
 
 // secretsJoinLabels executes a query to join secrets with their labels.
-func (s *Store) secretsJoinLabels(ctx context.Context, query string, args ...any) (map[int]LabeledSecret, error) {
+func (s *Store) secretsJoinLabels(ctx context.Context, query string, args ...any) (map[int]SecretWithLabels, error) {
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }() //nolint:wsl
 
-	var secrets []secretLabelRow
+	var secrets []secretWithLabelRow
 	for rows.Next() {
-		var secret secretLabelRow
+		var secret secretWithLabelRow
 		if err := rows.Scan(&secret.id, &secret.name, &secret.label); err != nil {
 			return nil, err
 		}
@@ -350,13 +386,13 @@ func whereGlobOrClause(col string, patterns ...string) string {
 	return "WHERE " + strings.Join(clauses, " OR ")
 }
 
-func reduce(secrets []secretLabelRow) map[int]LabeledSecret {
-	m := make(map[int]LabeledSecret)
+func reduce(secrets []secretWithLabelRow) map[int]SecretWithLabels {
+	m := make(map[int]SecretWithLabels)
 
 	for _, s := range secrets {
 		v, ok := m[s.id]
 		if !ok {
-			v = LabeledSecret{
+			v = SecretWithLabels{
 				Name:   s.name,
 				Labels: []string{},
 			}

@@ -16,7 +16,7 @@ A command-line password manager backed by SQLite.
     - [ ] --remove-label <label> (repeatable)
   - [x] remove  (alias: rm, delete)
   - [x] find    (alias: list, ls)
-  - [x] config 
+  - [x] config
     - [x] generate
     - [x] validate
   - [ ] import

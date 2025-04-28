@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"slices"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
@@ -22,122 +21,131 @@ type SearchableOptions struct {
 //
 // For any matched secret, it returns all labels associated with it,
 // regardless of the filter options used.
-// The resulting slice of pairs is ordered by label count in descending order.
-func (o *SearchableOptions) search(ctx context.Context, vault *vlt.Vault) ([]markedLabeledSecret, error) {
+func (o *SearchableOptions) search(ctx context.Context, vault *vlt.Vault) ([]secretWithMarkedLabels, error) {
 	switch {
 	case len(o.IDs) > 0:
-		return markSecrets(sortSecrets(vault.SecretsByIDs(ctx, o.IDs...)))
+		return sortAndUnmarkSecrets(func() (map[int]store.SecretWithLabels, error) {
+			return vault.SecretsByIDs(ctx, o.IDs...)
+		})
 
 	case len(o.Name) > 0 && len(o.Labels) > 0:
-		return sortFullSecrets(ctx, vault, func() (map[int]store.LabeledSecret, error) {
+		return sortAndMarkSecrets(ctx, vault, func() (map[int]store.SecretWithLabels, error) {
 			return vault.SecretsByLabelsAndName(ctx, o.Name, o.Labels...)
 		})
 
 	case len(o.Name) > 0:
-		return sortFullSecrets(ctx, vault, func() (map[int]store.LabeledSecret, error) {
+		return sortAndUnmarkSecrets(func() (map[int]store.SecretWithLabels, error) {
 			return vault.SecretsByName(ctx, o.Name)
 		})
 
 	case len(o.Labels) > 0:
-		return sortFullSecrets(ctx, vault, func() (map[int]store.LabeledSecret, error) {
+		return sortAndMarkSecrets(ctx, vault, func() (map[int]store.SecretWithLabels, error) {
 			return vault.SecretsByLabels(ctx, o.Labels...)
 		})
 
 	default:
-		return markSecrets(sortSecrets(vault.SecretsWithLabels(ctx)))
+		return sortAndUnmarkSecrets(func() (map[int]store.SecretWithLabels, error) {
+			return vault.SecretsWithLabels(ctx)
+		})
 	}
 }
 
-type sortedLabeledSecret struct {
+type secretWithLabels struct {
 	id     int
 	name   string
 	labels []string
 }
 
-type markedLabeledSecret struct {
+type secretWithMarkedLabels struct {
 	id     int
 	name   string
 	labels []markedLabel
 }
 
-// markedLabel marks whether a label matched the filter.
+// markedLabel represents a label and whether it matched a filter.
 type markedLabel struct {
 	value   string
 	matched bool
 }
 
-type matchSecretsFunc func() (map[int]store.LabeledSecret, error)
+type retrieveSecretsFunc func() (map[int]store.SecretWithLabels, error)
 
-// sortFullSecrets returns full secrets (i.e., with all labels), ordered in
-// descending order by the matched label count returned by matchSecrets.
-//
-// matchSecrets typically returns secrets with only the labels
-// that match the applied filter.
-func sortFullSecrets(ctx context.Context, vault *vlt.Vault, matchSecrets matchSecretsFunc) ([]markedLabeledSecret, error) {
-	matched, err := matchSecrets()
+// sortAndUnmarkSecrets returns secrets with all their labels, ordered by id value.
+func sortAndUnmarkSecrets(retrieveSecretsFunc retrieveSecretsFunc) ([]secretWithMarkedLabels, error) {
+	secrets, err := retrieveSecretsFunc()
 	if err != nil {
 		return nil, err
 	}
 
-	if len(matched) == 0 {
+	sortedByID := secretsMapToSlice(secrets)
+	slices.SortFunc(sortedByID, func(a, b secretWithLabels) int {
+		return b.id - a.id
+	})
+
+	return secretsWithUnmarkedLabels(sortedByID), nil
+}
+
+// sortAndMarkSecrets returns secrets with all their labels, ordered in
+// descending order by the number of labels initially matched by retrieveMatchingFunc.
+// Labels matched by retrieveMatchingFunc are marked as matched via [markedLabel].
+//
+// retrieveMatchingFunc typically returns secrets containing only the labels
+// that match the applied filter.
+func sortAndMarkSecrets(ctx context.Context, vault *vlt.Vault, retrieveMatchingFunc retrieveSecretsFunc) ([]secretWithMarkedLabels, error) {
+	matchingSecrets, err := retrieveMatchingFunc()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(matchingSecrets) == 0 {
 		return nil, nil
 	}
 
-	matchedSorted := sortByLabelsCount(matched)
+	// Sort in descending order by label count
+	sortedByLabelsCount := secretsMapToSlice(matchingSecrets)
+	slices.SortFunc(sortedByLabelsCount, func(a, b secretWithLabels) int {
+		return len(b.labels) - len(a.labels)
+	})
 
-	sortedIDs := make([]int, len(matchedSorted))
-	for i, secret := range matchedSorted {
+	sortedIDs := make([]int, len(sortedByLabelsCount))
+	for i, secret := range sortedByLabelsCount {
 		sortedIDs[i] = secret.id
 	}
 
-	fullSecrets, err := vault.SecretsByIDs(ctx, sortedIDs...)
+	secrets, err := vault.SecretsByIDs(ctx, sortedIDs...)
 	if err != nil {
 		return nil, err
 	}
 
-	fullSorted := make([]markedLabeledSecret, len(fullSecrets))
+	sortedSecrets := make([]secretWithMarkedLabels, len(secrets))
 	for i, id := range sortedIDs {
-		fullSorted[i] = markedLabeledSecret{
+		sortedSecrets[i] = secretWithMarkedLabels{
 			id:     id,
-			name:   fullSecrets[id].Name,
-			labels: markMatchedLabels(fullSecrets[id].Labels, matched[id].Labels),
+			name:   secrets[id].Name,
+			labels: markMatchingLabels(secrets[id].Labels, matchingSecrets[id].Labels),
 		}
 	}
 
-	return fullSorted, nil
+	return sortedSecrets, nil
 }
 
-func sortSecrets(m map[int]store.LabeledSecret, err error) ([]sortedLabeledSecret, error) {
-	if err != nil {
-		return nil, err
-	}
-
-	return sortByLabelsCount(m), nil
-}
-
-func markSecrets(ordered []sortedLabeledSecret, err error) ([]markedLabeledSecret, error) {
-	if err != nil {
-		return nil, err
-	}
-
-	marked := make([]markedLabeledSecret, len(ordered))
+func secretsWithUnmarkedLabels(ordered []secretWithLabels) []secretWithMarkedLabels {
+	marked := make([]secretWithMarkedLabels, len(ordered))
 	for i, o := range ordered {
-		marked[i] = markedLabeledSecret{
+		marked[i] = secretWithMarkedLabels{
 			id:     o.id,
 			name:   o.name,
-			labels: markMatchedLabels(o.labels, nil),
+			labels: markMatchingLabels(o.labels, nil),
 		}
 	}
 
-	return marked, nil
+	return marked
 }
 
-// sortByLabelsCount takes a map of labeled secrets and
-// returns a slice sorted by descending label count.
-func sortByLabelsCount(m map[int]store.LabeledSecret) []sortedLabeledSecret {
-	sorted := make([]sortedLabeledSecret, 0, len(m))
+func secretsMapToSlice(m map[int]store.SecretWithLabels) []secretWithLabels {
+	sorted := make([]secretWithLabels, 0, len(m))
 	for id, labeled := range m {
-		l := sortedLabeledSecret{
+		l := secretWithLabels{
 			id:     id,
 			name:   labeled.Name,
 			labels: labeled.Labels,
@@ -145,15 +153,10 @@ func sortByLabelsCount(m map[int]store.LabeledSecret) []sortedLabeledSecret {
 		sorted = append(sorted, l)
 	}
 
-	// Sort in descending order by label count
-	slices.SortFunc(sorted, func(a, b sortedLabeledSecret) int {
-		return len(b.labels) - len(a.labels)
-	})
-
 	return sorted
 }
 
-func markMatchedLabels(labels []string, matchingLabels []string) []markedLabel {
+func markMatchingLabels(labels []string, matchingLabels []string) []markedLabel {
 	marked := make([]markedLabel, len(labels))
 	for i, l := range labels {
 		marked[i] = markedLabel{
@@ -165,7 +168,7 @@ func markMatchedLabels(labels []string, matchingLabels []string) []markedLabel {
 	return marked
 }
 
-func extractIDs(secrets []markedLabeledSecret) []int {
+func extractIDs(secrets []secretWithMarkedLabels) []int {
 	ids := make([]int, len(secrets))
 	for i, s := range secrets {
 		ids[i] = s.id
@@ -198,15 +201,30 @@ func highlightMarked(labels []markedLabel) []string {
 	return hl
 }
 
-func printTable(w io.Writer, markedLabeledSecrets []markedLabeledSecret) {
+func printTable(w io.Writer, markedLabeledSecrets []secretWithMarkedLabels) {
 	tw := tabwriter.NewWriter(w, 0, 0, 5, ' ', 0)
 	defer func() { _ = tw.Flush() }()
 
 	fmt.Fprintln(tw, "ID\tNAME\tLABELS")
 
 	for _, marked := range markedLabeledSecrets {
+		fmt.Fprintf(tw, "%d\t%s", marked.id, marked.name)
+
 		highlightedLabels := highlightMarked(marked.labels)
-		fmt.Fprintf(tw, "%d\t%s\t%s\n", marked.id, marked.name, strings.Join(highlightedLabels, ", "))
+
+		if len(highlightedLabels) == 0 {
+			fmt.Fprintf(tw, "\t\t\n")
+			continue
+		}
+
+		for i, label := range highlightedLabels {
+			if i == 0 {
+				fmt.Fprintf(tw, "\t%s\n", label)
+				continue
+			}
+
+			fmt.Fprintf(tw, "\t\t%s\n", label)
+		}
 	}
 
 	fmt.Fprintln(tw) // add padding

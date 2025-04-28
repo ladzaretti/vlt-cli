@@ -110,7 +110,7 @@ func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret strin
 }
 
 // SecretsWithLabels returns all secrets along with all labels associated with each.
-func (vlt *Vault) SecretsWithLabels(ctx context.Context) (map[int]store.LabeledSecret, error) {
+func (vlt *Vault) SecretsWithLabels(ctx context.Context) (map[int]store.SecretWithLabels, error) {
 	return vlt.store.SecretsWithLabels(ctx)
 }
 
@@ -118,7 +118,7 @@ func (vlt *Vault) SecretsWithLabels(ctx context.Context) (map[int]store.LabeledS
 // along with all labels associated with each secret.
 //
 // If no patterns are provided, it returns all secrets along with all their labels.
-func (vlt *Vault) SecretsByLabels(ctx context.Context, labelPatterns ...string) (map[int]store.LabeledSecret, error) {
+func (vlt *Vault) SecretsByLabels(ctx context.Context, labelPatterns ...string) (map[int]store.SecretWithLabels, error) {
 	return vlt.store.SecretsByLabels(ctx, labelPatterns...)
 }
 
@@ -126,7 +126,7 @@ func (vlt *Vault) SecretsByLabels(ctx context.Context, labelPatterns ...string) 
 // along with all labels associated with it.
 //
 // If no pattern is provided, it returns all secrets along with all their labels.
-func (vlt *Vault) SecretsByName(ctx context.Context, namePattern string) (map[int]store.LabeledSecret, error) {
+func (vlt *Vault) SecretsByName(ctx context.Context, namePattern string) (map[int]store.SecretWithLabels, error) {
 	return vlt.store.SecretsByName(ctx, namePattern)
 }
 
@@ -134,7 +134,7 @@ func (vlt *Vault) SecretsByName(ctx context.Context, namePattern string) (map[in
 // along with all labels associated with each.
 //
 // If the IDs slice is empty, the function returns [store.ErrNoIDsProvided].
-func (vlt *Vault) SecretsByIDs(ctx context.Context, ids ...int) (map[int]store.LabeledSecret, error) {
+func (vlt *Vault) SecretsByIDs(ctx context.Context, ids ...int) (map[int]store.SecretWithLabels, error) {
 	return vlt.store.SecretsByIDs(ctx, ids)
 }
 
@@ -142,7 +142,7 @@ func (vlt *Vault) SecretsByIDs(ctx context.Context, ids ...int) (map[int]store.L
 // provided label and name glob patterns.
 //
 // If no label patterns are provided, it returns [store.ErrNoLabelsProvided].
-func (vlt *Vault) SecretsByLabelsAndName(ctx context.Context, name string, labels ...string) (map[int]store.LabeledSecret, error) {
+func (vlt *Vault) SecretsByLabelsAndName(ctx context.Context, name string, labels ...string) (map[int]store.SecretWithLabels, error) {
 	return vlt.store.SecretsByLabelsAndName(ctx, name, labels...)
 }
 

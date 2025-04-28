@@ -22,7 +22,7 @@ const (
 )
 
 var usage = map[Usage]string{
-	ID:     "search by ID (comma-separated or repeated)",
+	ID:     "search by ID",
 	NAME:   "search by name",
 	LABELS: "search by label (comma-separated or repeated)",
 }
