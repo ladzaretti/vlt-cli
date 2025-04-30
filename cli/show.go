@@ -92,7 +92,7 @@ func (o *ShowOptions) validateConfigOptions() error {
 	}
 
 	if c != 1 {
-		return &ShowError{errors.New("either --output or --copy-clipboard must be set (but not both)")}
+		return &ShowError{errors.New("either --output or --copy must be set (but not both)")}
 	}
 
 	return nil
@@ -155,7 +155,7 @@ func NewCmdShow(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 The secret value is retrieved and displayed 
 only if there is exactly one match for the given search criteria.
 
-Use --output to print to stdout, or --copy-clipboard to copy the value to the clipboard.`,
+Use --output to print to stdout, or --copy to copy the value to the clipboard.`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
@@ -164,8 +164,8 @@ Use --output to print to stdout, or --copy-clipboard to copy the value to the cl
 	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
-	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the secret value to stdout (unsafe)")
-	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the secret value to the system's clipboard")
+	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the secret to stdout (unsafe)")
+	cmd.Flags().BoolVarP(&o.copy, "copy", "c", false, "copy the secret to the clipboard")
 
 	return cmd
 }

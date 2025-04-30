@@ -155,3 +155,8 @@ func (vlt *Vault) Secret(ctx context.Context, id int) (string, error) {
 func (vlt *Vault) DeleteByIDs(ctx context.Context, ids ...int) (int64, error) {
 	return vlt.store.DeleteByIDs(ctx, ids)
 }
+
+// UpdateSecret sets a new secret for the given id.
+func (vlt *Vault) UpdateSecret(ctx context.Context, id int, secret string) (int64, error) {
+	return vlt.store.UpdateSecret(ctx, id, secret)
+}

@@ -104,11 +104,13 @@ func (s *Store) InsertNewSecret(ctx context.Context, name string, secret string)
 const updateSecret = `
 	UPDATE secrets
 	SET
-		secret = $1;
+		secret = $1
+	WHERE
+		id = $2
 `
 
-func (s *Store) UpdateSecret(ctx context.Context, id string, secret string) (n int64, retErr error) {
-	res, err := s.db.ExecContext(ctx, updateSecret, id, secret)
+func (s *Store) UpdateSecret(ctx context.Context, id int, secret string) (n int64, retErr error) {
+	res, err := s.db.ExecContext(ctx, updateSecret, secret, id)
 	if err != nil {
 		return 0, err
 	}
@@ -124,11 +126,13 @@ func (s *Store) UpdateSecret(ctx context.Context, id string, secret string) (n i
 const updateName = `
 	UPDATE secrets
 	SET
-		name = $1;
+		name = $1
+	WHERE
+		id = $2
 `
 
-func (s *Store) UpdateName(ctx context.Context, id string, name string) (n int64, retErr error) {
-	res, err := s.db.ExecContext(ctx, updateName, id, name)
+func (s *Store) UpdateName(ctx context.Context, id int, name string) (n int64, retErr error) {
+	res, err := s.db.ExecContext(ctx, updateName, name, id)
 	if err != nil {
 		return 0, err
 	}
