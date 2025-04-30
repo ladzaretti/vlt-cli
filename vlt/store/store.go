@@ -87,7 +87,7 @@ const insertSecret = `
 		($1, $2)
 `
 
-func (s *Store) InsertNewSecret(ctx context.Context, name string, secret string) (int64, error) {
+func (s *Store) InsertNewSecret(ctx context.Context, name string, secret string) (int, error) {
 	res, err := s.db.ExecContext(ctx, insertSecret, name, secret)
 	if err != nil {
 		return 0, err
@@ -98,7 +98,7 @@ func (s *Store) InsertNewSecret(ctx context.Context, name string, secret string)
 		return 0, err
 	}
 
-	return id, nil
+	return int(id), nil
 }
 
 const updateSecret = `
@@ -174,7 +174,7 @@ const insertLabel = `
 		($1, $2) ON CONFLICT (name, secret_id) DO NOTHING
 `
 
-func (s *Store) InsertLabel(ctx context.Context, name string, secretID int64) (int64, error) {
+func (s *Store) InsertLabel(ctx context.Context, name string, secretID int) (int64, error) {
 	res, err := s.db.ExecContext(ctx, insertLabel, name, secretID)
 	if err != nil {
 		return 0, err

@@ -9,8 +9,8 @@ A command-line password manager backed by SQLite.
   - [x] create  (alias: new)
   - [x] save    (alias: put)
   - [x] show    (alias: get)
-  - [ ] update (requires --id)
-    - [x] secret (requires --id, supports CLI args or interactive mode)
+  - [x] update
+    - [x] secret
   - [x] remove  (alias: rm, delete)
   - [x] find    (alias: list, ls)
   - [x] config

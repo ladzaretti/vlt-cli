@@ -18,8 +18,7 @@ import (
 )
 
 var (
-	ErrMissingID       = errors.New("no id provided; specify an id with the --id flag")
-	ErrNoUpdateArgs    = errors.New("no update arguments provided; specify at least one of --name, --secret, --add-label, or --remove-label")
+	ErrNoUpdateArgs    = errors.New("no update arguments provided; specify at least one of --set-name, --add-label, or --remove-label")
 	ErrNoSecretUpdated = errors.New("no secret was updated")
 )
 
@@ -34,10 +33,9 @@ func (e *UpdateError) Unwrap() error { return e.Err }
 type UpdateOptions struct {
 	*genericclioptions.StdioOptions
 
-	vault func() *vlt.Vault
-
-	id           int
-	name         string
+	vault        func() *vlt.Vault
+	search       *SearchableOptions
+	newName      string
 	addLabels    []string
 	removeLabels []string
 }
@@ -49,6 +47,7 @@ func NewUpdateOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.V
 	return &UpdateOptions{
 		StdioOptions: stdio,
 		vault:        vault,
+		search:       &SearchableOptions{&genericclioptions.SearchOptions{}},
 	}
 }
 
@@ -57,8 +56,8 @@ func (*UpdateOptions) Complete() error {
 }
 
 func (o *UpdateOptions) Validate() error {
-	if o.id == 0 {
-		return &UpdateError{ErrMissingID}
+	if err := o.search.Validate(); err != nil {
+		return &UpdateError{err}
 	}
 
 	return o.validateUpdateArgs()
@@ -67,7 +66,7 @@ func (o *UpdateOptions) Validate() error {
 func (o *UpdateOptions) validateUpdateArgs() error {
 	args := 0
 
-	if len(o.name) > 0 {
+	if len(o.newName) > 0 {
 		args++
 	}
 
@@ -86,10 +85,28 @@ func (o *UpdateOptions) validateUpdateArgs() error {
 	return nil
 }
 
-func (*UpdateOptions) Run(context.Context) error {
-	// TODO2: update vault: requires a tx based vault methods
+func (o *UpdateOptions) Run(ctx context.Context) error {
+	matchingSecrets, err := o.search.search(ctx, o.vault())
+	if err != nil {
+		return err
+	}
 
-	return nil
+	count := len(matchingSecrets)
+
+	switch count {
+	case 1:
+		o.Infof("Found one match.\n")
+	case 0:
+		o.Warnf("No match found.\n")
+		return &UpdateError{vaulterrors.ErrSearchNoMatch}
+	default:
+		o.Warnf("Expecting exactly one match, but found %d.\n\n", count)
+		printTable(o.ErrOut, matchingSecrets)
+
+		return &UpdateError{vaulterrors.ErrAmbiguousSecretMatch}
+	}
+
+	return o.vault().UpdateSecretMetadata(ctx, matchingSecrets[0].id, o.newName, o.removeLabels, o.addLabels)
 }
 
 // NewCmdUpdate creates the update cobra command.
@@ -107,8 +124,11 @@ To update the secret value, use the 'vlt update secret' command.`,
 		},
 	}
 
-	cmd.Flags().IntVarP(&o.id, "id", "", 0, "id of the secret to update")
-	cmd.Flags().StringVarP(&o.name, "name", "", "", "new name for the secret")
+	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
+	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
+	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
+
+	cmd.Flags().StringVarP(&o.newName, "set-name", "", "", "new name for the secret")
 	cmd.Flags().StringSliceVarP(&o.addLabels, "add-label", "", nil, "label to add to the secret")
 	cmd.Flags().StringSliceVarP(&o.removeLabels, "remove-label", "", nil, "label to remove from the secret")
 
@@ -121,7 +141,8 @@ type UpdateSecretValueOptions struct {
 	*genericclioptions.StdioOptions
 	vault func() *vlt.Vault
 
-	id       int  // id of the secret to be updated.
+	search *SearchableOptions
+
 	generate bool // generate indicates whether to auto-generate a random secret.
 	output   bool // output controls whether to print the saved secret to stdout.
 	copy     bool // copy controls whether to copy the saved secret to the clipboard.
@@ -135,6 +156,7 @@ func NewUpdateSecretValueOptions(stdio *genericclioptions.StdioOptions, vault fu
 	return &UpdateSecretValueOptions{
 		StdioOptions: stdio,
 		vault:        vault,
+		search:       &SearchableOptions{&genericclioptions.SearchOptions{}},
 	}
 }
 
@@ -143,8 +165,8 @@ func (*UpdateSecretValueOptions) Complete() error {
 }
 
 func (o *UpdateSecretValueOptions) Validate() error {
-	if o.id == 0 {
-		return &UpdateError{ErrMissingID}
+	if err := o.search.Validate(); err != nil {
+		return &UpdateError{err}
 	}
 
 	return o.validateUpdateSecretArgs()
@@ -172,7 +194,27 @@ func (o *UpdateSecretValueOptions) validateUpdateSecretArgs() error {
 }
 
 func (o *UpdateSecretValueOptions) Run(ctx context.Context) (retErr error) {
-	secret := ""
+	matchingSecrets, err := o.search.search(ctx, o.vault())
+	if err != nil {
+		return err
+	}
+
+	count := len(matchingSecrets)
+
+	switch count {
+	case 1:
+		o.Infof("Found one match.\n")
+	case 0:
+		o.Warnf("No match found.\n")
+		return &UpdateError{vaulterrors.ErrSearchNoMatch}
+	default:
+		o.Warnf("Expecting exactly one match, but found %d.\n\n", count)
+		printTable(o.ErrOut, matchingSecrets)
+
+		return &UpdateError{vaulterrors.ErrAmbiguousSecretMatch}
+	}
+
+	id, secret := matchingSecrets[0].id, ""
 
 	// ensure error is wrapped and output is printed if everything succeeded
 	defer func() {
@@ -188,10 +230,6 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context) (retErr error) {
 			}
 		}
 	}()
-
-	if err := secretExists(ctx, o.vault(), o.id); err != nil {
-		return err
-	}
 
 	s, err := o.readSecretNonInteractive()
 	if err != nil {
@@ -214,7 +252,7 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context) (retErr error) {
 		return vaulterrors.ErrEmptySecret
 	}
 
-	return o.UpdateSecretValue(ctx, o.id, secret)
+	return o.UpdateSecretValue(ctx, id, secret)
 }
 
 func (o *UpdateSecretValueOptions) readSecretNonInteractive() (string, error) {
@@ -268,19 +306,6 @@ func (o *UpdateSecretValueOptions) UpdateSecretValue(ctx context.Context, id int
 	return nil
 }
 
-func secretExists(ctx context.Context, vault *vlt.Vault, id int) error {
-	ids, err := vault.SecretsByIDs(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	if len(ids) == 0 {
-		return fmt.Errorf("no secret found with ID: %d", id)
-	}
-
-	return nil
-}
-
 // NewCmdUpdateSecretValue creates the cobra command.
 func NewCmdUpdateSecretValue(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
 	o := NewUpdateSecretValueOptions(stdio, vault)
@@ -294,7 +319,10 @@ func NewCmdUpdateSecretValue(stdio *genericclioptions.StdioOptions, vault func()
 		},
 	}
 
-	cmd.Flags().IntVarP(&o.id, "id", "", 0, "id of the secret to update")
+	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
+	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
+	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
+
 	cmd.Flags().BoolVarP(&o.generate, "generate", "g", false, "generate a random secret")
 	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (unsafe)")
 	cmd.Flags().BoolVarP(&o.copy, "copy", "c", false, "copy the saved secret to the clipboard")

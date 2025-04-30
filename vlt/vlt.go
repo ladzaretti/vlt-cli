@@ -75,7 +75,7 @@ func (vlt *Vault) GetMasterKey(ctx context.Context) (string, error) {
 // into the vault using a transaction.
 //
 // Returns the ID of the inserted secret or an error if the operation fails.
-func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret string, labels []string) (id int64, retErr error) {
+func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret string, labels []string) (id int, retErr error) {
 	tx, err := vlt.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return 0, err
@@ -107,6 +107,56 @@ func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret strin
 	}
 
 	return secretID, nil
+}
+
+// UpdateSecretMetadata updates the metadata of the secret identified by id.
+func (vlt *Vault) UpdateSecretMetadata(ctx context.Context, id int, newName string, removeLabels []string, addLabels []string) error {
+	tx, err := vlt.db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	updateTx := vlt.store.WithTx(tx)
+
+	_, err = vlt.store.UpdateName(ctx, id, newName)
+	if err != nil {
+		if err2 := tx.Rollback(); err2 != nil {
+			return errf("update secret name: rollback: %w", errors.Join(err2, err))
+		}
+
+		return errf("update secret name: %w", err)
+	}
+
+	for _, l := range addLabels {
+		if _, err := updateTx.InsertLabel(ctx, l, id); err != nil {
+			if err2 := tx.Rollback(); err2 != nil {
+				return errf("insert label: rollback: %w", errors.Join(err2, err))
+			}
+
+			return errf("insert label: %w", err)
+		}
+	}
+
+	for _, l := range removeLabels {
+		if _, err := updateTx.DeleteLabel(ctx, l, int64(id)); err != nil {
+			if err2 := tx.Rollback(); err2 != nil {
+				return errf("remote label: rollback: %w", errors.Join(err2, err))
+			}
+
+			return errf("remove label: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return errf("tx commit: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateSecret updates the secret value of the secret identified by id.
+func (vlt *Vault) UpdateSecret(ctx context.Context, id int, secret string) (int64, error) {
+	return vlt.store.UpdateSecret(ctx, id, secret)
 }
 
 // SecretsWithLabels returns all secrets along with all labels associated with each.
@@ -154,9 +204,4 @@ func (vlt *Vault) Secret(ctx context.Context, id int) (string, error) {
 // DeleteByIDs deletes secrets by their IDs, along with their labels.
 func (vlt *Vault) DeleteByIDs(ctx context.Context, ids ...int) (int64, error) {
 	return vlt.store.DeleteByIDs(ctx, ids)
-}
-
-// UpdateSecret sets a new secret for the given id.
-func (vlt *Vault) UpdateSecret(ctx context.Context, id int, secret string) (int64, error) {
-	return vlt.store.UpdateSecret(ctx, id, secret)
 }

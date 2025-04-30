@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -11,6 +12,8 @@ import (
 	"github.com/ladzaretti/vlt-cli/vlt"
 	"github.com/ladzaretti/vlt-cli/vlt/store"
 )
+
+var ErrNoSearchArgs = errors.New("no search criteria provided; specify at least one of --id, --label, or --name")
 
 type SearchableOptions struct {
 	*genericclioptions.SearchOptions
@@ -48,6 +51,28 @@ func (o *SearchableOptions) search(ctx context.Context, vault *vlt.Vault) ([]sec
 			return vault.SecretsWithLabels(ctx)
 		})
 	}
+}
+
+func (o *SearchableOptions) Validate() error {
+	c := 0
+
+	if len(o.IDs) > 0 {
+		c++
+	}
+
+	if len(o.Labels) > 0 {
+		c++
+	}
+
+	if len(o.Name) > 0 {
+		c++
+	}
+
+	if c == 0 {
+		return ErrNoSearchArgs
+	}
+
+	return nil
 }
 
 type secretWithLabels struct {

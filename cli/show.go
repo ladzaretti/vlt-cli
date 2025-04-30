@@ -47,8 +47,8 @@ func (o *ShowOptions) Complete() error {
 }
 
 func (o *ShowOptions) Validate() error {
-	if err := o.validateSearchCriteria(); err != nil {
-		return err
+	if err := o.search.Validate(); err != nil {
+		return &ShowError{err}
 	}
 
 	if err := o.validateConfigOptions(); err != nil {
@@ -56,28 +56,6 @@ func (o *ShowOptions) Validate() error {
 	}
 
 	return o.search.Validate()
-}
-
-func (o *ShowOptions) validateSearchCriteria() error {
-	c := 0
-
-	if len(o.search.IDs) > 0 {
-		c++
-	}
-
-	if len(o.search.Labels) > 0 {
-		c++
-	}
-
-	if len(o.search.Name) > 0 {
-		c++
-	}
-
-	if c == 0 {
-		return &ShowError{errors.New("at least one search criteria has to be provided")}
-	}
-
-	return nil
 }
 
 func (o *ShowOptions) validateConfigOptions() error {
@@ -109,7 +87,7 @@ func (o *ShowOptions) Run(ctx context.Context) error {
 
 	switch count {
 	case 1:
-		o.Debugf("1 secret matches the search settings.\n")
+		o.Infof("Found one match.\n")
 
 		s, err := o.vault().Secret(ctx, matchingSecrets[0].id)
 		if err != nil {
@@ -118,7 +96,7 @@ func (o *ShowOptions) Run(ctx context.Context) error {
 
 		return o.outputSecret(s)
 	case 0:
-		o.Warnf("No secrets match the search settings.\n")
+		o.Warnf("No match found.\n")
 		return &ShowError{vaulterrors.ErrSearchNoMatch}
 	default:
 		o.Warnf("Expecting exactly one match, but found %d.\n\n", count)
