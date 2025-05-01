@@ -118,13 +118,15 @@ func (vlt *Vault) UpdateSecretMetadata(ctx context.Context, id int, newName stri
 
 	updateTx := vlt.store.WithTx(tx)
 
-	_, err = vlt.store.UpdateName(ctx, id, newName)
-	if err != nil {
-		if err2 := tx.Rollback(); err2 != nil {
-			return errf("update secret name: rollback: %w", errors.Join(err2, err))
-		}
+	if len(newName) > 0 {
+		_, err = vlt.store.UpdateName(ctx, id, newName)
+		if err != nil {
+			if err2 := tx.Rollback(); err2 != nil {
+				return errf("update secret name: rollback: %w", errors.Join(err2, err))
+			}
 
-		return errf("update secret name: %w", err)
+			return errf("update secret name: %w", err)
+		}
 	}
 
 	for _, l := range addLabels {

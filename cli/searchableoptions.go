@@ -51,6 +51,11 @@ func WithStrict(enabled bool) SearchableOptionsOpt {
 // regardless of the filter options used.
 func (o *SearchableOptions) search(ctx context.Context, vault *vlt.Vault) ([]secretWithMarkedLabels, error) {
 	switch {
+	case o.ID > 0:
+		return sortAndUnmarkSecrets(func() (map[int]store.SecretWithLabels, error) {
+			return vault.SecretsByIDs(ctx, o.ID)
+		})
+
 	case len(o.IDs) > 0:
 		return sortAndUnmarkSecrets(func() (map[int]store.SecretWithLabels, error) {
 			return vault.SecretsByIDs(ctx, o.IDs...)

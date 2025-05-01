@@ -50,10 +50,6 @@ func (o *RemoveOptions) Complete() error {
 }
 
 func (o *RemoveOptions) Validate() error {
-	if o.search.IsUnset() {
-		return &RemoveError{genericclioptions.ErrNoSearchParams}
-	}
-
 	return o.search.Validate()
 }
 
@@ -65,7 +61,7 @@ func (o *RemoveOptions) Run(ctx context.Context) error {
 
 	count := len(matchingSecrets)
 
-	if count > 0 {
+	if count > 0 && !o.assumeYes {
 		printTable(o.Out, matchingSecrets)
 	}
 
@@ -84,7 +80,7 @@ func (o *RemoveOptions) Run(ctx context.Context) error {
 	}
 
 	if !o.assumeYes {
-		yes, err := confirm(o.Out, o.In, "\nDelete %d secrets? (y/N): ", count)
+		yes, err := confirm(o.Out, o.In, "Delete %d secrets? (y/N): ", count)
 		if err != nil {
 			return err
 		}
@@ -103,8 +99,8 @@ func (o *RemoveOptions) Run(ctx context.Context) error {
 		return err
 	}
 
-	o.Debugf("Deleted %d secrets.\n", n)
-	o.Infof("\nOK\n")
+	o.Debugf("Successfully deleted %d secrets.\n", n)
+	o.Infof("OK\n")
 
 	return nil
 }
