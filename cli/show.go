@@ -38,7 +38,7 @@ func NewShowOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vau
 	return &ShowOptions{
 		StdioOptions: stdio,
 		vault:        vault,
-		search:       &SearchableOptions{&genericclioptions.SearchOptions{}},
+		search:       NewSearchableOptions(),
 	}
 }
 
@@ -87,7 +87,7 @@ func (o *ShowOptions) Run(ctx context.Context) error {
 
 	switch count {
 	case 1:
-		o.Infof("Found one match.\n")
+		o.Debugf("Found one match.\n")
 
 		s, err := o.vault().Secret(ctx, matchingSecrets[0].id)
 		if err != nil {

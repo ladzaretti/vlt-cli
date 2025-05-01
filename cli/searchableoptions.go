@@ -17,6 +17,31 @@ var ErrNoSearchArgs = errors.New("no search criteria provided; specify at least 
 
 type SearchableOptions struct {
 	*genericclioptions.SearchOptions
+
+	// strict controls how search criteria are validated.
+	// If false, search parameters are not strictly required.
+	strict bool
+}
+
+type SearchableOptionsOpt func(*SearchableOptions)
+
+func NewSearchableOptions(opts ...SearchableOptionsOpt) *SearchableOptions {
+	o := &SearchableOptions{
+		SearchOptions: &genericclioptions.SearchOptions{},
+		strict:        true,
+	}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	return o
+}
+
+func WithStrict(enabled bool) SearchableOptionsOpt {
+	return func(o *SearchableOptions) {
+		o.strict = enabled
+	}
 }
 
 // search queries the vault for secrets based on the fields
@@ -54,6 +79,10 @@ func (o *SearchableOptions) search(ctx context.Context, vault *vlt.Vault) ([]sec
 }
 
 func (o *SearchableOptions) Validate() error {
+	if !o.strict {
+		return nil
+	}
+
 	c := 0
 
 	if len(o.IDs) > 0 {

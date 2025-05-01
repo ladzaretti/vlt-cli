@@ -41,7 +41,7 @@ func NewRemoveOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.V
 	return &RemoveOptions{
 		StdioOptions: stdio,
 		vault:        vault,
-		search:       &SearchableOptions{&genericclioptions.SearchOptions{}},
+		search:       NewSearchableOptions(),
 	}
 }
 
@@ -71,12 +71,12 @@ func (o *RemoveOptions) Run(ctx context.Context) error {
 
 	switch count {
 	case 1:
-		o.Infof("Found one match.\n")
+		o.Debugf("Found one match.\n")
 	case 0:
 		o.Warnf("No match found.\n")
 		return &RemoveError{vaulterrors.ErrSearchNoMatch}
 	default:
-		o.Infof("Found %d matching secrets.\n", count)
+		o.Warnf("Found %d matching secrets.\n", count)
 
 		if !o.removeAll {
 			return &RemoveError{fmt.Errorf("%d matching secrets found, use --all to delete all", count)}

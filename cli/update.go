@@ -47,7 +47,7 @@ func NewUpdateOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.V
 	return &UpdateOptions{
 		StdioOptions: stdio,
 		vault:        vault,
-		search:       &SearchableOptions{&genericclioptions.SearchOptions{}},
+		search:       NewSearchableOptions(),
 	}
 }
 
@@ -156,7 +156,7 @@ func NewUpdateSecretValueOptions(stdio *genericclioptions.StdioOptions, vault fu
 	return &UpdateSecretValueOptions{
 		StdioOptions: stdio,
 		vault:        vault,
-		search:       &SearchableOptions{&genericclioptions.SearchOptions{}},
+		search:       NewSearchableOptions(),
 	}
 }
 
@@ -203,7 +203,7 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context) (retErr error) {
 
 	switch count {
 	case 1:
-		o.Infof("Found one match.\n")
+		o.Debugf("Found one match.\n")
 	case 0:
 		o.Warnf("No match found.\n")
 		return &UpdateError{vaulterrors.ErrSearchNoMatch}

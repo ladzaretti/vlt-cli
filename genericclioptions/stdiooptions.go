@@ -29,7 +29,7 @@ func (o *StdioOptions) Complete() error {
 		}
 
 		if input.IsPipedOrRedirected(fi) {
-			o.Debugf("Input is piped or redirected; enabling non-interactive mode for handling sensitive data.\n")
+			o.Debugf("Input is piped or redirected; Enabling non-interactive mode.\n")
 			o.NonInteractive = true
 		}
 	}

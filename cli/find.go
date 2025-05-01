@@ -25,7 +25,7 @@ func NewFindOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vau
 	return &FindOptions{
 		StdioOptions: stdio,
 		vault:        vault,
-		search:       &SearchableOptions{&genericclioptions.SearchOptions{}},
+		search:       NewSearchableOptions(WithStrict(false)),
 	}
 }
 

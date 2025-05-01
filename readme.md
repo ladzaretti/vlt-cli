@@ -16,9 +16,10 @@ A command-line password manager backed by SQLite.
   - [x] config
     - [x] generate
     - [x] validate
-  - [ ] import
+  - [x] import
     - firefox
     - chrome
+  - [ ] export
   - [x] generate (alias: rand, gen)
 - [ ] Add a cryptographic layer
 - [ ] Add session support

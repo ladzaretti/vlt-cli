@@ -245,6 +245,7 @@ Environment Variables:
 	cmd.AddCommand(NewCmdShow(o.StdioOptions, o.vaultOptions.VaultFunc))
 	cmd.AddCommand(NewCmdRemove(o.StdioOptions, o.vaultOptions.VaultFunc))
 	cmd.AddCommand(NewCmdUpdate(o.StdioOptions, o.vaultOptions.VaultFunc))
+	cmd.AddCommand(NewCmdImport(o.StdioOptions, o.vaultOptions.VaultFunc))
 
 	return cmd
 }
