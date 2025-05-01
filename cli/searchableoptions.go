@@ -85,6 +85,10 @@ func (o *SearchableOptions) Validate() error {
 
 	c := 0
 
+	if o.ID > 0 {
+		c++
+	}
+
 	if len(o.IDs) > 0 {
 		c++
 	}

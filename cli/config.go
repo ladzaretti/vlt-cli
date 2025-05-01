@@ -169,8 +169,8 @@ func NewCmdConfig(stdio *genericclioptions.StdioOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "config",
-		Short: "Resolve and output vlt configuration",
-		Long:  "",
+		Short: "Resolve validate and output vlt configuration (subcommands available)",
+		Long:  "Resolve validate and output vlt configuration.",
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.RejectGlobalFlags(cmd, hiddenFlags...))
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))

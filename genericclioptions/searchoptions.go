@@ -7,6 +7,7 @@ var ErrNoSearchParams = errors.New("no search criteria provided; specify at leas
 // SearchOptions defines common filtering options for CLI commands that
 // support filtering secrets.
 type SearchOptions struct {
+	ID     int
 	IDs    []int
 	Name   string
 	Labels []string

@@ -139,7 +139,7 @@ Use --output to print to stdout, or --copy to copy the value to the clipboard.`,
 		},
 	}
 
-	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
+	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, o.search.Usage(genericclioptions.ID))
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
 	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the secret to stdout (unsafe)")

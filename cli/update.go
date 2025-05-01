@@ -115,7 +115,7 @@ func NewCmdUpdate(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault
 
 	cmd := &cobra.Command{
 		Use:   "update",
-		Short: "Update secret metadata",
+		Short: "Update secret data or metadata (subcommands available)",
 		Long: `Update metadata for an existing secret.
 
 To update the secret value, use the 'vlt update secret' command.`,
@@ -124,7 +124,7 @@ To update the secret value, use the 'vlt update secret' command.`,
 		},
 	}
 
-	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
+	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, o.search.Usage(genericclioptions.ID))
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
 
@@ -319,7 +319,7 @@ func NewCmdUpdateSecretValue(stdio *genericclioptions.StdioOptions, vault func()
 		},
 	}
 
-	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
+	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, o.search.Usage(genericclioptions.ID))
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
 

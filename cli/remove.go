@@ -137,7 +137,7 @@ Use the --yes flag to skip confirmation prompts.`,
 		},
 	}
 
-	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
+	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, o.search.Usage(genericclioptions.ID))
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
 	cmd.Flags().BoolVarP(&o.assumeYes, "yes", "y", false, "automatically answer yes to all questions")
