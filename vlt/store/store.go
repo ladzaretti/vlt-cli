@@ -214,12 +214,14 @@ func (s *Store) DeleteLabel(ctx context.Context, name string, secretID int64) (i
 type secretWithLabelRow struct {
 	id    int
 	name  string
+	value sql.NullString
 	label sql.NullString
 }
 
 // SecretWithLabels represents a secret with some of its associated labels.
 type SecretWithLabels struct {
 	Name   string
+	Secret string
 	Labels []string
 }
 
@@ -344,6 +346,42 @@ func (s *Store) secretsJoinLabels(ctx context.Context, query string, args ...any
 	return reduce(secrets), nil
 }
 
+// ExportSecrets exports all secret-related data stored in the database.
+func (s *Store) ExportSecrets(ctx context.Context) (map[int]SecretWithLabels, error) {
+	query := `	
+	SELECT
+		s.id,
+		s.name AS secret_name,
+		s.secret,
+		l.name AS label
+	FROM
+		secrets s
+		JOIN labels l ON s.id = l.secret_id;
+	`
+
+	rows, err := s.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }() //nolint:wsl
+
+	var secrets []secretWithLabelRow
+	for rows.Next() {
+		var secret secretWithLabelRow
+		if err := rows.Scan(&secret.id, &secret.name, &secret.value, &secret.label); err != nil {
+			return nil, err
+		}
+
+		secrets = append(secrets, secret)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return reduce(secrets), nil
+}
+
 // DeleteByIDs deletes secrets by their IDs, along with their labels.
 func (s *Store) DeleteByIDs(ctx context.Context, ids []int) (int64, error) {
 	if len(ids) == 0 {
@@ -393,20 +431,24 @@ func whereGlobOrClause(col string, patterns ...string) string {
 func reduce(secrets []secretWithLabelRow) map[int]SecretWithLabels {
 	m := make(map[int]SecretWithLabels)
 
-	for _, s := range secrets {
-		v, ok := m[s.id]
+	for _, secret := range secrets {
+		v, ok := m[secret.id]
 		if !ok {
 			v = SecretWithLabels{
-				Name:   s.name,
+				Name:   secret.name,
 				Labels: []string{},
 			}
 		}
 
-		if s.label.Valid {
-			v.Labels = append(v.Labels, s.label.String)
+		if secret.label.Valid {
+			v.Labels = append(v.Labels, secret.label.String)
 		}
 
-		m[s.id] = v
+		if len(v.Secret) == 0 && secret.value.Valid {
+			v.Secret = secret.value.String
+		}
+
+		m[secret.id] = v
 	}
 
 	return m

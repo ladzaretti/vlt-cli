@@ -18,29 +18,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	firefoxHeader  = "url,username,password,httpRealm,formActionOrigin,guid,timeCreated,timeLastUsed,timePasswordChanged"
-	chromiumHeader = "name,url,username,password,note"
-	vltHeader      = ""
-)
-
-var (
-	firefoxImporter = CustomImporter{
-		NameIndex:    ptr(1),
-		SecretIndex:  ptr(2),
-		LabelIndexes: []int{0, 3, 4},
-	}
-
-	chromiumImporter = CustomImporter{
-		NameIndex:    ptr(2),
-		SecretIndex:  ptr(3),
-		LabelIndexes: []int{0, 1, 4},
-	}
-
-	//nolint:unused
-	vltImporter = CustomImporter{}
-)
-
 type ImportError struct {
 	Err error
 }
@@ -48,6 +25,55 @@ type ImportError struct {
 func (e *ImportError) Error() string { return "import: " + e.Err.Error() }
 
 func (e *ImportError) Unwrap() error { return e.Err }
+
+const (
+	// firefoxHeader defines the expected CSV header for exported Firefox passwords.
+	firefoxHeader = "url,username,password,httpRealm,formActionOrigin,guid,timeCreated,timeLastUsed,timePasswordChanged"
+
+	// chromiumHeader defines the expected CSV header for exported Chromium passwords.
+	chromiumHeader = "name,url,username,password,note"
+)
+
+var (
+	// firefoxImporter is a custom password importer for exported Firefox password data.
+	firefoxImporter = CustomImporter{
+		NameIndex:    ptr(1),
+		SecretIndex:  ptr(2),
+		LabelIndexes: []int{0, 3, 4},
+	}
+
+	// chromiumImporter is a custom password importer for exported Chromium password data.
+	chromiumImporter = CustomImporter{
+		NameIndex:    ptr(2),
+		SecretIndex:  ptr(3),
+		LabelIndexes: []int{0, 1, 4},
+	}
+
+	// vltImporter is a password importer for exported vlt password data.
+	vltImporter = VltImporter{}
+)
+
+type VltImporter struct{}
+
+var _ Importer = VltImporter{}
+
+func (VltImporter) validate(record []string) error {
+	if len(record) != 3 {
+		return &ImportError{errors.New("expected 3 fields per record for vlt csv record")}
+	}
+
+	return nil
+}
+
+func (VltImporter) convert(record []string) secret {
+	// assumes validate has run.
+	// panicking on out-of-bounds access is acceptable in this context.
+	return secret{
+		name:   record[0],
+		secret: record[1],
+		labels: strings.Split(record[2], ","),
+	}
+}
 
 type secret struct {
 	name   string
@@ -66,6 +92,8 @@ type CustomImporter struct {
 	SecretIndex  *int  `json:"secret,omitempty"` // SecretIndex is the index of the secret column.
 	LabelIndexes []int `json:"labels,omitempty"` // LabelIndexes are the indexes of the label columns.
 }
+
+var _ Importer = CustomImporter{}
 
 func (ic CustomImporter) validate(record []string) error {
 	if ic.NameIndex == nil {
@@ -184,6 +212,9 @@ func (o *ImportOptions) Run(ctx context.Context) (retErr error) {
 		if err != nil {
 			return err
 		}
+		defer func() { //nolint:wsl
+			_ = f.Close()
+		}()
 
 		in = f
 	}
@@ -235,6 +266,10 @@ func (o *ImportOptions) importerForHeader(header string) Importer {
 	case chromiumHeader:
 		o.Infof("Chromium export file detected.\n")
 		return chromiumImporter
+
+	case vltExportHeader:
+		o.Infof("vlt export file detected.\n")
+		return vltImporter
 
 	default:
 		o.Debugf("Using custom import config: %s\n", o.importConfig)

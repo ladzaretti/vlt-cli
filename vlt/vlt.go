@@ -172,6 +172,11 @@ func (vlt *Vault) SecretsByLabels(ctx context.Context, labelPatterns ...string) 
 	return vlt.store.SecretsByLabels(ctx, labelPatterns...)
 }
 
+// ExportSecrets exports all secret-related data stored in the database.
+func (vlt *Vault) ExportSecrets(ctx context.Context) (map[int]store.SecretWithLabels, error) {
+	return vlt.store.ExportSecrets(ctx)
+}
+
 // SecretsByName returns secrets that match the provided name pattern,
 // along with all labels associated with it.
 //
