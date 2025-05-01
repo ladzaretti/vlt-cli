@@ -240,6 +240,7 @@ Environment Variables:
 
 	cmd.AddCommand(NewCmdCreate(o.StdioOptions, func() string { return o.vaultOptions.Path }))
 	cmd.AddCommand(NewCmdLogin(o.StdioOptions, o.vaultOptions.VaultFunc))
+	cmd.AddCommand(NewCmdLogout(o.StdioOptions, o.vaultOptions.VaultFunc))
 	cmd.AddCommand(NewCmdSave(o.StdioOptions, o.vaultOptions.VaultFunc))
 	cmd.AddCommand(NewCmdFind(o.StdioOptions, o.vaultOptions.VaultFunc))
 	cmd.AddCommand(NewCmdShow(o.StdioOptions, o.vaultOptions.VaultFunc))

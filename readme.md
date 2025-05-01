@@ -5,7 +5,7 @@ A command-line password manager backed by SQLite.
 
 - [ ] Implement all initial subcommands
   - [x] login
-  - [ ] logout  (session)
+  - [x] logout  (session)
   - [x] create  (alias: new)
   - [x] save    (alias: put)
   - [x] show    (alias: get)
@@ -19,7 +19,7 @@ A command-line password manager backed by SQLite.
   - [x] import
     - firefox
     - chrome
-  - [ ] export
+  - [x] export
   - [x] generate (alias: rand, gen)
 - [ ] Add a cryptographic layer
 - [ ] Add session support

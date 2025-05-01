@@ -17,7 +17,6 @@ import (
 // LoginOptions holds data required to run the command.
 type LoginOptions struct {
 	*genericclioptions.StdioOptions
-
 	vault func() *vlt.Vault
 }
 
