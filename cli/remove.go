@@ -126,8 +126,17 @@ func NewCmdRemove(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault
 		Short:   "Remove secrets from the vault",
 		Long: `Remove one or more secrets from the vault.
 
-Secrets can be matched for removal using filters such as ID, name, or label.
-Use the --yes flag to skip confirmation prompts.`,
+Use --id, --name, or --label to select which secrets to remove.
+Multiple --label flags can be applied and are logically ORed.
+`,
+		Example: `  # Remove a secret by ID
+  vlt remove --id 123
+
+  # Remove all secrets matching any of the given labels
+  vlt remove --label project=legacy --label dev --all
+
+  # Remove a secret by name without confirmation
+  vlt remove --name api-key --yes`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
@@ -136,7 +145,7 @@ Use the --yes flag to skip confirmation prompts.`,
 	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, o.search.Usage(genericclioptions.ID))
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
-	cmd.Flags().BoolVarP(&o.assumeYes, "yes", "y", false, "automatically answer yes to all questions")
+	cmd.Flags().BoolVarP(&o.assumeYes, "yes", "y", false, "skip confirmation prompts")
 	cmd.Flags().BoolVar(&o.removeAll, "all", false, "remove all matching secrets")
 
 	return cmd

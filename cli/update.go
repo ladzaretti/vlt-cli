@@ -118,7 +118,18 @@ func NewCmdUpdate(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault
 		Short: "Update secret data or metadata (subcommands available)",
 		Long: `Update metadata for an existing secret.
 
-To update the secret value, use the 'vlt update secret' command.`,
+This command updates metadata such as the name or labels of a secret.
+The update will proceed only if exactly one secret matches the given search criteria.
+
+To update the secret value, use the 'vlt update secret' subcommand.`,
+		Example: `  # Rename a secret by ID
+  vlt update --id 123 --set-name new-name
+
+  # Add a label to a secret by name
+  vlt update --name github --add-label dev
+
+  # Remove a label from a secret
+  vlt update --id 456 --remove-label old-label`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
@@ -312,8 +323,20 @@ func NewCmdUpdateSecretValue(stdio *genericclioptions.StdioOptions, vault func()
 
 	cmd := &cobra.Command{
 		Use:   "secret",
-		Short: "Update a secret value",
-		Long:  "Update a secret value.",
+		Short: "Update the value of an existing secret",
+		Long: `Update the value of an existing secret.
+
+The update is performed only if exactly one secret matches the provided criteria.
+
+You can provide the new value via prompt, clipboard, or by generating a random value.`,
+		Example: ` # Update value using prompt (interactive)
+  vlt update secret --id 123
+
+  # Update value with a generated secret
+  vlt update secret --name api-key --generate
+
+  # Update value using the clipboard as input
+  vlt update secret --label env=prod --paste`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},

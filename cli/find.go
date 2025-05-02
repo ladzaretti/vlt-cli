@@ -55,12 +55,13 @@ func NewCmdFind(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 	cmd := &cobra.Command{
 		Use:     "find",
 		Aliases: []string{"list", "ls"},
-		Short:   "Find secrets in the vault",
-		Long: `Find secrets stored in the vault using various filters.
+		Short:   "Search for secrets in the vault",
+		Long: `Search for secrets stored in the vault using various filters.
 
-Supports filtering by secret ID, name, or one or more labels.
-Multiple label filters are matched using a logical OR.
-Name and label values accept UNIX glob patterns (e.g., "foo*", "*bar*").`,
+Filters can be applied using --id, --name, or --label.
+Multiple --label flags can be applied and are logically ORed.
+
+Name and label values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},

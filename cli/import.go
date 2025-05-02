@@ -301,8 +301,7 @@ vlt import --path passwords.csv
 # Import from custom CSV data using a column mapping
 echo -e "password,username,label_1,label_2\npass,some_username,meta1,meta2" | \
   vlt import \
-      --indexes '{"name":1,"secret":0,"labels":[2,3]}'
-`,
+      --indexes '{"name":1,"secret":0,"labels":[2,3]}'`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},

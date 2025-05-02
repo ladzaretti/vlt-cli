@@ -112,14 +112,13 @@ func NewCmdExport(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault
 		Short: "Export secrets to a CSV file or stdout",
 		Long: `Export secrets in CSV format.
 	
-Either the --output flag must be set to specify a file path, 
-or --stdout must be used to write the output to standard output.`,
+Use --output to specify a file path or --stdout to print to standard output (unsafe).`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 	cmd.Flags().StringVarP(&o.output, "output", "o", "", "export secrets to the specified file path")
-	cmd.Flags().BoolVarP(&o.stdout, "stdout", "", false, "print exported secrets to standard output")
+	cmd.Flags().BoolVarP(&o.stdout, "stdout", "", false, "print exported secrets to standard output (unsafe)")
 
 	return cmd
 }

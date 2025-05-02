@@ -128,12 +128,11 @@ func NewCmdShow(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 		Use:     "show",
 		Aliases: []string{"get"},
 		Short:   "Retrieve a secret value from the vault",
-		Long: `Retrieve and display a secret value.
+		Long: `Retrieve and display a secret value from the vault.
 
-The secret value is retrieved and displayed 
-only if there is exactly one match for the given search criteria.
+The secret value will be displayed only if there is exactly one match for the given search criteria.
 
-Use --output to print to stdout, or --copy to copy the value to the clipboard.`,
+Use --output to print to stdout (unsafe) or --copy to copy the value to the clipboard.`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},

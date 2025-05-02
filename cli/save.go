@@ -230,8 +230,7 @@ func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) 
 		Long: `Save a new key-value pair to the vault.
 
 The secret value can be piped, redirected, or prompted.
-Secret metadata (i.e, name and labels) can be provided via command line arguments or prompted.
-
+Metadata (e.g., name and labels) can be provided via command-line arguments or prompted.
 
 Note 1:
 	If input is piped or redirected, it will be automatically used as the secret value.

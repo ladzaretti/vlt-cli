@@ -41,7 +41,7 @@ type ClipboardConfig struct {
 //nolint:tagalign
 type Config struct {
 	Vault     VaultConfig     `toml:"vault"`
-	Clipboard ClipboardConfig `toml:"clipboard,commented" comment:"Clipboard configuration: both copy and paste commands must be provided."`
+	Clipboard ClipboardConfig `toml:"clipboard,commented" comment:"Clipboard configuration: Both copy and paste commands must be either both set or both unset."`
 
 	path string // path is the resolved file path from which this config was loaded
 }
@@ -169,8 +169,10 @@ func NewCmdConfig(stdio *genericclioptions.StdioOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "config",
-		Short: "Resolve validate and output vlt configuration (subcommands available)",
-		Long:  "Resolve validate and output vlt configuration.",
+		Short: "Resolve and inspect the active vlt configuration (subcommands available)",
+		Long: fmt.Sprintf(`Resolve and display the active vlt configuration.
+
+If --file is not provided, the default config path (~/%s) is used.`, defaultConfigName),
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.RejectGlobalFlags(cmd, hiddenFlags...))
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
@@ -233,8 +235,9 @@ func newGenerateConfigCmd(stdio *genericclioptions.StdioOptions) *cobra.Command 
 	cmd := &cobra.Command{
 		Use:   "generate",
 		Short: "Print a default config file",
-		Long: `Generate and print a default configuration file in TOML format.
-This command does not take any arguments. It prints the configuration to stdout.`,
+		Long: `Outputs the default configuration in TOML format to stdout.
+
+This command does not accept any arguments.`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.RejectGlobalFlags(cmd, hiddenFlags...))
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
@@ -291,10 +294,11 @@ func newValidateConfigCmd(stdio *genericclioptions.StdioOptions) *cobra.Command 
 	cmd := &cobra.Command{
 		Use:   "validate",
 		Short: "Check config validity",
-		Long: `Validate the configuration file by loading and checking for common errors.
-Defaults to the standard config path if --file is not provided.`,
+		Long: fmt.Sprintf(`Loads the configuration file and checks for common errors.
+
+If --file is not provided, the default config path (~/%s) is used.`, defaultConfigName),
 		Run: func(cmd *cobra.Command, _ []string) {
-			o.configPath, _ = cmd.InheritedFlags().GetString("config")
+			o.configPath, _ = cmd.InheritedFlags().GetString("file")
 
 			clierror.Check(genericclioptions.RejectGlobalFlags(cmd, hiddenFlags...))
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))

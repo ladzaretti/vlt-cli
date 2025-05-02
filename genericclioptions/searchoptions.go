@@ -23,9 +23,9 @@ const (
 )
 
 var usage = map[Usage]string{
-	ID:     "search by id",
-	NAME:   "search by name",
-	LABELS: "search by label",
+	ID:     "filter by id",
+	NAME:   "filter by name",
+	LABELS: "filter by label",
 }
 
 var _ BaseOptions = &SearchOptions{}

@@ -70,8 +70,8 @@ func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault)
 
 	return &cobra.Command{
 		Use:   "login",
-		Short: "Authenticate against the specified vault database",
-		Long:  "This command authenticates the user and grants access to the vault for subsequent operations.",
+		Short: "Authenticate the user with the vault",
+		Long:  "Authenticate the user and grant access to the vault for subsequent operations.",
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},

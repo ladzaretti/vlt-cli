@@ -69,15 +69,16 @@ func NewCmdGenerate(stdio *genericclioptions.StdioOptions) *cobra.Command {
 		Short:   "Generate a random password",
 		Long: fmt.Sprintf(`Generate a random password based on the provided character requirements and minimum length.
 
-If no flags are provided, the following default policy is used:
+If no flags are provided, the default policy is:
   - At least %d uppercase letters
   - At least %d lowercase letters
   - At least %d numeric
   - At least %d special
   - Minimum total length: %d
 
-If a specific requirement is provided (e.g., '--digits 4'), the generated password will contain at least that many characters of the specified type. 
-Any remaining characters will be randomly chosen to meet the minimum total length.
+If a specific requirement is provided (e.g., '--digits 4'), the generated password will 
+contain at least that many characters of the specified type. Any remaining characters will 
+be randomly chosen to meet the minimum total length.
 `,
 			randstring.DefaultPasswordPolicy.MinUppercase,
 			randstring.DefaultPasswordPolicy.MinLowercase,
