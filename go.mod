@@ -6,6 +6,7 @@ require (
 	github.com/ladzaretti/migrate v0.1.3
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/spf13/cobra v1.9.1
+	golang.org/x/crypto v0.31.0
 	golang.org/x/term v0.31.0
 	modernc.org/sqlite v1.37.0
 )

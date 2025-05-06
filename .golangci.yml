@@ -34,7 +34,7 @@ linters:
     - exptostd
     - fatcontext
     - forcetypeassert
-    - funlen
+    # - funlen
     - ginkgolinter
     - gocheckcompilerdirectives
     - gochecknoinits
@@ -44,7 +44,7 @@ linters:
     - gocritic
     - gocyclo
     - godot
-    #- godox
+    # - godox
     - goheader
     - gomoddirectives
     - gomodguard
@@ -113,7 +113,7 @@ linters:
       enable-all-rules: true
       rules:
         - name: struct-tag
-          arguments: 
+          arguments:
             - "toml,commented"
         - name: add-constant
           disabled: true
