@@ -13,7 +13,11 @@ bin/golangci-lint-${GOLANGCI_VERSION}:
 bin/golangci-lint: bin/golangci-lint-${GOLANGCI_VERSION}
 	@ln -sf golangci-lint-${GOLANGCI_VERSION} bin/golangci-lint
 
-bin/vlt: go-mod-tidy
+.PHONY: patch_vendor
+patch-vendor:
+	./scripts/patch_vendor.sh
+
+bin/vlt: patch-vendor go-mod-tidy
 	go build -o "bin/vlt" ./cmd/vlt
 
 .PHONY: go-mod-tidy
