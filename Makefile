@@ -13,8 +13,13 @@ bin/golangci-lint-${GOLANGCI_VERSION}:
 bin/golangci-lint: bin/golangci-lint-${GOLANGCI_VERSION}
 	@ln -sf golangci-lint-${GOLANGCI_VERSION} bin/golangci-lint
 
+
+.PHONY: go-mod-vendor
+go-mod-vendor:
+	go mod vendor
+
 .PHONY: patch_vendor
-patch-vendor:
+patch-vendor: go-mod-vendor
 	./scripts/patch_vendor.sh
 
 bin/vlt: patch-vendor go-mod-tidy
@@ -30,11 +35,11 @@ clean:
 	rm -rf bin/ coverage/
 
 .PHONY: test
-test:
+test: patch-vendor
 	go test $(TEST_ARGS) ./...
 
 .PHONY: cover
-cover:
+cover: patch-vendor
 	@mkdir -p coverage
 	go test $(TEST_ARGS) ./... -coverprofile coverage/cover.out
 
@@ -43,11 +48,11 @@ coverage-html: cover
 	go tool cover -html=coverage/cover.out -o coverage/index.html
 
 .PHONY: lint
-lint: bin/golangci-lint
+lint: bin/golangci-lint patch-vendor
 	bin/golangci-lint run
 
 .PHONY: fix
-fix: bin/golangci-lint
+fix: bin/golangci-lint patch-vendor
 	bin/golangci-lint run --fix
 
 .PHONY: check
