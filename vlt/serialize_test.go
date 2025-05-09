@@ -44,14 +44,14 @@ func TestSerialization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = db2.Close() }() //nolint:wsl
+	// only db2.Close is deferred to avoid a double free panic in the SQLite driver.
+	defer func() { _ = db2.Close() }()
 
 	// Get second connection and try to query before deserialization
 	conn2, err := db2.Conn(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = conn2.Close() }() //nolint:wsl
 
 	var msg string
 

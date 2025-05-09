@@ -3,7 +3,7 @@ A command-line password manager backed by SQLite.
 
 ## TODO
 
-- [ ] Implement all initial subcommands
+- [x] Implement all initial subcommands
   - [x] login
   - [x] logout  (session)
   - [x] create  (alias: new)
@@ -21,5 +21,5 @@ A command-line password manager backed by SQLite.
     - chrome
   - [x] export
   - [x] generate (alias: rand, gen)
-- [ ] Add a cryptographic layer
+- [x] Add a cryptographic layer
 - [ ] Add session support

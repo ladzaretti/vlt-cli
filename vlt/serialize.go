@@ -7,6 +7,11 @@ import (
 	"modernc.org/sqlite"
 )
 
+// Serialize serializes a binary the SQLite database associated
+// with the given *sql.Conn.
+//
+// The returned buffer contains a complete, self-contained serialization of
+// the in-memory database, suitable for use with [Deserialize] or storage.
 func Serialize(conn *sql.Conn) (buf []byte, retErr error) {
 	err := conn.Raw(func(driverConn any) error {
 		c, ok := driverConn.(*sqlite.Conn)
@@ -27,9 +32,8 @@ func Serialize(conn *sql.Conn) (buf []byte, retErr error) {
 	return buf, err
 }
 
-// Deserialize restores the contents of the database connected via this
-// Conn from the given serialized buffer. The buffer should be produced by a
-// call to [Conn.Serialize].
+// Deserialize loads a serialized SQLite database into the given connection.
+// The input buffer must be produced by [Serialize].
 func Deserialize(conn *sql.Conn, buf []byte) error {
 	return conn.Raw(func(driverConn any) error {
 		c, ok := driverConn.(*sqlite.Conn)
@@ -37,7 +41,7 @@ func Deserialize(conn *sql.Conn, buf []byte) error {
 			return fmt.Errorf("deserialize: unexpected driverConn type: %T", driverConn)
 		}
 
-		err := c.DeserializeWithFlags(buf, 0)
+		err := c.Deserialize(buf)
 		if err != nil {
 			return fmt.Errorf("deserialize: %w", err)
 		}

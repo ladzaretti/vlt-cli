@@ -54,6 +54,7 @@ type Vault struct {
 	nonce          []byte                         // nonce is the cryptographic nonce used to encrypt the serialized vault data.
 	conn           *sql.Conn                      // conn is the connection to the vault database used for serializing and deserializing.
 	db             *vaultdb.VaultDB               // db provides and interface to the in-memory database holding the actual user data.
+	buf            []byte                         // buf holds the memory backing in-memory SQLite database. retained to prevent GC while the DB is active, released in Seal().
 	vaultContainer *vaultcontainer.VaultContainer // vaultContainer provides method to interact with the vault containing database
 	cleanupFuncs   []cleanupFunc                  // cleanupFuncs contains deferred cleanup functions.
 }
@@ -108,6 +109,8 @@ func New(ctx context.Context, password string, path string) (vlt *Vault, retErr 
 	}
 
 	vlt = newVault(path, cipherdata.Nonce, aes, vc)
+	vlt.cleanupFuncs = append(vlt.cleanupFuncs, cleanup)
+
 	if err := vlt.open(ctx, nil); err != nil {
 		return vlt, errf("new: %w", err)
 	}
@@ -175,6 +178,11 @@ func Open(ctx context.Context, password string, path string) (vlt *Vault, retErr
 	return vlt, nil
 }
 
+// Seal serializes the in-memory SQLite database, encrypts it, and stores the
+// resulting ciphertext using the vault container.
+//
+// After calling Seal, the in-memory database buffer is eligible for garbage
+// collection and should not be used again unless reinitialized.
 func (vlt *Vault) Seal(ctx context.Context) error {
 	serialized, err := Serialize(vlt.conn)
 	if err != nil {
@@ -190,14 +198,13 @@ func (vlt *Vault) Seal(ctx context.Context) error {
 		return errf("vault seal: %w", err)
 	}
 
+	vlt.buf = nil // release backing buffer to allow garbage collection.
+
 	return vlt.cleanup()
 }
 
 func (vlt *Vault) cleanup() error {
-	vlt.cleanupFuncs = append(vlt.cleanupFuncs, vlt.conn.Close)
-
-	err := executeCleanup(vlt.cleanupFuncs)
-	if err != nil {
+	if err := executeCleanup(vlt.cleanupFuncs); err != nil {
 		return errf("vault cleanup: %w", err)
 	}
 
@@ -274,6 +281,14 @@ func vaultCipherData(password []byte) (vaultcontainer.CipherData, error) {
 	}, nil
 }
 
+// open decrypts and loads the encrypted vault into memory by deserializing
+// the SQLite database into a preallocated buffer.
+//
+// The buffer is retained in vlt.buf for the lifetime of the in-memory database
+// and must remain valid until Seal() is called, which releases it.
+//
+// This method should only be called once during initialization and must not
+// be called concurrently.
 func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 	defer func() {
 		if retErr != nil {
@@ -286,10 +301,14 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 		return err
 	}
 
+	vlt.cleanupFuncs = append(vlt.cleanupFuncs, db.Close)
+
 	conn, err := db.Conn(ctx)
 	if err != nil {
 		return err
 	}
+
+	vlt.cleanupFuncs = append(vlt.cleanupFuncs, conn.Close)
 
 	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
 		return err
@@ -301,7 +320,9 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 			return err
 		}
 
-		if err := Deserialize(conn, decrypted); err != nil {
+		vlt.buf = decrypted
+
+		if err := Deserialize(conn, vlt.buf); err != nil {
 			return err
 		}
 	}
