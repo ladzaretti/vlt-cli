@@ -37,8 +37,8 @@ const insertVault = `
 		vault_encrypted = excluded.vault_encrypted;
 `
 
-func (s *VaultContainer) InsertNewVault(ctx context.Context, auth string, kdf string, nonce []byte, ciphervault []byte) error {
-	if _, err := s.db.ExecContext(ctx, insertVault, auth, kdf, nonce, ciphervault); err != nil {
+func (vc *VaultContainer) InsertNewVault(ctx context.Context, auth string, kdf string, nonce []byte, ciphervault []byte) error {
+	if _, err := vc.db.ExecContext(ctx, insertVault, auth, kdf, nonce, ciphervault); err != nil {
 		return err
 	}
 
@@ -54,8 +54,8 @@ const updateVault = `
 		id = 0;
 `
 
-func (v *VaultContainer) UpdateVault(ctx context.Context, ciphervault []byte) error {
-	_, err := v.db.ExecContext(ctx, updateVault, ciphervault)
+func (vc *VaultContainer) UpdateVault(ctx context.Context, ciphervault []byte) error {
+	_, err := vc.db.ExecContext(ctx, updateVault, ciphervault)
 	return err
 }
 
@@ -75,8 +75,8 @@ type CipherData struct {
 	Vault   []byte
 }
 
-func (v *VaultContainer) SelectVault(ctx context.Context) (*CipherData, error) {
-	row := v.db.QueryRowContext(ctx, selectVault)
+func (vc *VaultContainer) SelectVault(ctx context.Context) (*CipherData, error) {
+	row := vc.db.QueryRowContext(ctx, selectVault)
 
 	var data CipherData
 	if err := row.Scan(&data.AuthPHC, &data.KDFPHC, &data.Nonce, &data.Vault); err != nil {

@@ -42,7 +42,7 @@ func (o *LoginOptions) Validate() error {
 	return nil
 }
 
-func (o *LoginOptions) Run(ctx context.Context) error {
+func (o *LoginOptions) Run(_ context.Context) error {
 	v := o.vault()
 
 	usrKey, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "Password for vault at %q:", v.Path)

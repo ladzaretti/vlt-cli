@@ -1,7 +1,6 @@
 package main_test
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -17,24 +16,24 @@ func TestMain(t *testing.T) {
 		t.Error("Dummy test")
 	}
 
-	vlt, err := vlt.Open(context.Background(), "password", "/tmp/.vlt.test")
+	v, err := vlt.Open(t.Context(), "password", "/tmp/.vlt.test")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = vlt.InsertNewSecret(t.Context(), "name", "secret", []string{"label1", "label2"})
+	_, err = v.InsertNewSecret(t.Context(), "name", "secret", []string{"label1", "label2"})
 	if err != nil {
 		t.Error(err)
 	}
 
-	m, err := vlt.ExportSecrets(t.Context())
+	m, err := v.ExportSecrets(t.Context())
 	if err != nil {
 		t.Error(err)
 	}
 
 	fmt.Printf("%v", m)
 
-	err = vlt.Seal(t.Context())
+	err = v.Seal(t.Context())
 	if err != nil {
 		t.Error(err)
 	}

@@ -7,10 +7,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ladzaretti/migrate"
 	"github.com/ladzaretti/vlt-cli/vaultcrypto"
 	"github.com/ladzaretti/vlt-cli/vlt/sqlite/vaultcontainer"
 	"github.com/ladzaretti/vlt-cli/vlt/sqlite/vaultdb"
+
+	"github.com/ladzaretti/migrate"
 
 	// Package sqlite is a CGo-free port of SQLite/SQLite3.
 	_ "modernc.org/sqlite"
@@ -67,7 +68,7 @@ func New(ctx context.Context, password string, path string) (*Vault, error) {
 	if err != nil {
 		return nil, errf("new: %w", err)
 	}
-	defer func() { _ = cleanup() }()
+	defer func() { _ = cleanup() }() //nolint:wsl
 
 	cipherdata, err := vaultCipherData([]byte(password))
 	if err != nil {
@@ -92,7 +93,6 @@ func New(ctx context.Context, password string, path string) (*Vault, error) {
 	serialized, err := Serialize(vlt.conn)
 	if err != nil {
 		return nil, errf("new: %w", err)
-
 	}
 
 	ciphervault, err := aes.Seal(cipherdata.Nonce, serialized)
@@ -112,7 +112,7 @@ func Open(ctx context.Context, password string, path string) (vlt *Vault, retErr
 	if err != nil {
 		return nil, errf("open: %w", err)
 	}
-	defer func() {
+	defer func() { //nolint:wsl
 		if retErr != nil {
 			if vlt == nil {
 				_ = cleanup()
@@ -152,7 +152,6 @@ func (vlt *Vault) Seal(ctx context.Context) error {
 	serialized, err := Serialize(vlt.conn)
 	if err != nil {
 		return errf("seal: %w", err)
-
 	}
 
 	ciphervault, err := vlt.aesgcm.Seal(vlt.nonce, serialized)
@@ -160,7 +159,9 @@ func (vlt *Vault) Seal(ctx context.Context) error {
 		return errf("seal: %w", err)
 	}
 
-	vlt.vaultContainer.UpdateVault(ctx, ciphervault)
+	if err := vlt.vaultContainer.UpdateVault(ctx, ciphervault); err != nil {
+		return errf("seal: %w", err)
+	}
 
 	return vlt.cleanup()
 }
@@ -183,6 +184,7 @@ func executeCleanup(fs []cleanupFunc) error {
 		}
 
 		fs[i] = nil
+
 		errs = append(errs, f())
 	}
 
@@ -198,6 +200,7 @@ func openVaultContainer(path string) (_ *vaultcontainer.VaultContainer, cleanup 
 	cleanup = db.Close
 
 	m := migrate.New(db, migrate.SQLiteDialect{})
+
 	_, err = m.Apply(containerMigrations)
 	if err != nil {
 		err2 := cleanup()
@@ -430,7 +433,6 @@ func (vlt *Vault) SecretsByLabels(ctx context.Context, labelPatterns ...string) 
 
 // ExportSecrets exports all secret-related data stored in the database.
 func (vlt *Vault) ExportSecrets(ctx context.Context) (map[int]vaultdb.SecretWithLabels, error) {
-
 	encryptedSecrets, err := vlt.db.ExportSecrets(ctx)
 	if err != nil {
 		return nil, err

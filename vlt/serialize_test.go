@@ -1,16 +1,18 @@
-package vlt
+package vlt_test
 
 import (
 	"database/sql"
 	"testing"
+
+	"github.com/ladzaretti/vlt-cli/vlt"
 )
 
-func TestSerialize(t *testing.T) {
+func TestSerialization(t *testing.T) {
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }() //nolint:wsl
 
 	// Create a table and insert data
 	//
@@ -18,6 +20,7 @@ func TestSerialize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	_, err = db.Exec(`INSERT INTO foo VALUES ('bar');`)
 	if err != nil {
 		t.Fatal(err)
@@ -28,34 +31,37 @@ func TestSerialize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := Serialize(conn)
+
+	data, err := vlt.Serialize(conn)
 	if err != nil {
 		t.Fatal("Serialize:", err)
 	}
-	conn.Close()
+
+	_ = conn.Close()
 
 	// Open a new in-memory database
 	db2, err := sql.Open("sqlite", ":memory:?cache=shared")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db2.Close()
+	defer func() { _ = db2.Close() }() //nolint:wsl
 
 	// Get second connection and try to query before deserialization
 	conn2, err := db2.Conn(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn2.Close()
+	defer func() { _ = conn2.Close() }() //nolint:wsl
 
 	var msg string
+
 	err = conn2.QueryRowContext(t.Context(), `SELECT msg FROM foo`).Scan(&msg)
 	if err == nil {
 		t.Fatal("Query:", err)
 	}
 
 	// Deserialize the data into the second connection
-	err = Deserialize(conn2, data)
+	err = vlt.Deserialize(conn2, data)
 	if err != nil {
 		t.Fatal("Deserialize:", err)
 	}
@@ -65,6 +71,7 @@ func TestSerialize(t *testing.T) {
 	if err != nil {
 		t.Fatal("Query:", err)
 	}
+
 	if msg != "bar" {
 		t.Fatalf("unexpected msg: %q", msg)
 	}
