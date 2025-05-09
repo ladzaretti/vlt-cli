@@ -1,15 +1,4 @@
 CREATE TABLE
-    IF NOT EXISTS master_key (
-        id INTEGER PRIMARY KEY CHECK (id = 0),
-        -- PHC-formatted string used for authenticating the master password.
-        -- Includes Argon2id parameters, salt, and the hash of the derived key.
-        auth_phc TEXT NOT NULL,
-        -- PHC-formatted string used for deriving the master encryption key.
-        -- Includes Argon2id parameters and salt, but no hash.
-        kdf_phc TEXT NOT NULL
-    );
-
-CREATE TABLE
     IF NOT EXISTS secrets (
         id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,

@@ -11,21 +11,21 @@ import (
 
 var ErrNoSchemaVersion = errors.New("no schema version found")
 
-func CreateTable(ctx context.Context, db types.LimitedDB, dialect types.Dialect) error {
+func CreateTable(ctx context.Context, db types.CoreDB, dialect types.Dialect) error {
 	return execContext(ctx, db, dialect.CreateVersionTableQuery())
 }
 
-func CurrentVersion(ctx context.Context, db types.LimitedDB, dialect types.Dialect) (*types.SchemaVersion, error) {
+func CurrentVersion(ctx context.Context, db types.CoreDB, dialect types.Dialect) (*types.SchemaVersion, error) {
 	row := db.QueryRowContext(ctx, dialect.CurrentVersionQuery())
 
 	return scanVersion(row)
 }
 
-func SaveVersion(ctx context.Context, db types.LimitedDB, dialect types.Dialect, s types.SchemaVersion) error {
+func SaveVersion(ctx context.Context, db types.CoreDB, dialect types.Dialect, s types.SchemaVersion) error {
 	return execContext(ctx, db, dialect.SaveVersionQuery(), s.Version, s.Checksum)
 }
 
-func execContext(ctx context.Context, db types.LimitedDB, query string, args ...any) error {
+func execContext(ctx context.Context, db types.CoreDB, query string, args ...any) error {
 	if _, err := db.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("exec context: %v", err)
 	}

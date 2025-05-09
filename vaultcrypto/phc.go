@@ -42,7 +42,7 @@ func DecodeAragon2idPHC(str string) (Argon2idPHC, error) {
 	parts := strings.Split(str, "$")
 
 	if len(parts) < 5 {
-		return Argon2idPHC{}, fmt.Errorf("phc decode: expected at least 5 fields got: %s", str)
+		return Argon2idPHC{}, fmt.Errorf("phc decode: expected at least 5 fields got: %q", str)
 	}
 
 	identifier, params, saltB64, hashB64 := parts[1], parts[3], parts[4], ""

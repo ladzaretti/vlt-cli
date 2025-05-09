@@ -52,13 +52,9 @@ func (o *CreateOptions) Run(ctx context.Context) error {
 		return fmt.Errorf("read new master key: %w", err)
 	}
 
-	vault, err := vlt.New(o.vaultPath())
+	_, err = vlt.Open(ctx, mk, o.vaultPath())
 	if err != nil {
 		return fmt.Errorf("create vault: %w", err)
-	}
-
-	if err := vault.SetMasterKey(ctx, mk); err != nil {
-		return fmt.Errorf("set master key: %w", err)
 	}
 
 	o.Infof("New vault successfully created at %q\n", o.vaultPath())

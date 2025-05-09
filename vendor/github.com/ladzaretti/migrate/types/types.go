@@ -5,11 +5,17 @@ import (
 	"database/sql"
 )
 
-// LimitedDB defines a minimal database interface for schema migrations.
-type LimitedDB interface {
+// CoreDB defines a minimal database interface for executing SQL queries.
+type CoreDB interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// DBTX defines a database interface that supports query execution and transactions.
+type DBTX interface {
+	CoreDB
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
 // Dialect defines the necessary methods required

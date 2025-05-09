@@ -78,13 +78,13 @@ func (o *VaultOptions) Validate() error {
 }
 
 // Run initializes the Vault object from the specified existing file.
-func (o *VaultOptions) Run(_ context.Context) error {
+func (o *VaultOptions) Run(ctx context.Context) error {
 	// creating a new vault is handled internally by the create subcommand.
 	if o.newVault {
 		return nil
 	}
 
-	v, err := vlt.New(o.Path)
+	v, err := vlt.Open(ctx, "", o.Path)
 	if err != nil {
 		return err
 	}

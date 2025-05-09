@@ -7,7 +7,7 @@ github.com/google/uuid
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/ladzaretti/migrate v0.1.3
+# github.com/ladzaretti/migrate v0.1.4
 ## explicit; go 1.24.0
 github.com/ladzaretti/migrate
 github.com/ladzaretti/migrate/internal/schemaops
@@ -34,8 +34,8 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.6
 ## explicit; go 1.12
 github.com/spf13/pflag
-# golang.org/x/crypto v0.31.0
-## explicit; go 1.20
+# golang.org/x/crypto v0.37.0
+## explicit; go 1.23.0
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
 # golang.org/x/exp v0.0.0-20250305212735-054e65f0b394

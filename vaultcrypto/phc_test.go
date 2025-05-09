@@ -12,16 +12,6 @@ import (
 var b64 = base64.StdEncoding.WithPadding(base64.NoPadding)
 
 func TestArgon2idPHC_String(t *testing.T) {
-	kdf := vaultcrypto.NewArgon2idKDF()
-
-	salt, _ := vaultcrypto.RandBytes(32)
-
-	key := kdf.DeriveKey([]byte("password"), salt)
-	key2 := kdf.DeriveKey([]byte("password"), salt)
-
-	_ = key
-	_ = key2
-
 	tests := []struct {
 		name string
 		phc  vaultcrypto.Argon2idPHC

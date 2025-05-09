@@ -10,7 +10,7 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/vlt"
-	"github.com/ladzaretti/vlt-cli/vlt/store"
+	"github.com/ladzaretti/vlt-cli/vlt/sqlite/vaultdb"
 )
 
 var ErrNoSearchArgs = errors.New("no search criteria provided; specify at least one of --id, --label, or --name")
@@ -52,32 +52,32 @@ func WithStrict(enabled bool) SearchableOptionsOpt {
 func (o *SearchableOptions) search(ctx context.Context, vault *vlt.Vault) ([]secretWithMarkedLabels, error) {
 	switch {
 	case o.ID > 0:
-		return sortAndUnmarkSecrets(func() (map[int]store.SecretWithLabels, error) {
+		return sortAndUnmarkSecrets(func() (map[int]vaultdb.SecretWithLabels, error) {
 			return vault.SecretsByIDs(ctx, o.ID)
 		})
 
 	case len(o.IDs) > 0:
-		return sortAndUnmarkSecrets(func() (map[int]store.SecretWithLabels, error) {
+		return sortAndUnmarkSecrets(func() (map[int]vaultdb.SecretWithLabels, error) {
 			return vault.SecretsByIDs(ctx, o.IDs...)
 		})
 
 	case len(o.Name) > 0 && len(o.Labels) > 0:
-		return sortAndMarkSecrets(ctx, vault, func() (map[int]store.SecretWithLabels, error) {
+		return sortAndMarkSecrets(ctx, vault, func() (map[int]vaultdb.SecretWithLabels, error) {
 			return vault.SecretsByLabelsAndName(ctx, o.Name, o.Labels...)
 		})
 
 	case len(o.Name) > 0:
-		return sortAndUnmarkSecrets(func() (map[int]store.SecretWithLabels, error) {
+		return sortAndUnmarkSecrets(func() (map[int]vaultdb.SecretWithLabels, error) {
 			return vault.SecretsByName(ctx, o.Name)
 		})
 
 	case len(o.Labels) > 0:
-		return sortAndMarkSecrets(ctx, vault, func() (map[int]store.SecretWithLabels, error) {
+		return sortAndMarkSecrets(ctx, vault, func() (map[int]vaultdb.SecretWithLabels, error) {
 			return vault.SecretsByLabels(ctx, o.Labels...)
 		})
 
 	default:
-		return sortAndUnmarkSecrets(func() (map[int]store.SecretWithLabels, error) {
+		return sortAndUnmarkSecrets(func() (map[int]vaultdb.SecretWithLabels, error) {
 			return vault.SecretsWithLabels(ctx)
 		})
 	}
@@ -131,7 +131,7 @@ type markedLabel struct {
 	matched bool
 }
 
-type retrieveSecretsFunc func() (map[int]store.SecretWithLabels, error)
+type retrieveSecretsFunc func() (map[int]vaultdb.SecretWithLabels, error)
 
 // sortAndUnmarkSecrets returns secrets with all their labels, ordered by id value.
 func sortAndUnmarkSecrets(retrieveSecretsFunc retrieveSecretsFunc) ([]secretWithMarkedLabels, error) {
@@ -205,7 +205,7 @@ func secretsWithUnmarkedLabels(ordered []secretWithLabels) []secretWithMarkedLab
 	return marked
 }
 
-func secretsMapToSlice(m map[int]store.SecretWithLabels) []secretWithLabels {
+func secretsMapToSlice(m map[int]vaultdb.SecretWithLabels) []secretWithLabels {
 	sorted := make([]secretWithLabels, 0, len(m))
 	for id, labeled := range m {
 		l := secretWithLabels{

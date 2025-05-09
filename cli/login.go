@@ -50,7 +50,8 @@ func (o *LoginOptions) Run(ctx context.Context) error {
 		return fmt.Errorf("prompt password: %v", err)
 	}
 
-	dbKey, err := v.GetMasterKey(ctx)
+	// FIXME: auth somehow
+	dbKey, err := "", nil
 	if err != nil {
 		return fmt.Errorf("get master key: %v", err)
 	}

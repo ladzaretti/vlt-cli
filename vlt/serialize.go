@@ -11,7 +11,7 @@ func Serialize(conn *sql.Conn) (buf []byte, retErr error) {
 	err := conn.Raw(func(driverConn any) error {
 		c, ok := driverConn.(*sqlite.Conn)
 		if !ok {
-			return fmt.Errorf("serialize: unexpected driverConn type: %T", driverConn)
+			return fmt.Errorf("serialize: unexpected driver conn type: %T", driverConn)
 		}
 
 		v, err := c.Serialize()

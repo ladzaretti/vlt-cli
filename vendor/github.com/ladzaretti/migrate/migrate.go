@@ -50,7 +50,7 @@ type Checksum func(s string) string
 type Filter func(migrationIndex int) bool
 
 type Migrator struct {
-	db                     *sql.DB
+	db                     types.DBTX
 	dialect                types.Dialect
 	migrationFilter        Filter
 	checksum               Checksum
@@ -66,7 +66,7 @@ type Opt func(*Migrator)
 // By default, both transactions and checksum validation are enabled. The checksum
 // validation uses a SHA-1 function that ignores formatting (e.g., whitespaces).
 // These defaults can be customized using the [Opt] functions.
-func New(db *sql.DB, dialect types.Dialect, opts ...Opt) *Migrator {
+func New(db types.DBTX, dialect types.Dialect, opts ...Opt) *Migrator {
 	m := &Migrator{
 		db:                     db,
 		dialect:                dialect,
@@ -235,7 +235,7 @@ func (m *Migrator) CurrentSchemaVersion(ctx context.Context) (types.SchemaVersio
 	return types.SchemaVersion{}, nil
 }
 
-func (m *Migrator) applyMigrations(ctx context.Context, db types.LimitedDB, current int, migrations []string, checksums []string) (n int, retErr error) {
+func (m *Migrator) applyMigrations(ctx context.Context, db types.CoreDB, current int, migrations []string, checksums []string) (n int, retErr error) {
 	if len(migrations)+1 != len(checksums) {
 		retErr = errf("mismatched migrations and checksums: expected %d checksums (+1 for initial state), but found %d", len(migrations), len(checksums))
 		return
@@ -290,7 +290,7 @@ func (m *Migrator) validateChecksum(schema types.SchemaVersion, runtimeChecksum 
 	return nil
 }
 
-func applyMigration(ctx context.Context, db types.LimitedDB, dialect types.Dialect, schema types.SchemaVersion, migration string) error {
+func applyMigration(ctx context.Context, db types.CoreDB, dialect types.Dialect, schema types.SchemaVersion, migration string) error {
 	if err := execContext(ctx, db, migration); err != nil {
 		return err
 	}
@@ -303,7 +303,7 @@ func applyMigration(ctx context.Context, db types.LimitedDB, dialect types.Diale
 	return nil
 }
 
-func execContext(ctx context.Context, db types.LimitedDB, query string, args ...any) error {
+func execContext(ctx context.Context, db types.CoreDB, query string, args ...any) error {
 	if _, err := db.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("exec context: %v", err)
 	}

@@ -1,4 +1,4 @@
-package store
+package vaultdb
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	cmdutil "github.com/ladzaretti/vlt-cli/util"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
+	"github.com/ladzaretti/vlt-cli/vlt/types"
 )
 
 var (
@@ -19,64 +20,21 @@ var (
 	ErrNoIDsProvided = errors.New("no IDs provided")
 )
 
-// DBTX defines the subset of database operations used by [Store].
-type DBTX interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+type VaultDB struct {
+	db types.DBTX
 }
 
-type Store struct {
-	db DBTX
-}
-
-func New(db DBTX) *Store {
-	return &Store{
+func New(db types.DBTX) *VaultDB {
+	return &VaultDB{
 		db: db,
 	}
 }
 
 // WithTx returns a new Store using the given transaction.
-func (*Store) WithTx(tx *sql.Tx) *Store {
-	return &Store{
+func (*VaultDB) WithTx(tx *sql.Tx) *VaultDB {
+	return &VaultDB{
 		db: tx,
 	}
-}
-
-const insertMasterKey = `
-	INSERT INTO
-		master_key (id, key)
-	VALUES
-		(0, $1) ON CONFLICT (id) DO NOTHING
-`
-
-func (s *Store) InsertMasterKey(ctx context.Context, key string) error {
-	if _, err := s.db.ExecContext(ctx, insertMasterKey, key); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-const selectMasterKey = `
-	SELECT
-		key
-	FROM
-		master_key
-	WHERE
-		id = 0
-`
-
-func (s *Store) QueryMasterKey(ctx context.Context) (string, error) {
-	var masterKey string
-
-	err := s.db.QueryRowContext(ctx, selectMasterKey).Scan(&masterKey)
-	if err != nil {
-		return "", err
-	}
-
-	return masterKey, nil
 }
 
 //nolint:gosec
@@ -87,7 +45,7 @@ const insertSecret = `
 		($1, $2)
 `
 
-func (s *Store) InsertNewSecret(ctx context.Context, name string, secret string) (int, error) {
+func (s *VaultDB) InsertNewSecret(ctx context.Context, name string, secret string) (int, error) {
 	res, err := s.db.ExecContext(ctx, insertSecret, name, secret)
 	if err != nil {
 		return 0, err
@@ -109,7 +67,7 @@ const updateSecret = `
 		id = $2
 `
 
-func (s *Store) UpdateSecret(ctx context.Context, id int, secret string) (n int64, retErr error) {
+func (s *VaultDB) UpdateSecret(ctx context.Context, id int, secret string) (n int64, retErr error) {
 	res, err := s.db.ExecContext(ctx, updateSecret, secret, id)
 	if err != nil {
 		return 0, err
@@ -131,7 +89,7 @@ const updateName = `
 		id = $2
 `
 
-func (s *Store) UpdateName(ctx context.Context, id int, name string) (n int64, retErr error) {
+func (s *VaultDB) UpdateName(ctx context.Context, id int, name string) (n int64, retErr error) {
 	res, err := s.db.ExecContext(ctx, updateName, name, id)
 	if err != nil {
 		return 0, err
@@ -156,7 +114,7 @@ const selectSecret = `
 `
 
 // secret returns the secret associated with the given secret id.
-func (s *Store) Secret(ctx context.Context, id int) (string, error) {
+func (s *VaultDB) Secret(ctx context.Context, id int) (string, error) {
 	var secret string
 
 	err := s.db.QueryRowContext(ctx, selectSecret, id).Scan(&secret)
@@ -174,7 +132,7 @@ const insertLabel = `
 		($1, $2) ON CONFLICT (name, secret_id) DO NOTHING
 `
 
-func (s *Store) InsertLabel(ctx context.Context, name string, secretID int) (int64, error) {
+func (s *VaultDB) InsertLabel(ctx context.Context, name string, secretID int) (int64, error) {
 	res, err := s.db.ExecContext(ctx, insertLabel, name, secretID)
 	if err != nil {
 		return 0, err
@@ -195,7 +153,7 @@ const deleteLabel = `
 		AND secret_id = $2
 `
 
-func (s *Store) DeleteLabel(ctx context.Context, name string, secretID int64) (int64, error) {
+func (s *VaultDB) DeleteLabel(ctx context.Context, name string, secretID int64) (int64, error) {
 	res, err := s.db.ExecContext(ctx, deleteLabel, name, secretID)
 	if err != nil {
 		return 0, err
@@ -226,7 +184,7 @@ type SecretWithLabels struct {
 }
 
 // SecretsWithLabels returns all secrets along with all labels associated with each.
-func (s *Store) SecretsWithLabels(ctx context.Context) (map[int]SecretWithLabels, error) {
+func (s *VaultDB) SecretsWithLabels(ctx context.Context) (map[int]SecretWithLabels, error) {
 	return s.secretsByColumn(ctx, "", "LEFT JOIN")
 }
 
@@ -234,7 +192,7 @@ func (s *Store) SecretsWithLabels(ctx context.Context) (map[int]SecretWithLabels
 // along with all labels associated with it.
 //
 // If no pattern is provided, it returns all secrets along with all their labels.
-func (s *Store) SecretsByName(ctx context.Context, namePattern string) (map[int]SecretWithLabels, error) {
+func (s *VaultDB) SecretsByName(ctx context.Context, namePattern string) (map[int]SecretWithLabels, error) {
 	return s.secretsByColumn(ctx, "secret_name", "LEFT JOIN", namePattern)
 }
 
@@ -242,7 +200,7 @@ func (s *Store) SecretsByName(ctx context.Context, namePattern string) (map[int]
 // along with all labels associated with each secret that matches the labelPatterns.
 //
 // If no patterns are provided, an [vaulterrors.ErrMissingLabels] error is returned.
-func (s *Store) SecretsByLabels(ctx context.Context, labelPatterns ...string) (map[int]SecretWithLabels, error) {
+func (s *VaultDB) SecretsByLabels(ctx context.Context, labelPatterns ...string) (map[int]SecretWithLabels, error) {
 	if len(labelPatterns) == 0 {
 		return nil, vaulterrors.ErrMissingLabels
 	}
@@ -254,7 +212,7 @@ func (s *Store) SecretsByLabels(ctx context.Context, labelPatterns ...string) (m
 // match a where clause with all glob patterns for the given col.
 //
 // If no patterns are provided, no where clause is generated.
-func (s *Store) secretsByColumn(ctx context.Context, col string, join string, patterns ...string) (map[int]SecretWithLabels, error) {
+func (s *VaultDB) secretsByColumn(ctx context.Context, col string, join string, patterns ...string) (map[int]SecretWithLabels, error) {
 	query := fmt.Sprintf(`
 	SELECT
 		s.id,
@@ -272,7 +230,7 @@ func (s *Store) secretsByColumn(ctx context.Context, col string, join string, pa
 // SecretsByIDs returns a map of secrets and their labels for the given IDs.
 //
 // If the IDs slice is empty, the function returns [ErrNoIDsProvided].
-func (s *Store) SecretsByIDs(ctx context.Context, ids []int) (map[int]SecretWithLabels, error) {
+func (s *VaultDB) SecretsByIDs(ctx context.Context, ids []int) (map[int]SecretWithLabels, error) {
 	if len(ids) == 0 {
 		return nil, ErrNoIDsProvided
 	}
@@ -300,7 +258,7 @@ func (s *Store) SecretsByIDs(ctx context.Context, ids []int) (map[int]SecretWith
 // provided label and name glob patterns.
 //
 // If no label patterns are provided, it returns [ErrNoLabelsProvided].
-func (s *Store) SecretsByLabelsAndName(ctx context.Context, name string, labels ...string) (map[int]SecretWithLabels, error) {
+func (s *VaultDB) SecretsByLabelsAndName(ctx context.Context, name string, labels ...string) (map[int]SecretWithLabels, error) {
 	if len(labels) == 0 {
 		return nil, ErrNoLabelsProvided
 	}
@@ -322,7 +280,7 @@ func (s *Store) SecretsByLabelsAndName(ctx context.Context, name string, labels 
 }
 
 // secretsJoinLabels executes a query to join secrets with their labels.
-func (s *Store) secretsJoinLabels(ctx context.Context, query string, args ...any) (map[int]SecretWithLabels, error) {
+func (s *VaultDB) secretsJoinLabels(ctx context.Context, query string, args ...any) (map[int]SecretWithLabels, error) {
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -347,7 +305,7 @@ func (s *Store) secretsJoinLabels(ctx context.Context, query string, args ...any
 }
 
 // ExportSecrets exports all secret-related data stored in the database.
-func (s *Store) ExportSecrets(ctx context.Context) (map[int]SecretWithLabels, error) {
+func (s *VaultDB) ExportSecrets(ctx context.Context) (map[int]SecretWithLabels, error) {
 	query := `	
 	SELECT
 		s.id,
@@ -383,7 +341,7 @@ func (s *Store) ExportSecrets(ctx context.Context) (map[int]SecretWithLabels, er
 }
 
 // DeleteByIDs deletes secrets by their IDs, along with their labels.
-func (s *Store) DeleteByIDs(ctx context.Context, ids []int) (int64, error) {
+func (s *VaultDB) DeleteByIDs(ctx context.Context, ids []int) (int64, error) {
 	if len(ids) == 0 {
 		return 0, ErrNoIDsProvided
 	}
