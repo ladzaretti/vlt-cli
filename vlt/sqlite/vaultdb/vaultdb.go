@@ -40,13 +40,13 @@ func (*VaultDB) WithTx(tx *sql.Tx) *VaultDB {
 //nolint:gosec
 const insertSecret = `
 	INSERT INTO
-		secrets (name, secret)
+		secrets (name, nonce, ciphertext)
 	VALUES
-		($1, $2)
+		(?, ?, ?)
 `
 
-func (s *VaultDB) InsertNewSecret(ctx context.Context, name string, secret string) (int, error) {
-	res, err := s.db.ExecContext(ctx, insertSecret, name, secret)
+func (s *VaultDB) InsertNewSecret(ctx context.Context, name string, nonce []byte, ciphertext []byte) (int, error) {
+	res, err := s.db.ExecContext(ctx, insertSecret, name, nonce, ciphertext)
 	if err != nil {
 		return 0, err
 	}
@@ -62,13 +62,14 @@ func (s *VaultDB) InsertNewSecret(ctx context.Context, name string, secret strin
 const updateSecret = `
 	UPDATE secrets
 	SET
-		secret = $1
+		nonce = ?,
+		ciphertext = ?
 	WHERE
-		id = $2
+		id = ?
 `
 
-func (s *VaultDB) UpdateSecret(ctx context.Context, id int, secret string) (n int64, retErr error) {
-	res, err := s.db.ExecContext(ctx, updateSecret, secret, id)
+func (s *VaultDB) UpdateSecret(ctx context.Context, id int, nonce []byte, ciphertext []byte) (n int64, retErr error) {
+	res, err := s.db.ExecContext(ctx, updateSecret, nonce, ciphertext, id)
 	if err != nil {
 		return 0, err
 	}
@@ -106,23 +107,21 @@ func (s *VaultDB) UpdateName(ctx context.Context, id int, name string) (n int64,
 //nolint:gosec
 const selectSecret = `
 	SELECT
-		secret
+		nonce, ciphertext
 	FROM
 		secrets
 	WHERE
-		id = $1
+		id = ?
 `
 
-// secret returns the secret associated with the given secret id.
-func (s *VaultDB) Secret(ctx context.Context, id int) (string, error) {
-	var secret string
-
-	err := s.db.QueryRowContext(ctx, selectSecret, id).Scan(&secret)
+// secret returns the secret ciphertext and nonce associated with the given secret id.
+func (s *VaultDB) Secret(ctx context.Context, id int) (nonce []byte, ciphertext []byte, err error) {
+	err = s.db.QueryRowContext(ctx, selectSecret, id).Scan(&nonce, &ciphertext)
 	if err != nil {
-		return "", err
+		return nonce, ciphertext, err
 	}
 
-	return secret, nil
+	return nonce, ciphertext, err
 }
 
 const insertLabel = `
@@ -170,17 +169,20 @@ func (s *VaultDB) DeleteLabel(ctx context.Context, name string, secretID int64) 
 // secretWithLabelRow represents a row resulting from a join
 // between the secrets and labels tables.
 type secretWithLabelRow struct {
-	id    int
-	name  string
-	value sql.NullString
-	label sql.NullString
+	id         int
+	name       string
+	nonce      []byte
+	ciphertext []byte
+	label      sql.NullString
 }
 
 // SecretWithLabels represents a secret with some of its associated labels.
 type SecretWithLabels struct {
-	Name   string
-	Secret string
-	Labels []string
+	Name       string
+	Nonce      []byte
+	Ciphertext []byte
+	Value      string
+	Labels     []string
 }
 
 // SecretsWithLabels returns all secrets along with all labels associated with each.
@@ -310,7 +312,8 @@ func (s *VaultDB) ExportSecrets(ctx context.Context) (map[int]SecretWithLabels, 
 	SELECT
 		s.id,
 		s.name AS secret_name,
-		s.secret,
+		s.nonce,
+		s.ciphertext,
 		l.name AS label
 	FROM
 		secrets s
@@ -326,7 +329,7 @@ func (s *VaultDB) ExportSecrets(ctx context.Context) (map[int]SecretWithLabels, 
 	var secrets []secretWithLabelRow
 	for rows.Next() {
 		var secret secretWithLabelRow
-		if err := rows.Scan(&secret.id, &secret.name, &secret.value, &secret.label); err != nil {
+		if err := rows.Scan(&secret.id, &secret.name, &secret.nonce, &secret.ciphertext, &secret.label); err != nil {
 			return nil, err
 		}
 
@@ -402,8 +405,9 @@ func reduce(secrets []secretWithLabelRow) map[int]SecretWithLabels {
 			v.Labels = append(v.Labels, secret.label.String)
 		}
 
-		if len(v.Secret) == 0 && secret.value.Valid {
-			v.Secret = secret.value.String
+		if len(v.Ciphertext) == 0 {
+			v.Ciphertext = secret.ciphertext
+			v.Nonce = secret.nonce
 		}
 
 		m[secret.id] = v

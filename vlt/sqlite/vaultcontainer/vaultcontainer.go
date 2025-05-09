@@ -54,8 +54,8 @@ const updateVault = `
 		id = 0;
 `
 
-func (v *VaultContainer) UpdateVault(ctx context.Context, VaultEncrypted []byte) error {
-	_, err := v.db.ExecContext(ctx, updateVault, VaultEncrypted)
+func (v *VaultContainer) UpdateVault(ctx context.Context, ciphervault []byte) error {
+	_, err := v.db.ExecContext(ctx, updateVault, ciphervault)
 	return err
 }
 

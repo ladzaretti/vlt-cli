@@ -34,15 +34,34 @@ var (
 	}
 )
 
+type cleanupFunc func() error
+
 // Vault represents a connection to a vault.
 type Vault struct {
-	Path   string              // Path is the path to the underlying SQLite file.
-	conn   *sql.Conn           // conn is the connection to the database.
-	aesgcm *vaultcrypto.AESGCM // aesgcm is used for cryptographic ops on the vault data.
-	nonce  []byte              // nonce is the cryptographic nonce used to encrypt the serialized vault data.
-	db     *vaultdb.VaultDB    // store provides methods to interact with the vault data.
+	Path           string                         // Path is the path to the underlying SQLite file.
+	aesgcm         *vaultcrypto.AESGCM            // aesgcm is used for cryptographic ops on the vault data.
+	nonce          []byte                         // nonce is the cryptographic nonce used to encrypt the serialized vault data.
+	conn           *sql.Conn                      // conn is the connection to the vault database used for serializing and deserializing.
+	db             *vaultdb.VaultDB               // store provides methods to interact with the vault data.
+	vaultContainer *vaultcontainer.VaultContainer //
+	cleanupFuncs   []cleanupFunc                  //
 }
 
+func newVault(path string, nonce []byte, aes *vaultcrypto.AESGCM, vc *vaultcontainer.VaultContainer) *Vault {
+	return &Vault{
+		Path:           path,
+		nonce:          nonce,
+		aesgcm:         aes,
+		vaultContainer: vc,
+	}
+}
+
+// New creates a new Vault instance using the given password and database path.
+// It initializes a new database at the specified path.
+//
+// If a database already exists at that path, it will be overwritten.
+// The previous data is preserved in the vault history table,
+// but it will not be used unless explicitly restored.
 func New(ctx context.Context, password string, path string) (*Vault, error) {
 	vc, cleanup, err := openVaultContainer(path)
 	if err != nil {
@@ -65,12 +84,12 @@ func New(ctx context.Context, password string, path string) (*Vault, error) {
 		return nil, err
 	}
 
-	v := &Vault{Path: path, aesgcm: aes, nonce: cipherdata.Nonce}
-	if err := v.open(ctx, nil); err != nil {
+	vlt := newVault(path, cipherdata.Nonce, aes, vc)
+	if err := vlt.open(ctx, nil); err != nil {
 		return nil, errf("new: %w", err)
 	}
 
-	serialized, err := Serialize(v.conn)
+	serialized, err := Serialize(vlt.conn)
 	if err != nil {
 		return nil, errf("new: %w", err)
 
@@ -85,22 +104,31 @@ func New(ctx context.Context, password string, path string) (*Vault, error) {
 		return nil, errf("new: %w", err)
 	}
 
-	return v, nil
+	return vlt, nil
 }
 
-func Open(ctx context.Context, password string, path string) (*Vault, error) {
+func Open(ctx context.Context, password string, path string) (vlt *Vault, retErr error) {
 	vc, cleanup, err := openVaultContainer(path)
 	if err != nil {
 		return nil, errf("open: %w", err)
 	}
-	defer func() { _ = cleanup() }()
+	defer func() {
+		if retErr != nil {
+			if vlt == nil {
+				_ = cleanup()
+				return
+			}
 
-	cipherData, err := vc.SelectVault(ctx)
+			_ = vlt.cleanup()
+		}
+	}()
+
+	cipherdata, err := vc.SelectVault(ctx)
 	if err != nil {
 		return nil, errf("open: %w", err)
 	}
 
-	phc, err := vaultcrypto.DecodeAragon2idPHC(cipherData.KDFPHC)
+	phc, err := vaultcrypto.DecodeAragon2idPHC(cipherdata.KDFPHC)
 	if err != nil {
 		return nil, errf("open: %w", err)
 	}
@@ -110,12 +138,55 @@ func Open(ctx context.Context, password string, path string) (*Vault, error) {
 		return nil, err
 	}
 
-	v := &Vault{Path: path, aesgcm: aes, nonce: cipherData.Nonce}
-	if err := v.open(ctx, cipherData.Vault); err != nil {
+	vlt = newVault(path, cipherdata.Nonce, aes, vc)
+	vlt.cleanupFuncs = append(vlt.cleanupFuncs, cleanup)
+
+	if err := vlt.open(ctx, cipherdata.Vault); err != nil {
 		return nil, errf("open: %w", err)
 	}
 
-	return v, nil
+	return vlt, nil
+}
+
+func (vlt *Vault) Seal(ctx context.Context) error {
+	serialized, err := Serialize(vlt.conn)
+	if err != nil {
+		return errf("seal: %w", err)
+
+	}
+
+	ciphervault, err := vlt.aesgcm.Seal(vlt.nonce, serialized)
+	if err != nil {
+		return errf("seal: %w", err)
+	}
+
+	vlt.vaultContainer.UpdateVault(ctx, ciphervault)
+
+	return vlt.cleanup()
+}
+
+func (vlt *Vault) cleanup() (err error) {
+	vlt.cleanupFuncs = append(vlt.cleanupFuncs, vlt.conn.Close)
+	return executeCleanup(vlt.cleanupFuncs)
+}
+
+// executeCleanup executes cleanup functions in reverse order,
+// similar to defer statements.
+//
+// used functions are nilled out.
+func executeCleanup(fs []cleanupFunc) error {
+	var errs []error
+	for i := len(fs) - 1; i >= 0; i-- {
+		f := fs[i]
+		if f == nil {
+			continue
+		}
+
+		fs[i] = nil
+		errs = append(errs, f())
+	}
+
+	return errors.Join(errs...)
 }
 
 func openVaultContainer(path string) (_ *vaultcontainer.VaultContainer, cleanup func() error, _ error) {
@@ -167,13 +238,13 @@ func vaultCipherData(password []byte) (vaultcontainer.CipherData, error) {
 	}, nil
 }
 
-func (v *Vault) open(ctx context.Context, ciphervault []byte) error {
-	vaultDB, err := sql.Open("sqlite", ":memory:")
+func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		return errf("open in-memory vault: %w", err)
 	}
 
-	conn, err := vaultDB.Conn(ctx)
+	conn, err := db.Conn(ctx)
 	if err != nil {
 		return errf("open vault in-memory connection: %w", err)
 	}
@@ -183,7 +254,7 @@ func (v *Vault) open(ctx context.Context, ciphervault []byte) error {
 	}
 
 	if ciphervault != nil {
-		decrypted, err := v.aesgcm.Open(v.nonce, ciphervault)
+		decrypted, err := vlt.aesgcm.Open(vlt.nonce, ciphervault)
 		if err != nil {
 			return fmt.Errorf("decrypt vault: %w", err)
 		}
@@ -200,8 +271,8 @@ func (v *Vault) open(ctx context.Context, ciphervault []byte) error {
 		return errf("vault migration: %v", err)
 	}
 
-	v.conn = conn
-	v.db = vaultdb.New(conn)
+	vlt.conn = conn
+	vlt.db = vaultdb.New(conn)
 
 	return nil
 }
@@ -238,7 +309,25 @@ func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret strin
 
 	storeTx := vlt.db.WithTx(tx)
 
-	secretID, err := storeTx.InsertNewSecret(ctx, name, secret)
+	nonce, err := vaultcrypto.RandBytes(12)
+	if err != nil {
+		if err2 := tx.Rollback(); err2 != nil {
+			return 0, errf("insert new secret: rollback: %w", errors.Join(err2, err))
+		}
+
+		return 0, errf("insert new secret: %w", err)
+	}
+
+	ciphertext, err := vlt.aesgcm.Seal(nonce, []byte(secret))
+	if err != nil {
+		if err2 := tx.Rollback(); err2 != nil {
+			return 0, errf("insert new secret: rollback: %w", errors.Join(err2, err))
+		}
+
+		return 0, errf("insert new secret: %w", err)
+	}
+
+	secretID, err := storeTx.InsertNewSecret(ctx, name, nonce, ciphertext)
 	if err != nil {
 		if err2 := tx.Rollback(); err2 != nil {
 			return 0, errf("insert new secret: rollback: %w", errors.Join(err2, err))
@@ -313,7 +402,17 @@ func (vlt *Vault) UpdateSecretMetadata(ctx context.Context, id int, newName stri
 
 // UpdateSecret updates the secret value of the secret identified by id.
 func (vlt *Vault) UpdateSecret(ctx context.Context, id int, secret string) (int64, error) {
-	return vlt.db.UpdateSecret(ctx, id, secret)
+	nonce, err := vaultcrypto.RandBytes(12)
+	if err != nil {
+		return 0, errf("update secret: %w", err)
+	}
+
+	ciphertext, err := vlt.aesgcm.Seal(nonce, []byte(secret))
+	if err != nil {
+		return 0, errf("update secret: %w", err)
+	}
+
+	return vlt.db.UpdateSecret(ctx, id, nonce, ciphertext)
 }
 
 // SecretsWithLabels returns all secrets along with all labels associated with each.
@@ -331,7 +430,24 @@ func (vlt *Vault) SecretsByLabels(ctx context.Context, labelPatterns ...string) 
 
 // ExportSecrets exports all secret-related data stored in the database.
 func (vlt *Vault) ExportSecrets(ctx context.Context) (map[int]vaultdb.SecretWithLabels, error) {
-	return vlt.db.ExportSecrets(ctx)
+
+	encryptedSecrets, err := vlt.db.ExportSecrets(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for id, s := range encryptedSecrets {
+		decrypted, err := vlt.aesgcm.Open(s.Nonce, s.Ciphertext)
+		if err != nil {
+			return nil, err
+		}
+
+		s.Value = string(decrypted)
+
+		encryptedSecrets[id] = s
+	}
+
+	return encryptedSecrets, nil
 }
 
 // SecretsByName returns secrets that match the provided name pattern,
@@ -358,9 +474,19 @@ func (vlt *Vault) SecretsByLabelsAndName(ctx context.Context, name string, label
 	return vlt.db.SecretsByLabelsAndName(ctx, name, labels...)
 }
 
-// Secret retrieves the secret for the given secret ID.
+// Secret decrypts the ciphertext associated with the given secret ID.
 func (vlt *Vault) Secret(ctx context.Context, id int) (string, error) {
-	return vlt.db.Secret(ctx, id)
+	nonce, ciphertext, err := vlt.db.Secret(ctx, id)
+	if err != nil {
+		return "", errf("secret: %w", err)
+	}
+
+	secret, err := vlt.aesgcm.Open(nonce, ciphertext)
+	if err != nil {
+		return "", errf("secret: %w", err)
+	}
+
+	return string(secret), nil
 }
 
 // DeleteByIDs deletes secrets by their IDs, along with their labels.

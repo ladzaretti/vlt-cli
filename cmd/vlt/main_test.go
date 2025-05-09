@@ -19,7 +19,7 @@ func TestMain(t *testing.T) {
 
 	vlt, err := vlt.Open(context.Background(), "password", "/tmp/.vlt.test")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	_, err = vlt.InsertNewSecret(t.Context(), "name", "secret", []string{"label1", "label2"})
@@ -33,4 +33,9 @@ func TestMain(t *testing.T) {
 	}
 
 	fmt.Printf("%v", m)
+
+	err = vlt.Seal(t.Context())
+	if err != nil {
+		t.Error(err)
+	}
 }

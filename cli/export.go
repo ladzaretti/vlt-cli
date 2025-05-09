@@ -95,7 +95,7 @@ func (o *ExportOptions) Run(ctx context.Context) (retErr error) {
 
 	for _, secret := range secrets {
 		labels := strings.Join(secret.Labels, ",")
-		if err := w.Write([]string{secret.Name, secret.Secret, labels}); err != nil {
+		if err := w.Write([]string{secret.Name, secret.Value, labels}); err != nil {
 			return err
 		}
 	}

@@ -2,8 +2,8 @@ CREATE TABLE
     IF NOT EXISTS secrets (
         id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
-        
-        secret BLOB NOT NULL,
+
+        ciphertext BLOB NOT NULL,
 
         -- 96-bit (12-byte) nonce used for AES-GCM encryption.
         -- Required for decryption; generated randomly per secret.
