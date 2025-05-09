@@ -37,15 +37,25 @@ var (
 
 type cleanupFunc func() error
 
-// Vault represents a connection to a vault.
+// Vault represents a high-level interface to a secure vault system.
+// It manages both cryptographic operations and access to two related databases:
+// the in-memory secret-holding vault and the on-disk vault container.
+//
+// The vault is loaded entirely into memory and holds the actual secrets.
+// This in-memory database is serialized, encrypted using AES-GCM, and then persisted within
+// a container SQLite database (the vault container).
+//
+// A user-supplied password is used to derive cryptographic keys via Argon2id,
+// which are then used to encrypt and decrypt the serialized vault data.
+// This structure manages database access, encryption, lifecycle control, and cleanup.
 type Vault struct {
 	Path           string                         // Path is the path to the underlying SQLite file.
 	aesgcm         *vaultcrypto.AESGCM            // aesgcm is used for cryptographic ops on the vault data.
 	nonce          []byte                         // nonce is the cryptographic nonce used to encrypt the serialized vault data.
 	conn           *sql.Conn                      // conn is the connection to the vault database used for serializing and deserializing.
-	db             *vaultdb.VaultDB               // store provides methods to interact with the vault data.
-	vaultContainer *vaultcontainer.VaultContainer //
-	cleanupFuncs   []cleanupFunc                  //
+	db             *vaultdb.VaultDB               // db provides and interface to the in-memory database holding the actual user data.
+	vaultContainer *vaultcontainer.VaultContainer // vaultContainer provides method to interact with the vault containing database
+	cleanupFuncs   []cleanupFunc                  // cleanupFuncs contains deferred cleanup functions.
 }
 
 func newVault(path string, nonce []byte, aes *vaultcrypto.AESGCM, vc *vaultcontainer.VaultContainer) *Vault {
@@ -58,11 +68,14 @@ func newVault(path string, nonce []byte, aes *vaultcrypto.AESGCM, vc *vaultconta
 }
 
 // New creates a new Vault instance using the given password and database path.
-// It initializes a new database at the specified path.
+// It initializes a new vault container database at the specified path,
+// storing a newly initialized, encrypted vault in serialized form.
 //
 // If a database already exists at that path, it will be overwritten.
-// The previous data is preserved in the vault history table,
-// but it will not be used unless explicitly restored.
+// The previous vault data is preserved in the vault history table,
+// but it is not used unless explicitly restored.
+//
+// On success, the function returns a [Vault] ready for use.
 func New(ctx context.Context, password string, path string) (*Vault, error) {
 	vc, cleanup, err := openVaultContainer(path)
 	if err != nil {
@@ -80,7 +93,7 @@ func New(ctx context.Context, password string, path string) (*Vault, error) {
 		return nil, errf("new: %w", err)
 	}
 
-	aes, err := deriveVaultAES(phc, password)
+	aes, err := deriveAESGCM(phc, password)
 	if err != nil {
 		return nil, err
 	}
@@ -107,6 +120,11 @@ func New(ctx context.Context, password string, path string) (*Vault, error) {
 	return vlt, nil
 }
 
+// Open opens an existing vault container database at the given path,
+// derives the encryption key from the provided password,
+// and decrypts and deserializes the vault contents into memory.
+//
+// On success, the function returns a [*Vault] ready for use.
 func Open(ctx context.Context, password string, path string) (vlt *Vault, retErr error) {
 	vc, cleanup, err := openVaultContainer(path)
 	if err != nil {
@@ -133,7 +151,7 @@ func Open(ctx context.Context, password string, path string) (vlt *Vault, retErr
 		return nil, errf("open: %w", err)
 	}
 
-	aes, err := deriveVaultAES(phc, password)
+	aes, err := deriveAESGCM(phc, password)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +212,7 @@ func executeCleanup(fs []cleanupFunc) error {
 func openVaultContainer(path string) (_ *vaultcontainer.VaultContainer, cleanup func() error, _ error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		return nil, nil, errf("sqlite open: %v", err)
+		return nil, nil, errf("open vault container: %w", err)
 	}
 
 	cleanup = db.Close
@@ -204,7 +222,7 @@ func openVaultContainer(path string) (_ *vaultcontainer.VaultContainer, cleanup 
 	_, err = m.Apply(containerMigrations)
 	if err != nil {
 		err2 := cleanup()
-		return nil, nil, errf("vault container migration: %v", errors.Join(err, err2))
+		return nil, nil, errf("open vault container: %w", errors.Join(err, err2))
 	}
 
 	return vaultcontainer.New(db), cleanup, nil
@@ -249,21 +267,21 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		return errf("open vault in-memory connection: %w", err)
+		return errf("open in-memory vault: %w", err)
 	}
 
 	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
-		return errf("enable sqlite foreign keys support: %w", err)
+		return errf("open in-memory vault: %w", err)
 	}
 
 	if ciphervault != nil {
 		decrypted, err := vlt.aesgcm.Open(vlt.nonce, ciphervault)
 		if err != nil {
-			return fmt.Errorf("decrypt vault: %w", err)
+			return errf("open in-memory vault: %w", err)
 		}
 
 		if err := Deserialize(conn, decrypted); err != nil {
-			return errf("deserialize vault: %w", err)
+			return errf("open in-memory vault: %w", err)
 		}
 	}
 
@@ -271,7 +289,7 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 
 	_, err = m.Apply(vaultMigrations)
 	if err != nil {
-		return errf("vault migration: %v", err)
+		return errf("open in-memory vault: %w", err)
 	}
 
 	vlt.conn = conn
@@ -280,10 +298,10 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 	return nil
 }
 
-// deriveVaultAES derives an AES-GCM cipher using the given PHC and password.
+// deriveAESGCM derives an AES-GCM cipher using the given PHC and password.
 // The [vaultcrypto.Argon2idPHC] provides the key derivation parameters,
 // and the password is used to derive the encryption key.
-func deriveVaultAES(phc vaultcrypto.Argon2idPHC, password string) (*vaultcrypto.AESGCM, error) {
+func deriveAESGCM(phc vaultcrypto.Argon2idPHC, password string) (*vaultcrypto.AESGCM, error) {
 	kdf := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithPHC(phc))
 
 	key := kdf.Derive([]byte(password))
@@ -476,7 +494,7 @@ func (vlt *Vault) SecretsByLabelsAndName(ctx context.Context, name string, label
 	return vlt.db.SecretsByLabelsAndName(ctx, name, labels...)
 }
 
-// Secret decrypts the ciphertext associated with the given secret ID.
+// Secret returns the decrypted ciphertext associated with the given secret ID.
 func (vlt *Vault) Secret(ctx context.Context, id int) (string, error) {
 	nonce, ciphertext, err := vlt.db.Secret(ctx, id)
 	if err != nil {

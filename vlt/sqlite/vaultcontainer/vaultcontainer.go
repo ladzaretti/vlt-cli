@@ -7,6 +7,10 @@ import (
 	"github.com/ladzaretti/vlt-cli/vlt/types"
 )
 
+// VaultContainer provides access to the vault container database schema.
+//
+// This database stores the cryptographic data required to perform operations
+// such as encrypting or decrypting the vault and its secrets.
 type VaultContainer struct {
 	db types.DBTX
 }

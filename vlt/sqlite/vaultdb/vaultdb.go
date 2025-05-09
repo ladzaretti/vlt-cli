@@ -20,6 +20,10 @@ var (
 	ErrNoIDsProvided = errors.New("no IDs provided")
 )
 
+// VaultDB provides access to the vault's database.
+// It handles storage and retrieval of vault secrets.
+//
+// This type does not perform cryptographic operations.
 type VaultDB struct {
 	db types.DBTX
 }
