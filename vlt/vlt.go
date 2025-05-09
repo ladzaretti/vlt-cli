@@ -76,12 +76,21 @@ func newVault(path string, nonce []byte, aes *vaultcrypto.AESGCM, vc *vaultconta
 // but it is not used unless explicitly restored.
 //
 // On success, the function returns a [Vault] ready for use.
-func New(ctx context.Context, password string, path string) (*Vault, error) {
+func New(ctx context.Context, password string, path string) (vlt *Vault, retErr error) {
 	vc, cleanup, err := openVaultContainer(path)
 	if err != nil {
 		return nil, errf("new: %w", err)
 	}
-	defer func() { _ = cleanup() }() //nolint:wsl
+	defer func() { //nolint:wsl
+		if retErr != nil {
+			if vlt == nil {
+				_ = cleanup()
+				return
+			}
+
+			_ = vlt.cleanup()
+		}
+	}()
 
 	cipherdata, err := vaultCipherData([]byte(password))
 	if err != nil {
@@ -98,23 +107,23 @@ func New(ctx context.Context, password string, path string) (*Vault, error) {
 		return nil, err
 	}
 
-	vlt := newVault(path, cipherdata.Nonce, aes, vc)
+	vlt = newVault(path, cipherdata.Nonce, aes, vc)
 	if err := vlt.open(ctx, nil); err != nil {
-		return nil, errf("new: %w", err)
+		return vlt, errf("new: %w", err)
 	}
 
 	serialized, err := Serialize(vlt.conn)
 	if err != nil {
-		return nil, errf("new: %w", err)
+		return vlt, errf("new: %w", err)
 	}
 
 	ciphervault, err := aes.Seal(cipherdata.Nonce, serialized)
 	if err != nil {
-		return nil, errf("new: %w", err)
+		return vlt, errf("new: %w", err)
 	}
 
 	if err := vc.InsertNewVault(ctx, cipherdata.AuthPHC, cipherdata.KDFPHC, cipherdata.Nonce, ciphervault); err != nil {
-		return nil, errf("new: %w", err)
+		return vlt, errf("new: %w", err)
 	}
 
 	return vlt, nil
@@ -160,7 +169,7 @@ func Open(ctx context.Context, password string, path string) (vlt *Vault, retErr
 	vlt.cleanupFuncs = append(vlt.cleanupFuncs, cleanup)
 
 	if err := vlt.open(ctx, cipherdata.Vault); err != nil {
-		return nil, errf("open: %w", err)
+		return vlt, errf("open: %w", err)
 	}
 
 	return vlt, nil
@@ -169,24 +178,30 @@ func Open(ctx context.Context, password string, path string) (vlt *Vault, retErr
 func (vlt *Vault) Seal(ctx context.Context) error {
 	serialized, err := Serialize(vlt.conn)
 	if err != nil {
-		return errf("seal: %w", err)
+		return errf("vault seal: %w", err)
 	}
 
 	ciphervault, err := vlt.aesgcm.Seal(vlt.nonce, serialized)
 	if err != nil {
-		return errf("seal: %w", err)
+		return errf("vault seal: %w", err)
 	}
 
 	if err := vlt.vaultContainer.UpdateVault(ctx, ciphervault); err != nil {
-		return errf("seal: %w", err)
+		return errf("vault seal: %w", err)
 	}
 
 	return vlt.cleanup()
 }
 
-func (vlt *Vault) cleanup() (err error) {
+func (vlt *Vault) cleanup() error {
 	vlt.cleanupFuncs = append(vlt.cleanupFuncs, vlt.conn.Close)
-	return executeCleanup(vlt.cleanupFuncs)
+
+	err := executeCleanup(vlt.cleanupFuncs)
+	if err != nil {
+		return errf("vault cleanup: %w", err)
+	}
+
+	return nil
 }
 
 // executeCleanup executes cleanup functions in reverse order,
@@ -260,28 +275,34 @@ func vaultCipherData(password []byte) (vaultcontainer.CipherData, error) {
 }
 
 func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
+	defer func() {
+		if retErr != nil {
+			retErr = errf("vault open: %w", retErr)
+		}
+	}()
+
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
-		return errf("open in-memory vault: %w", err)
+		return err
 	}
 
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		return errf("open in-memory vault: %w", err)
+		return err
 	}
 
 	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
-		return errf("open in-memory vault: %w", err)
+		return err
 	}
 
 	if ciphervault != nil {
 		decrypted, err := vlt.aesgcm.Open(vlt.nonce, ciphervault)
 		if err != nil {
-			return errf("open in-memory vault: %w", err)
+			return err
 		}
 
 		if err := Deserialize(conn, decrypted); err != nil {
-			return errf("open in-memory vault: %w", err)
+			return err
 		}
 	}
 
@@ -289,7 +310,7 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 
 	_, err = m.Apply(vaultMigrations)
 	if err != nil {
-		return errf("open in-memory vault: %w", err)
+		return err
 	}
 
 	vlt.conn = conn
@@ -360,15 +381,15 @@ func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret strin
 	for _, l := range labels {
 		if _, err := storeTx.InsertLabel(ctx, l, secretID); err != nil {
 			if err2 := tx.Rollback(); err2 != nil {
-				return 0, errf("insert label: rollback: %w", errors.Join(err2, err))
+				return 0, errf("insert new secret: insert label: rollback: %w", errors.Join(err2, err))
 			}
 
-			return 0, errf("insert label: %w", err)
+			return 0, errf("insert new secret: insert label: %w", err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, errf("tx commit: %w", err)
+		return 0, errf("insert new secret: tx commit: %w", err)
 	}
 
 	return secretID, nil
@@ -387,35 +408,35 @@ func (vlt *Vault) UpdateSecretMetadata(ctx context.Context, id int, newName stri
 		_, err = vlt.db.UpdateName(ctx, id, newName)
 		if err != nil {
 			if err2 := tx.Rollback(); err2 != nil {
-				return errf("update secret name: rollback: %w", errors.Join(err2, err))
+				return errf("update secret: name: rollback: %w", errors.Join(err2, err))
 			}
 
-			return errf("update secret name: %w", err)
+			return errf("update secret: name: %w", err)
 		}
 	}
 
 	for _, l := range addLabels {
 		if _, err := updateTx.InsertLabel(ctx, l, id); err != nil {
 			if err2 := tx.Rollback(); err2 != nil {
-				return errf("insert label: rollback: %w", errors.Join(err2, err))
+				return errf("update secret: insert label: rollback: %w", errors.Join(err2, err))
 			}
 
-			return errf("insert label: %w", err)
+			return errf("update secret: insert label: %w", err)
 		}
 	}
 
 	for _, l := range removeLabels {
 		if _, err := updateTx.DeleteLabel(ctx, l, int64(id)); err != nil {
 			if err2 := tx.Rollback(); err2 != nil {
-				return errf("remote label: rollback: %w", errors.Join(err2, err))
+				return errf("update secret: remote label: rollback: %w", errors.Join(err2, err))
 			}
 
-			return errf("remove label: %w", err)
+			return errf("update secret: remove label: %w", err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return errf("tx commit: %w", err)
+		return errf("update secret: tx commit: %w", err)
 	}
 
 	return nil

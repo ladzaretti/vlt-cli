@@ -16,7 +16,7 @@ func TestMain(t *testing.T) {
 		t.Error("Dummy test")
 	}
 
-	v, err := vlt.Open(t.Context(), "password", "/tmp/.vlt.test")
+	v, err := vlt.New(t.Context(), "password", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
