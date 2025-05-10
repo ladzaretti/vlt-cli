@@ -5,7 +5,7 @@ import (
 	"crypto/sha1" //nolint:gosec // in this context, SHA-1 is for change detection, not security.
 	"database/sql"
 
-	"github.com/ladzaretti/vlt-cli/vlt/types"
+	"github.com/ladzaretti/vlt-cli/vault/types"
 )
 
 // VaultContainer provides access to the vault container database schema.

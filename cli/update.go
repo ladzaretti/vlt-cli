@@ -11,8 +11,8 @@ import (
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
 	"github.com/ladzaretti/vlt-cli/randstring"
+	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
-	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -33,7 +33,7 @@ func (e *UpdateError) Unwrap() error { return e.Err }
 type UpdateOptions struct {
 	*genericclioptions.StdioOptions
 
-	vault        func() *vlt.Vault
+	vault        func() *vault.Vault
 	search       *SearchableOptions
 	newName      string
 	addLabels    []string
@@ -43,7 +43,7 @@ type UpdateOptions struct {
 var _ genericclioptions.CmdOptions = &UpdateOptions{}
 
 // NewUpdateOptions initializes the options struct.
-func NewUpdateOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *UpdateOptions {
+func NewUpdateOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *UpdateOptions {
 	return &UpdateOptions{
 		StdioOptions: stdio,
 		vault:        vault,
@@ -110,7 +110,7 @@ func (o *UpdateOptions) Run(ctx context.Context) error {
 }
 
 // NewCmdUpdate creates the update cobra command.
-func NewCmdUpdate(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+func NewCmdUpdate(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
 	o := NewUpdateOptions(stdio, vault)
 
 	cmd := &cobra.Command{
@@ -150,7 +150,7 @@ To update the secret value, use the 'vlt update secret' subcommand.`,
 
 type UpdateSecretValueOptions struct {
 	*genericclioptions.StdioOptions
-	vault func() *vlt.Vault
+	vault func() *vault.Vault
 
 	search *SearchableOptions
 
@@ -163,7 +163,7 @@ type UpdateSecretValueOptions struct {
 var _ genericclioptions.CmdOptions = &UpdateSecretValueOptions{}
 
 // NewUpdateSecretValueOptions initializes the options struct.
-func NewUpdateSecretValueOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *UpdateSecretValueOptions {
+func NewUpdateSecretValueOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *UpdateSecretValueOptions {
 	return &UpdateSecretValueOptions{
 		StdioOptions: stdio,
 		vault:        vault,
@@ -318,7 +318,7 @@ func (o *UpdateSecretValueOptions) UpdateSecretValue(ctx context.Context, id int
 }
 
 // NewCmdUpdateSecretValue creates the cobra command.
-func NewCmdUpdateSecretValue(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+func NewCmdUpdateSecretValue(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
 	o := NewUpdateSecretValueOptions(stdio, vault)
 
 	cmd := &cobra.Command{

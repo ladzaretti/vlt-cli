@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	cmdutil "github.com/ladzaretti/vlt-cli/util"
+	"github.com/ladzaretti/vlt-cli/vault/types"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
-	"github.com/ladzaretti/vlt-cli/vlt/types"
 )
 
 var (

@@ -12,8 +12,8 @@ import (
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/clipboard"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
-	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -26,7 +26,7 @@ const (
 
 type VaultOptions struct {
 	Path  string
-	Vault *vlt.Vault
+	Vault *vault.Vault
 
 	newVault bool
 }
@@ -84,7 +84,7 @@ func (o *VaultOptions) Run(ctx context.Context) error {
 		return nil
 	}
 
-	v, err := vlt.Open(ctx, "", o.Path)
+	v, err := vault.Open(ctx, "", o.Path)
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (o *VaultOptions) validateExistingVault() error {
 	return nil
 }
 
-func (o *VaultOptions) VaultFunc() *vlt.Vault {
+func (o *VaultOptions) VaultFunc() *vault.Vault {
 	return o.Vault
 }
 

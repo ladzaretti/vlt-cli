@@ -1,4 +1,4 @@
-package vlt
+package vault
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultcontainer"
+	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultdb"
 	"github.com/ladzaretti/vlt-cli/vaultcrypto"
-	"github.com/ladzaretti/vlt-cli/vlt/sqlite/vaultcontainer"
-	"github.com/ladzaretti/vlt-cli/vlt/sqlite/vaultdb"
 
 	"github.com/ladzaretti/migrate"
 

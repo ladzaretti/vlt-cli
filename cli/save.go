@@ -14,7 +14,7 @@ import (
 	cmdutil "github.com/ladzaretti/vlt-cli/util"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
 
-	"github.com/ladzaretti/vlt-cli/vlt"
+	"github.com/ladzaretti/vlt-cli/vault"
 
 	"github.com/spf13/cobra"
 )
@@ -33,7 +33,7 @@ func (e *SaveError) Unwrap() error { return e.Err }
 type SaveOptions struct {
 	*genericclioptions.StdioOptions
 
-	vault func() *vlt.Vault
+	vault func() *vault.Vault
 
 	name     string   // name is the name of the secret to save in the vault.
 	labels   []string // labels to associate with the a given secret.
@@ -46,7 +46,7 @@ type SaveOptions struct {
 var _ genericclioptions.CmdOptions = &SaveOptions{}
 
 // NewSaveOptions initializes the options struct.
-func NewSaveOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *SaveOptions {
+func NewSaveOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *SaveOptions {
 	return &SaveOptions{
 		StdioOptions: stdio,
 		vault:        vault,
@@ -220,7 +220,7 @@ func (o *SaveOptions) validateInputSource() error {
 }
 
 // NewCmdSave creates the save cobra command.
-func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
 	o := NewSaveOptions(stdio, vault)
 
 	cmd := &cobra.Command{

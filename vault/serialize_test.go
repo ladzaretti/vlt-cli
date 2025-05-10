@@ -1,10 +1,10 @@
-package vlt_test
+package vault_test
 
 import (
 	"database/sql"
 	"testing"
 
-	"github.com/ladzaretti/vlt-cli/vlt"
+	"github.com/ladzaretti/vlt-cli/vault"
 )
 
 func TestSerialization(t *testing.T) {
@@ -32,7 +32,7 @@ func TestSerialization(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, err := vlt.Serialize(conn)
+	data, err := vault.Serialize(conn)
 	if err != nil {
 		t.Fatal("Serialize:", err)
 	}
@@ -61,7 +61,7 @@ func TestSerialization(t *testing.T) {
 	}
 
 	// Deserialize the data into the second connection
-	err = vlt.Deserialize(conn2, data)
+	err = vault.Deserialize(conn2, data)
 	if err != nil {
 		t.Fatal("Deserialize:", err)
 	}

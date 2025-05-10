@@ -1,4 +1,4 @@
-package vlt
+package vault
 
 import (
 	"database/sql"

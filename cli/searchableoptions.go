@@ -9,8 +9,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/vlt"
-	"github.com/ladzaretti/vlt-cli/vlt/sqlite/vaultdb"
+	"github.com/ladzaretti/vlt-cli/vault"
+	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultdb"
 )
 
 var ErrNoSearchArgs = errors.New("no search criteria provided; specify at least one of --id, --label, or --name")
@@ -49,7 +49,7 @@ func WithStrict(enabled bool) SearchableOptionsOpt {
 //
 // For any matched secret, it returns all labels associated with it,
 // regardless of the filter options used.
-func (o *SearchableOptions) search(ctx context.Context, vault *vlt.Vault) ([]secretWithMarkedLabels, error) {
+func (o *SearchableOptions) search(ctx context.Context, vault *vault.Vault) ([]secretWithMarkedLabels, error) {
 	switch {
 	case o.ID > 0:
 		return sortAndUnmarkSecrets(func() (map[int]vaultdb.SecretWithLabels, error) {
@@ -154,7 +154,7 @@ func sortAndUnmarkSecrets(retrieveSecretsFunc retrieveSecretsFunc) ([]secretWith
 //
 // retrieveMatchingFunc typically returns secrets containing only the labels
 // that match the applied filter.
-func sortAndMarkSecrets(ctx context.Context, vault *vlt.Vault, retrieveMatchingFunc retrieveSecretsFunc) ([]secretWithMarkedLabels, error) {
+func sortAndMarkSecrets(ctx context.Context, vault *vault.Vault, retrieveMatchingFunc retrieveSecretsFunc) ([]secretWithMarkedLabels, error) {
 	matchingSecrets, err := retrieveMatchingFunc()
 	if err != nil {
 		return nil, err

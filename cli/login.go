@@ -8,8 +8,8 @@ import (
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
+	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
-	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -17,13 +17,13 @@ import (
 // LoginOptions holds data required to run the command.
 type LoginOptions struct {
 	*genericclioptions.StdioOptions
-	vault func() *vlt.Vault
+	vault func() *vault.Vault
 }
 
 var _ genericclioptions.CmdOptions = &LoginOptions{}
 
 // NewLoginOptions initializes the options struct.
-func NewLoginOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *LoginOptions {
+func NewLoginOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *LoginOptions {
 	return &LoginOptions{
 		StdioOptions: stdio,
 		vault:        vault,
@@ -66,7 +66,7 @@ func (o *LoginOptions) Run(_ context.Context) error {
 }
 
 // NewCmdLogin creates the login cobra command.
-func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
 	o := NewLoginOptions(stdio, vault)
 
 	return &cobra.Command{

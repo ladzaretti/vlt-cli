@@ -7,8 +7,8 @@ import (
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
+	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
-	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -52,7 +52,7 @@ func (o *CreateOptions) Run(ctx context.Context) error {
 		return fmt.Errorf("read new master key: %w", err)
 	}
 
-	_, err = vlt.Open(ctx, mk, o.vaultPath())
+	_, err = vault.Open(ctx, mk, o.vaultPath())
 	if err != nil {
 		return fmt.Errorf("create vault: %w", err)
 	}

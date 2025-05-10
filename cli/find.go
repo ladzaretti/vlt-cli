@@ -5,7 +5,7 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/vlt"
+	"github.com/ladzaretti/vlt-cli/vault"
 
 	"github.com/spf13/cobra"
 )
@@ -14,14 +14,14 @@ import (
 type FindOptions struct {
 	*genericclioptions.StdioOptions
 
-	vault  func() *vlt.Vault
+	vault  func() *vault.Vault
 	search *SearchableOptions
 }
 
 var _ genericclioptions.CmdOptions = &FindOptions{}
 
 // NewFindOptions initializes the options struct.
-func NewFindOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *FindOptions {
+func NewFindOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *FindOptions {
 	return &FindOptions{
 		StdioOptions: stdio,
 		vault:        vault,
@@ -49,7 +49,7 @@ func (o *FindOptions) Run(ctx context.Context) error {
 }
 
 // NewCmdFind creates the find cobra command.
-func NewCmdFind(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+func NewCmdFind(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
 	o := NewFindOptions(stdio, vault)
 
 	cmd := &cobra.Command{

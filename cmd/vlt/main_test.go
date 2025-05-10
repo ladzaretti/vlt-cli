@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ladzaretti/vlt-cli/vlt"
+	"github.com/ladzaretti/vlt-cli/vault"
 )
 
 // https://github.com/spf13/cobra/issues/1419
@@ -16,7 +16,7 @@ func TestMain(t *testing.T) {
 		t.Error("Dummy test")
 	}
 
-	v, err := vlt.New(t.Context(), "password", "/tmp/.vlt.temp")
+	v, err := vault.New(t.Context(), "password", "/tmp/.vlt.temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestMain(t *testing.T) {
 		t.Error(err)
 	}
 
-	v, err = vlt.Open(t.Context(), "password", "/tmp/.vlt.temp")
+	v, err = vault.Open(t.Context(), "password", "/tmp/.vlt.temp")
 	if err != nil {
 		t.Error(err)
 	}

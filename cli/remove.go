@@ -10,8 +10,8 @@ import (
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
+	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
-	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -28,7 +28,7 @@ func (e *RemoveError) Unwrap() error { return e.Err }
 type RemoveOptions struct {
 	*genericclioptions.StdioOptions
 
-	vault     func() *vlt.Vault
+	vault     func() *vault.Vault
 	search    *SearchableOptions
 	assumeYes bool
 	removeAll bool
@@ -37,7 +37,7 @@ type RemoveOptions struct {
 var _ genericclioptions.CmdOptions = &RemoveOptions{}
 
 // NewRemoveOptions initializes the options struct.
-func NewRemoveOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *RemoveOptions {
+func NewRemoveOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *RemoveOptions {
 	return &RemoveOptions{
 		StdioOptions: stdio,
 		vault:        vault,
@@ -117,7 +117,7 @@ func confirm(out io.Writer, in io.Reader, prompt string, a ...any) (bool, error)
 }
 
 // NewCmdRemove creates the remove cobra command.
-func NewCmdRemove(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+func NewCmdRemove(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
 	o := NewRemoveOptions(stdio, vault)
 
 	cmd := &cobra.Command{

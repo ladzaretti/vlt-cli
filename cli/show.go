@@ -7,8 +7,8 @@ import (
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/clipboard"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
-	"github.com/ladzaretti/vlt-cli/vlt"
 
 	"github.com/spf13/cobra"
 )
@@ -25,7 +25,7 @@ func (e *ShowError) Unwrap() error { return e.Err }
 type ShowOptions struct {
 	*genericclioptions.StdioOptions
 
-	vault  func() *vlt.Vault
+	vault  func() *vault.Vault
 	search *SearchableOptions
 	output bool // output controls whether to print the secret to stdout.
 	copy   bool // copy controls whether to copy the secret to the clipboard.
@@ -34,7 +34,7 @@ type ShowOptions struct {
 var _ genericclioptions.CmdOptions = &ShowOptions{}
 
 // NewShowOptions initializes the options struct.
-func NewShowOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *ShowOptions {
+func NewShowOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *ShowOptions {
 	return &ShowOptions{
 		StdioOptions: stdio,
 		vault:        vault,
@@ -121,7 +121,7 @@ func (o *ShowOptions) outputSecret(s string) error {
 }
 
 // NewCmdShow creates the Show cobra command.
-func NewCmdShow(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+func NewCmdShow(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
 	o := NewShowOptions(stdio, vault)
 
 	cmd := &cobra.Command{

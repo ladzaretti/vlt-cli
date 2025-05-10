@@ -112,6 +112,8 @@ linters:
     revive:
       enable-all-rules: true
       rules:
+        - name: import-shadowing
+          disabled: true
         - name: struct-tag
           arguments:
             - "toml,commented"

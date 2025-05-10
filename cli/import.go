@@ -13,7 +13,7 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/vlt"
+	"github.com/ladzaretti/vlt-cli/vault"
 
 	"github.com/spf13/cobra"
 )
@@ -159,7 +159,7 @@ func ptr[T any](v T) *T {
 
 type ImportOptions struct {
 	*genericclioptions.StdioOptions
-	vault   func() *vlt.Vault
+	vault   func() *vault.Vault
 	path    string
 	indexes string
 
@@ -169,7 +169,7 @@ type ImportOptions struct {
 var _ genericclioptions.CmdOptions = &ImportOptions{}
 
 // NewImportOptions initializes the options struct.
-func NewImportOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *ImportOptions {
+func NewImportOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *ImportOptions {
 	return &ImportOptions{
 		StdioOptions: stdio,
 		vault:        vault,
@@ -278,7 +278,7 @@ func (o *ImportOptions) importerForHeader(header string) Importer {
 }
 
 // NewCmdImport creates the import cobra command.
-func NewCmdImport(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+func NewCmdImport(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
 	o := NewImportOptions(stdio, vault)
 
 	cmd := &cobra.Command{

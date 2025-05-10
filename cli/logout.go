@@ -5,20 +5,20 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/vlt"
+	"github.com/ladzaretti/vlt-cli/vault"
 
 	"github.com/spf13/cobra"
 )
 
 type LogoutOptions struct {
 	*genericclioptions.StdioOptions
-	vault func() *vlt.Vault
+	vault func() *vault.Vault
 }
 
 var _ genericclioptions.CmdOptions = &LogoutOptions{}
 
 // NewLogoutOptions initializes the options struct.
-func NewLogoutOptions(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *LogoutOptions {
+func NewLogoutOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *LogoutOptions {
 	return &LogoutOptions{
 		StdioOptions: stdio,
 		vault:        vault,
@@ -38,7 +38,7 @@ func (*LogoutOptions) Run(context.Context) error {
 }
 
 // NewCmdLogout creates the logout cobra command.
-func NewCmdLogout(stdio *genericclioptions.StdioOptions, vault func() *vlt.Vault) *cobra.Command {
+func NewCmdLogout(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
 	o := NewLogoutOptions(stdio, vault)
 
 	cmd := &cobra.Command{
