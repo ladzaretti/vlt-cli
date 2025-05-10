@@ -2,6 +2,7 @@ package vaultcontainer
 
 import (
 	"context"
+	"crypto/sha1" //nolint:gosec // in this context, SHA-1 is for change detection, not security.
 	"database/sql"
 
 	"github.com/ladzaretti/vlt-cli/vlt/types"
@@ -30,19 +31,33 @@ func (*VaultContainer) WithTx(tx *sql.Tx) *VaultContainer {
 
 const insertVault = `
 	INSERT INTO
-		vault_container (id, auth_phc, kdf_phc, nonce, vault_encrypted)
+		vault_container (
+			id,
+			auth_phc,
+			kdf_phc,
+			nonce,
+			vault_encrypted,
+			checksum,
+			updated_at
+		)
 	VALUES
-		(0, ?, ?, ?, ?) ON CONFLICT (id) DO
+		(0, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT (id) DO
 	UPDATE
 	SET
 		auth_phc = excluded.auth_phc,
 		kdf_phc = excluded.kdf_phc,
 		nonce = excluded.nonce,
-		vault_encrypted = excluded.vault_encrypted;
+		vault_encrypted = excluded.vault_encrypted,
+		checksum = excluded.checksum,
+		updated_at = excluded.updated_at
+	WHERE
+		vault_container.checksum <> excluded.checksum;
 `
 
 func (vc *VaultContainer) InsertNewVault(ctx context.Context, auth string, kdf string, nonce []byte, ciphervault []byte) error {
-	if _, err := vc.db.ExecContext(ctx, insertVault, auth, kdf, nonce, ciphervault); err != nil {
+	//nolint:gosec // in this context, SHA-1 is for change detection, not security.
+	checksum := sha1.Sum(ciphervault)
+	if _, err := vc.db.ExecContext(ctx, insertVault, auth, kdf, nonce, ciphervault, checksum[:]); err != nil {
 		return err
 	}
 
@@ -50,16 +65,21 @@ func (vc *VaultContainer) InsertNewVault(ctx context.Context, auth string, kdf s
 }
 
 const updateVault = `
-	UPDATE
-		vault_container
+	UPDATE vault_container
 	SET
-		vault_encrypted = ?
+		vault_encrypted = $1,
+		checksum = $2,
+		updated_at = CURRENT_TIMESTAMP
 	WHERE
-		id = 0;
+		id = 0
+		AND checksum <> $2;
 `
 
 func (vc *VaultContainer) UpdateVault(ctx context.Context, ciphervault []byte) error {
-	_, err := vc.db.ExecContext(ctx, updateVault, ciphervault)
+	//nolint:gosec // in this context, SHA-1 is for change detection, not security.
+	checksum := sha1.Sum(ciphervault)
+	_, err := vc.db.ExecContext(ctx, updateVault, ciphervault, checksum[:])
+
 	return err
 }
 

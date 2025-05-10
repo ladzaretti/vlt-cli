@@ -45,7 +45,7 @@ type cleanupFunc func() error
 // This in-memory database is serialized, encrypted using AES-GCM, and then persisted within
 // a container SQLite database (the vault container).
 //
-// A user-supplied password is used to derive cryptographic keys via Argon2id,
+// A user-supplied password is used to derive cryptographic keys via Argon2id.
 type Vault struct {
 	Path                 string                // Path is the path to the underlying SQLite file.
 	aesgcm               *vaultcrypto.AESGCM   // aesgcm is used for cryptographic ops on the vault data.
