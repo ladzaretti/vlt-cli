@@ -21,7 +21,7 @@ var (
 	//go:embed db/migrations/sqlite/vault_container
 	masterFS embed.FS
 
-	containerMigrations = migrate.EmbeddedMigrations{
+	vaultContainerMigrations = migrate.EmbeddedMigrations{
 		FS:   masterFS,
 		Path: "db/migrations/sqlite/vault_container",
 	}
@@ -46,25 +46,45 @@ type cleanupFunc func() error
 // a container SQLite database (the vault container).
 //
 // A user-supplied password is used to derive cryptographic keys via Argon2id,
-// which are then used to encrypt and decrypt the serialized vault data.
-// This structure manages database access, encryption, lifecycle control, and cleanup.
 type Vault struct {
-	Path           string                         // Path is the path to the underlying SQLite file.
-	aesgcm         *vaultcrypto.AESGCM            // aesgcm is used for cryptographic ops on the vault data.
-	nonce          []byte                         // nonce is the cryptographic nonce used to encrypt the serialized vault data.
-	conn           *sql.Conn                      // conn is the connection to the vault database used for serializing and deserializing.
-	db             *vaultdb.VaultDB               // db provides and interface to the in-memory database holding the actual user data.
-	buf            []byte                         // buf holds the memory backing in-memory SQLite database. retained to prevent GC while the DB is active, released in Seal().
-	vaultContainer *vaultcontainer.VaultContainer // vaultContainer provides method to interact with the vault containing database
-	cleanupFuncs   []cleanupFunc                  // cleanupFuncs contains deferred cleanup functions.
+	Path                 string                // Path is the path to the underlying SQLite file.
+	aesgcm               *vaultcrypto.AESGCM   // aesgcm is used for cryptographic ops on the vault data.
+	nonce                []byte                // nonce is the cryptographic nonce used to encrypt the serialized vault data.
+	conn                 *sql.Conn             // conn is the connection to the vault database used for serializing and deserializing.
+	db                   *vaultdb.VaultDB      // db provides an interface to the in-memory database holding the actual user data.
+	buf                  []byte                // buf holds the backing in-memory SQLite database. retained to prevent GC while the DB is active, released in [Vault.Close].
+	vaultContainerHandle *vaultContainerHandle // vaultContainerHandle manages the database connection and access to the vault container database schema used for storing the encrypted vault.
+	cleanupFuncs         []cleanupFunc         // cleanupFuncs contains deferred cleanup functions.
 }
 
-func newVault(path string, nonce []byte, aes *vaultcrypto.AESGCM, vc *vaultcontainer.VaultContainer) *Vault {
+// Config holds configuration options for creating a [Vault] instance.
+type Config struct {
+	snapshot []byte // snapshot is the serialized vault container to restore from, if set.
+}
+
+type Option func(*Config)
+
+// WithSnapshot sets a snapshot to restore the [Vault] from.
+// The snapshot is a serialized vault container database obtained via [Vault.Serialize].
+//
+// snapshot is copied to avoid side effects from the underlying sqlite3 driver.
+func WithSnapshot(snapshot []byte) Option {
+	copied := make([]byte, len(snapshot))
+	copy(copied, snapshot)
+
+	return func(c *Config) {
+		c.snapshot = copied
+	}
+}
+
+// newVault creates a [*Vault] instance using the provided args.
+// All other fields are managed internally.
+func newVault(path string, nonce []byte, aesgcm *vaultcrypto.AESGCM, vch *vaultContainerHandle) *Vault {
 	return &Vault{
-		Path:           path,
-		nonce:          nonce,
-		aesgcm:         aes,
-		vaultContainer: vc,
+		Path:                 path,
+		nonce:                nonce,
+		aesgcm:               aesgcm,
+		vaultContainerHandle: vch,
 	}
 }
 
@@ -77,18 +97,19 @@ func newVault(path string, nonce []byte, aes *vaultcrypto.AESGCM, vc *vaultconta
 // but it is not used unless explicitly restored.
 //
 // On success, the function returns a [Vault] ready for use.
-func New(ctx context.Context, password string, path string) (vlt *Vault, retErr error) {
-	vc, cleanup, err := openVaultContainer(path)
+func New(ctx context.Context, password string, path string, opts ...Option) (vlt *Vault, retErr error) {
+	cfg := &Config{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, cfg.snapshot)
 	if err != nil {
 		return nil, errf("new: %w", err)
 	}
 	defer func() { //nolint:wsl
 		if retErr != nil {
-			if vlt == nil {
-				_ = cleanup()
-				return
-			}
-
+			_ = vaultContainerHandle.cleanup()
 			_ = vlt.cleanup()
 		}
 	}()
@@ -108,8 +129,7 @@ func New(ctx context.Context, password string, path string) (vlt *Vault, retErr 
 		return nil, err
 	}
 
-	vlt = newVault(path, cipherdata.Nonce, aes, vc)
-	vlt.cleanupFuncs = append(vlt.cleanupFuncs, cleanup)
+	vlt = newVault(path, cipherdata.Nonce, aes, vaultContainerHandle)
 
 	if err := vlt.open(ctx, nil); err != nil {
 		return vlt, errf("new: %w", err)
@@ -125,7 +145,7 @@ func New(ctx context.Context, password string, path string) (vlt *Vault, retErr 
 		return vlt, errf("new: %w", err)
 	}
 
-	if err := vc.InsertNewVault(ctx, cipherdata.AuthPHC, cipherdata.KDFPHC, cipherdata.Nonce, ciphervault); err != nil {
+	if err := vaultContainerHandle.db.InsertNewVault(ctx, cipherdata.AuthPHC, cipherdata.KDFPHC, cipherdata.Nonce, ciphervault); err != nil {
 		return vlt, errf("new: %w", err)
 	}
 
@@ -137,23 +157,24 @@ func New(ctx context.Context, password string, path string) (vlt *Vault, retErr 
 // and decrypts and deserializes the vault contents into memory.
 //
 // On success, the function returns a [*Vault] ready for use.
-func Open(ctx context.Context, password string, path string) (vlt *Vault, retErr error) {
-	vc, cleanup, err := openVaultContainer(path)
+func Open(ctx context.Context, password string, path string, opts ...Option) (vlt *Vault, retErr error) {
+	cfg := &Config{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, cfg.snapshot)
 	if err != nil {
 		return nil, errf("open: %w", err)
 	}
 	defer func() { //nolint:wsl
 		if retErr != nil {
-			if vlt == nil {
-				_ = cleanup()
-				return
-			}
-
+			_ = vaultContainerHandle.cleanup()
 			_ = vlt.cleanup()
 		}
 	}()
 
-	cipherdata, err := vc.SelectVault(ctx)
+	cipherdata, err := vaultContainerHandle.db.SelectVault(ctx)
 	if err != nil {
 		return nil, errf("open: %w", err)
 	}
@@ -168,8 +189,7 @@ func Open(ctx context.Context, password string, path string) (vlt *Vault, retErr
 		return nil, err
 	}
 
-	vlt = newVault(path, cipherdata.Nonce, aes, vc)
-	vlt.cleanupFuncs = append(vlt.cleanupFuncs, cleanup)
+	vlt = newVault(path, cipherdata.Nonce, aes, vaultContainerHandle)
 
 	if err := vlt.open(ctx, cipherdata.Vault); err != nil {
 		return vlt, errf("open: %w", err)
@@ -178,12 +198,24 @@ func Open(ctx context.Context, password string, path string) (vlt *Vault, retErr
 	return vlt, nil
 }
 
-// Seal serializes the in-memory SQLite database, encrypts it, and stores the
+// Close serializes the in-memory SQLite database, encrypts it, and stores the
 // resulting ciphertext using the vault container.
 //
-// After calling Seal, the in-memory database buffer is eligible for garbage
-// collection and should not be used again unless reinitialized.
-func (vlt *Vault) Seal(ctx context.Context) error {
+// After calling Close, the in-memory database buffer [Vault.buf] is eligible for gc
+// and should not be used again unless reinitialized.
+func (vlt *Vault) Close(ctx context.Context) error {
+	if err := vlt.seal(ctx); err != nil {
+		return err
+	}
+
+	vlt.buf = nil // release backing buffer to allow garbage collection.
+
+	return vlt.cleanup()
+}
+
+// seal serializes the in-memory SQLite database, encrypts it, and stores the
+// resulting ciphertext using the vault container.
+func (vlt *Vault) seal(ctx context.Context) error {
 	serialized, err := Serialize(vlt.conn)
 	if err != nil {
 		return errf("vault seal: %w", err)
@@ -194,16 +226,33 @@ func (vlt *Vault) Seal(ctx context.Context) error {
 		return errf("vault seal: %w", err)
 	}
 
-	if err := vlt.vaultContainer.UpdateVault(ctx, ciphervault); err != nil {
+	if err := vlt.vaultContainerHandle.db.UpdateVault(ctx, ciphervault); err != nil {
 		return errf("vault seal: %w", err)
 	}
 
-	vlt.buf = nil // release backing buffer to allow garbage collection.
+	return nil
+}
 
-	return vlt.cleanup()
+// Serialize returns the serialized form of the vault container, including the encrypted vault.
+//
+// It first seals the in-memory Vault to ensure the latest state is captured,
+// then serializes the entire database.
+//
+// This is primarily used to produce a reusable snapshot of the vault container state
+// for testing.
+func (vlt *Vault) Serialize(ctx context.Context) ([]byte, error) {
+	if err := vlt.seal(ctx); err != nil {
+		return nil, errf("vault serialize: %w", err)
+	}
+
+	return Serialize(vlt.vaultContainerHandle.conn)
 }
 
 func (vlt *Vault) cleanup() error {
+	if vlt == nil {
+		return nil
+	}
+
 	if err := executeCleanup(vlt.cleanupFuncs); err != nil {
 		return errf("vault cleanup: %w", err)
 	}
@@ -231,23 +280,59 @@ func executeCleanup(fs []cleanupFunc) error {
 	return errors.Join(errs...)
 }
 
-func openVaultContainer(path string) (_ *vaultcontainer.VaultContainer, cleanup func() error, _ error) {
-	db, err := sql.Open("sqlite", path)
-	if err != nil {
-		return nil, nil, errf("open vault container: %w", err)
+type vaultContainerHandle struct {
+	conn         *sql.Conn
+	db           *vaultcontainer.VaultContainer
+	cleanupFuncs []cleanupFunc
+}
+
+func (h *vaultContainerHandle) cleanup() error {
+	if h == nil {
+		return nil
 	}
 
-	cleanup = db.Close
+	return executeCleanup(h.cleanupFuncs)
+}
+
+func newVaultContainerHandle(ctx context.Context, path string, snapshot []byte) (_ *vaultContainerHandle, retErr error) {
+	handle := &vaultContainerHandle{}
+	defer func() { //nolint:wsl
+		if retErr != nil {
+			retErr = errors.Join(retErr, handle.cleanup())
+		}
+	}()
+
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		return nil, errf("open vault container: %w", err)
+	}
+
+	handle.cleanupFuncs = append(handle.cleanupFuncs, db.Close)
+
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return nil, errf("open vault container: %w", err)
+	}
+
+	handle.cleanupFuncs = append(handle.cleanupFuncs, conn.Close)
+
+	if snapshot != nil {
+		if err := Deserialize(conn, snapshot); err != nil {
+			return nil, errf("open vault container: %w", err)
+		}
+	}
 
 	m := migrate.New(db, migrate.SQLiteDialect{})
 
-	_, err = m.Apply(containerMigrations)
+	_, err = m.Apply(vaultContainerMigrations)
 	if err != nil {
-		err2 := cleanup()
-		return nil, nil, errf("open vault container: %w", errors.Join(err, err2))
+		return nil, errf("open vault container: %w", err)
 	}
 
-	return vaultcontainer.New(db), cleanup, nil
+	handle.conn = conn
+	handle.db = vaultcontainer.New(db)
+
+	return handle, nil
 }
 
 // vaultCipherData generates [vaultcontainer.CipherData] containing salts, nonce,

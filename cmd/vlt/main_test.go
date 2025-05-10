@@ -16,7 +16,7 @@ func TestMain(t *testing.T) {
 		t.Error("Dummy test")
 	}
 
-	v, err := vlt.New(t.Context(), "password", ":memory:")
+	v, err := vlt.New(t.Context(), "password", "/tmp/.vlt.temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,8 +33,22 @@ func TestMain(t *testing.T) {
 
 	fmt.Printf("%v", m)
 
-	err = v.Seal(t.Context())
+	err = v.Close(t.Context())
 	if err != nil {
+		t.Error(err)
+	}
+
+	v, err = vlt.Open(t.Context(), "password", "/tmp/.vlt.temp")
+	if err != nil {
+		t.Error(err)
+	}
+
+	m2, err := v.ExportSecrets(t.Context())
+	if err != nil {
+		t.Error(err)
+	}
+
+	if got, want := len(m), len(m2); got != want {
 		t.Error(err)
 	}
 }
