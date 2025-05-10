@@ -37,48 +37,43 @@ var (
 
 type cleanupFunc func() error
 
-// Vault represents a high-level interface to a secure vault system.
-// It manages both cryptographic operations and access to two related databases:
+// Vault manages access to two related databases:
 // the in-memory secret-holding vault and the on-disk vault container.
 //
-// The vault is loaded entirely into memory and holds the actual secrets.
+// The vault is loaded entirely into memory and holds the actual user data.
 // This in-memory database is serialized, encrypted using AES-GCM, and then persisted within
-// a container SQLite database (the vault container).
+// the vault container database.
 //
 // A user-supplied password is used to derive cryptographic keys via Argon2id.
 type Vault struct {
-	Path                 string                // Path is the path to the underlying SQLite file.
+	Path                 string                // Path to the underlying SQLite file.
 	aesgcm               *vaultcrypto.AESGCM   // aesgcm is used for cryptographic ops on the vault data.
-	nonce                []byte                // nonce is the cryptographic nonce used to encrypt the serialized vault data.
-	conn                 *sql.Conn             // conn is the connection to the vault database used for serializing and deserializing.
+	nonce                []byte                // nonce is the cryptographic nonce used to encrypt the serialized vault database.
+	conn                 *sql.Conn             // conn is the connection to the vault database, it is used for serializing and deserializing.
 	db                   *vaultdb.VaultDB      // db provides an interface to the in-memory database holding the actual user data.
 	buf                  []byte                // buf holds the backing in-memory SQLite database. retained to prevent GC while the DB is active, released in [Vault.Close].
-	vaultContainerHandle *vaultContainerHandle // vaultContainerHandle manages the database connection and access to the vault container database schema used for storing the encrypted vault.
+	vaultContainerHandle *vaultContainerHandle // vaultContainerHandle connects to the vault container database.
 	cleanupFuncs         []cleanupFunc         // cleanupFuncs contains deferred cleanup functions.
 }
 
-// Config holds configuration options for creating a [Vault] instance.
+// Config options for creating a [Vault] instance.
 type Config struct {
-	snapshot []byte // snapshot is the serialized vault container to restore from, if set.
+	snapshot []byte // snapshot is the serialized vault container database to restore from, if set.
 }
 
 type Option func(*Config)
 
 // WithSnapshot sets a snapshot to restore the [Vault] from.
-// The snapshot is a serialized vault container database obtained via [Vault.Serialize].
-//
-// snapshot is copied to avoid side effects from the underlying sqlite3 driver.
+// obtained via [Vault.Serialize].
 func WithSnapshot(snapshot []byte) Option {
 	copied := make([]byte, len(snapshot))
-	copy(copied, snapshot)
+	copy(copied, snapshot) // copied to avoid side effects from the underlying sqlite3 driver.
 
 	return func(c *Config) {
 		c.snapshot = copied
 	}
 }
 
-// newVault creates a [*Vault] instance using the provided args.
-// All other fields are managed internally.
 func newVault(path string, nonce []byte, aesgcm *vaultcrypto.AESGCM, vch *vaultContainerHandle) *Vault {
 	return &Vault{
 		Path:                 path,
@@ -88,15 +83,15 @@ func newVault(path string, nonce []byte, aesgcm *vaultcrypto.AESGCM, vch *vaultC
 	}
 }
 
-// New creates a new Vault instance using the given password and database path.
-// It initializes a new vault container database at the specified path,
-// storing a newly initialized, encrypted vault in serialized form.
+// New creates a new vault container database at the given path if needed,
+// derives the encryption key from the provided password,
+// initializes and stores a new encrypted vault in serialized form, and loads it into memory.
 //
-// If a database already exists at that path, it will be overwritten.
-// The previous vault data is preserved in the vault history table,
-// but it is not used unless explicitly restored.
+// If a vault already exists at that path, it is overwritten.
+// The previous vault data is saved in the vault history table,
+// but is not used unless explicitly restored.
 //
-// On success, the function returns a [Vault] ready for use.
+// On success, the function returns a [*Vault] ready for use.
 func New(ctx context.Context, password string, path string, opts ...Option) (vlt *Vault, retErr error) {
 	cfg := &Config{}
 	for _, opt := range opts {
@@ -199,7 +194,7 @@ func Open(ctx context.Context, password string, path string, opts ...Option) (vl
 }
 
 // Close serializes the in-memory SQLite database, encrypts it, and stores the
-// resulting ciphertext using the vault container.
+// resulting ciphertext in the vault container database.
 //
 // After calling Close, the in-memory database buffer [Vault.buf] is eligible for gc
 // and should not be used again unless reinitialized.
@@ -280,6 +275,8 @@ func executeCleanup(fs []cleanupFunc) error {
 	return errors.Join(errs...)
 }
 
+// vaultContainerHandle manages the database connection and access
+// to the vault container database schema used for storing the encrypted vault.
 type vaultContainerHandle struct {
 	conn         *sql.Conn
 	db           *vaultcontainer.VaultContainer
