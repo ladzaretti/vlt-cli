@@ -2,7 +2,10 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
@@ -14,31 +17,35 @@ import (
 )
 
 const (
-	masterKeyMinLen = 10
+	masterKeyMinLen = 8
 )
 
 // CreateOptions have the data required to perform the create operation.
 type CreateOptions struct {
 	*genericclioptions.StdioOptions
 
-	vaultPath func() string
+	vaultOptions *VaultOptions
 }
 
 var _ genericclioptions.CmdOptions = &CreateOptions{}
 
 // NewCreateOptions initializes the options struct.
-func NewCreateOptions(stdio *genericclioptions.StdioOptions, vaultPath func() string) *CreateOptions {
+func NewCreateOptions(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOptions) *CreateOptions {
 	return &CreateOptions{
 		StdioOptions: stdio,
-		vaultPath:    vaultPath,
+		vaultOptions: vaultOptions,
 	}
 }
 
-func (*CreateOptions) Complete() error {
-	return nil
+func (o *CreateOptions) Complete() error {
+	return o.vaultOptions.Complete()
 }
 
 func (o *CreateOptions) Validate() error {
+	if _, err := os.Stat(o.vaultOptions.Path); !errors.Is(err, fs.ErrNotExist) {
+		return vaulterrors.ErrVaultFileExists
+	}
+
 	if o.NonInteractive {
 		return vaulterrors.ErrNonInteractiveUnsupported
 	}
@@ -52,19 +59,19 @@ func (o *CreateOptions) Run(ctx context.Context) error {
 		return fmt.Errorf("read new master key: %w", err)
 	}
 
-	_, err = vault.Open(ctx, mk, o.vaultPath())
+	_, err = vault.New(ctx, mk, o.vaultOptions.Path)
 	if err != nil {
 		return fmt.Errorf("create vault: %w", err)
 	}
 
-	o.Infof("New vault successfully created at %q\n", o.vaultPath())
+	o.Infof("New vault successfully created at %q\n", o.vaultOptions.Path)
 
 	return nil
 }
 
 // NewCmdCreate creates the create cobra command.
-func NewCmdCreate(stdio *genericclioptions.StdioOptions, path func() string) *cobra.Command {
-	o := NewCreateOptions(stdio, path)
+func NewCmdCreate(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOptions) *cobra.Command {
+	o := NewCreateOptions(stdio, vaultOptions)
 
 	return &cobra.Command{
 		Use:     "create",
