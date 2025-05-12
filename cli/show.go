@@ -77,7 +77,7 @@ func (o *ShowOptions) validateConfigOptions() error {
 }
 
 // Run performs a secret lookup and outputs the result based on user flags.
-func (o *ShowOptions) Run(ctx context.Context) error {
+func (o *ShowOptions) Run(ctx context.Context, _ ...string) error {
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err

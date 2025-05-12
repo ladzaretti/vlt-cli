@@ -173,7 +173,7 @@ func (o *DefaultVltOptions) Validate() error {
 	return o.vaultOptions.Validate()
 }
 
-func (o *DefaultVltOptions) Run(ctx context.Context) error {
+func (o *DefaultVltOptions) Run(ctx context.Context, _ ...string) error {
 	if err := o.configOptions.Run(ctx); err != nil {
 		return err
 	}

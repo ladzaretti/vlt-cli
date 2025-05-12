@@ -36,7 +36,7 @@ func (*GenerateOptions) Validate() error {
 	return nil
 }
 
-func (o *GenerateOptions) Run(context.Context) error {
+func (o *GenerateOptions) Run(context.Context, ...string) error {
 	policy := o.policy
 
 	zero := randstring.PasswordPolicy{}

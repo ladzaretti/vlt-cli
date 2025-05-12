@@ -65,7 +65,7 @@ func (o *SaveOptions) Validate() error {
 	return o.validateInputSource()
 }
 
-func (o *SaveOptions) Run(ctx context.Context) (retErr error) {
+func (o *SaveOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	secret := ""
 
 	// ensure error is wrapped and output is printed if everything succeeded

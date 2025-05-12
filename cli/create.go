@@ -53,7 +53,7 @@ func (o *CreateOptions) Validate() error {
 	return nil
 }
 
-func (o *CreateOptions) Run(ctx context.Context) error {
+func (o *CreateOptions) Run(ctx context.Context, _ ...string) error {
 	mk, err := input.PromptNewPassword(o.Out, int(o.In.Fd()), masterKeyMinLen)
 	if err != nil {
 		return fmt.Errorf("read new master key: %w", err)

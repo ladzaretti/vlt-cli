@@ -11,6 +11,7 @@ type SearchOptions struct {
 	IDs    []int
 	Name   string
 	Labels []string
+	Args   []string
 }
 
 type Usage int

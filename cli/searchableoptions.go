@@ -49,7 +49,7 @@ func WithStrict(enabled bool) SearchableOptionsOpt {
 //
 // For any matched secret, it returns all labels associated with it,
 // regardless of the filter options used.
-func (o *SearchableOptions) search(ctx context.Context, vault *vault.Vault) ([]secretWithMarkedLabels, error) {
+func (o *SearchableOptions) search(ctx context.Context, vault *vault.Vault, _ ...string) ([]secretWithMarkedLabels, error) {
 	switch {
 	case o.ID > 0:
 		return sortAndUnmarkSecrets(func() (map[int]vaultdb.SecretWithLabels, error) {

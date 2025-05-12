@@ -151,7 +151,7 @@ func (*ConfigOptions) Validate() error {
 	return nil
 }
 
-func (o *ConfigOptions) Run(context.Context) error {
+func (o *ConfigOptions) Run(context.Context, ...string) error {
 	c, err := LoadConfig(o.userPath)
 	if err != nil {
 		return err
@@ -218,7 +218,7 @@ func (*generateConfigOptions) Validate() error {
 	return nil
 }
 
-func (o *generateConfigOptions) Run(context.Context) error {
+func (o *generateConfigOptions) Run(context.Context, ...string) error {
 	out, err := toml.Marshal(&Config{})
 	clierror.Check(err)
 
@@ -272,7 +272,7 @@ func (*validateConfigOptions) Validate() error {
 	return nil
 }
 
-func (o *validateConfigOptions) Run(context.Context) error {
+func (o *validateConfigOptions) Run(context.Context, ...string) error {
 	c, err := LoadConfig(o.configPath)
 	clierror.Check(err)
 

@@ -56,7 +56,7 @@ func (o *ExportOptions) Validate() error {
 	return nil
 }
 
-func (o *ExportOptions) Run(ctx context.Context) (retErr error) {
+func (o *ExportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	defer func() {
 		if retErr != nil {
 			retErr = &ExportError{retErr}

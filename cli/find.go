@@ -37,8 +37,8 @@ func (o *FindOptions) Validate() error {
 	return o.search.Validate()
 }
 
-func (o *FindOptions) Run(ctx context.Context) error {
-	matchingSecrets, err := o.search.search(ctx, o.vault())
+func (o *FindOptions) Run(ctx context.Context, args ...string) error {
+	matchingSecrets, err := o.search.search(ctx, o.vault(), args...)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,8 @@ func NewCmdFind(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault
 	o := NewFindOptions(stdio, vault)
 
 	cmd := &cobra.Command{
-		Use:     "find",
+		Use:     "find [string...]",
+		Args:    cobra.ArbitraryArgs,
 		Aliases: []string{"list", "ls"},
 		Short:   "Search for secrets in the vault",
 		Long: `Search for secrets stored in the vault using various filters.
@@ -62,8 +63,8 @@ Filters can be applied using --id, --name, or --label.
 Multiple --label flags can be applied and are logically ORed.
 
 Name and label values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		Run: func(cmd *cobra.Command, args []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
 	}
 

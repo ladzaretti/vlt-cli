@@ -53,7 +53,7 @@ func (o *RemoveOptions) Validate() error {
 	return o.search.Validate()
 }
 
-func (o *RemoveOptions) Run(ctx context.Context) error {
+func (o *RemoveOptions) Run(ctx context.Context, _ ...string) error {
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err

@@ -33,7 +33,7 @@ func (*LogoutOptions) Validate() error {
 	return nil
 }
 
-func (*LogoutOptions) Run(context.Context) error {
+func (*LogoutOptions) Run(context.Context, ...string) error {
 	return nil
 }
 

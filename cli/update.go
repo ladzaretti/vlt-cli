@@ -85,7 +85,7 @@ func (o *UpdateOptions) validateUpdateArgs() error {
 	return nil
 }
 
-func (o *UpdateOptions) Run(ctx context.Context) error {
+func (o *UpdateOptions) Run(ctx context.Context, _ ...string) error {
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err
@@ -204,7 +204,7 @@ func (o *UpdateSecretValueOptions) validateUpdateSecretArgs() error {
 	return nil
 }
 
-func (o *UpdateSecretValueOptions) Run(ctx context.Context) (retErr error) {
+func (o *UpdateSecretValueOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err

@@ -12,12 +12,12 @@ type BaseOptions interface {
 type CmdOptions interface {
 	BaseOptions
 
-	Run(ctx context.Context) error
+	Run(ctx context.Context, args ...string) error
 }
 
 // ExecuteCommand executes the provided command options by first completing,
 // then validating, and finally running the command.
-func ExecuteCommand(ctx context.Context, cmd CmdOptions) error {
+func ExecuteCommand(ctx context.Context, cmd CmdOptions, args ...string) error {
 	if err := cmd.Complete(); err != nil {
 		return err
 	}
@@ -26,5 +26,5 @@ func ExecuteCommand(ctx context.Context, cmd CmdOptions) error {
 		return err
 	}
 
-	return cmd.Run(ctx)
+	return cmd.Run(ctx, args...)
 }

@@ -194,7 +194,7 @@ func (o *ImportOptions) Validate() error {
 	return nil
 }
 
-func (o *ImportOptions) Run(ctx context.Context) (retErr error) {
+func (o *ImportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	defer func() {
 		if retErr != nil {
 			retErr = &ImportError{retErr}
