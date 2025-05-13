@@ -53,7 +53,9 @@ func (o *RemoveOptions) Validate() error {
 	return o.search.Validate()
 }
 
-func (o *RemoveOptions) Run(ctx context.Context, _ ...string) error {
+func (o *RemoveOptions) Run(ctx context.Context, args ...string) error {
+	o.search.Args = args
+
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err
@@ -94,7 +96,7 @@ func (o *RemoveOptions) Run(ctx context.Context, _ ...string) error {
 
 	o.Debugf("Proceeding with deleting secrets.\n")
 
-	n, err := o.vault().DeleteByIDs(ctx, extractIDs(matchingSecrets)...)
+	n, err := o.vault().DeleteSecretsByIDs(ctx, extractIDs(matchingSecrets)...)
 	if err != nil {
 		return err
 	}
@@ -121,16 +123,21 @@ func NewCmdRemove(stdio *genericclioptions.StdioOptions, vault func() *vault.Vau
 	o := NewRemoveOptions(stdio, vault)
 
 	cmd := &cobra.Command{
-		Use:     "remove",
+		Use:     "remove [glob]",
 		Aliases: []string{"rm", "delete"},
 		Short:   "Remove secrets from the vault",
 		Long: `Remove one or more secrets from the vault.
+
+You may optionally provide a glob pattern to match against secret names or labels.
 
 Use --id, --name, or --label to select which secrets to remove.
 Multiple --label flags can be applied and are logically ORed.
 `,
 		Example: `  # Remove a secret by ID
   vlt remove --id 123
+
+  # Remove all secrets whose name or label matches the given glob pattern
+  vlt remove "*foo*" --all
 
   # Remove all secrets matching any of the given labels
   vlt remove --label project=legacy --label dev --all

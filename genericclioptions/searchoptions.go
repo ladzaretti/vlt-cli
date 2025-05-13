@@ -1,9 +1,5 @@
 package genericclioptions
 
-import "errors"
-
-var ErrNoSearchParams = errors.New("no search criteria provided; specify at least one of --id, --label, or --name")
-
 // SearchOptions defines common filtering options for CLI commands that
 // support filtering secrets.
 type SearchOptions struct {

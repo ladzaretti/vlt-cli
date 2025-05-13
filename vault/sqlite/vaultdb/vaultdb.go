@@ -4,12 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"strings"
 
 	cmdutil "github.com/ladzaretti/vlt-cli/util"
 	"github.com/ladzaretti/vlt-cli/vault/types"
-	"github.com/ladzaretti/vlt-cli/vaulterrors"
 )
 
 var (
@@ -118,8 +116,8 @@ const selectSecret = `
 		id = ?
 `
 
-// secret returns the secret ciphertext and nonce associated with the given secret id.
-func (s *VaultDB) Secret(ctx context.Context, id int) (nonce []byte, ciphertext []byte, err error) {
+// ShowSecret returns the secret ciphertext and nonce associated with the given secret id.
+func (s *VaultDB) ShowSecret(ctx context.Context, id int) (nonce []byte, ciphertext []byte, err error) {
 	err = s.db.QueryRowContext(ctx, selectSecret, id).Scan(&nonce, &ciphertext)
 	if err != nil {
 		return nonce, ciphertext, err
@@ -189,50 +187,6 @@ type SecretWithLabels struct {
 	Labels     []string
 }
 
-// SecretsWithLabels returns all secrets along with all labels associated with each.
-func (s *VaultDB) SecretsWithLabels(ctx context.Context) (map[int]SecretWithLabels, error) {
-	return s.secretsByColumn(ctx, "", "LEFT JOIN")
-}
-
-// SecretsByName returns secrets that match the provided name pattern,
-// along with all labels associated with it.
-//
-// If no pattern is provided, it returns all secrets along with all their labels.
-func (s *VaultDB) SecretsByName(ctx context.Context, namePattern string) (map[int]SecretWithLabels, error) {
-	return s.secretsByColumn(ctx, "secret_name", "LEFT JOIN", namePattern)
-}
-
-// SecretsByLabels returns secrets that match any of the provided label patterns,
-// along with all labels associated with each secret that matches the labelPatterns.
-//
-// If no patterns are provided, an [vaulterrors.ErrMissingLabels] error is returned.
-func (s *VaultDB) SecretsByLabels(ctx context.Context, labelPatterns ...string) (map[int]SecretWithLabels, error) {
-	if len(labelPatterns) == 0 {
-		return nil, vaulterrors.ErrMissingLabels
-	}
-
-	return s.secretsByColumn(ctx, "label", "INNER JOIN", labelPatterns...)
-}
-
-// secretsByColumn returns secrets with labels that
-// match a where clause with all glob patterns for the given col.
-//
-// If no patterns are provided, no where clause is generated.
-func (s *VaultDB) secretsByColumn(ctx context.Context, col string, join string, patterns ...string) (map[int]SecretWithLabels, error) {
-	query := fmt.Sprintf(`
-	SELECT
-		s.id,
-		s.name AS secret_name,
-		l.name AS label
-	FROM
-		secrets s
-		%s labels l ON s.id = l.secret_id
-	%s
-	`, join, whereGlobOrClause(col, patterns...))
-
-	return s.secretsJoinLabels(ctx, query, cmdutil.ToAnySlice(patterns)...)
-}
-
 // SecretsByIDs returns a map of secrets and their labels for the given IDs.
 //
 // If the IDs slice is empty, the function returns [ErrNoIDsProvided].
@@ -260,27 +214,61 @@ func (s *VaultDB) SecretsByIDs(ctx context.Context, ids []int) (map[int]SecretWi
 	return s.secretsJoinLabels(ctx, query, cmdutil.ToAnySlice(ids)...)
 }
 
-// SecretsByLabelsAndName returns secrets with labels that match any of the
-// provided label and name glob patterns.
-//
-// If no label patterns are provided, it returns [ErrNoLabelsProvided].
-func (s *VaultDB) SecretsByLabelsAndName(ctx context.Context, name string, labels ...string) (map[int]SecretWithLabels, error) {
-	if len(labels) == 0 {
-		return nil, ErrNoLabelsProvided
+// Filters defines criteria for querying secrets from the vault.
+// All fields support UNIX glob-style wildcard matching.
+type Filters struct {
+	// Wildcard matches either secret names or labels.
+	// If set, it is ORed across both name and label fields.
+	Wildcard string
+
+	// Name filters secrets by name.
+	Name string
+
+	// Labels filters secrets by matching any of the provided label patterns.
+	// Multiple labels are ORed.
+	Labels []string
+}
+
+// FilterSecrets returns secrets that match the given filters.
+func (s *VaultDB) FilterSecrets(ctx context.Context, m Filters) (map[int]SecretWithLabels, error) {
+	query := `
+		SELECT
+			s.id,
+			s.name,
+			l.name AS label
+		FROM
+			secrets s
+			JOIN labels l ON s.id = l.secret_id
+	`
+
+	var (
+		args         []any
+		whereClauses []string
+	)
+
+	if len(m.Wildcard) > 0 {
+		whereClauses = append(whereClauses, "(s.name GLOB ? OR l.name GLOB ?)")
+		args = append(args, m.Wildcard, m.Wildcard)
 	}
 
-	query := `
-	SELECT
-		s.id,
-		s.name AS secret_name,
-		l.name AS label
-	FROM
-		secrets s
-		JOIN labels l ON s.id = l.secret_id
-	` + whereGlobOrClause("label", labels...) +
-		"AND secret_name GLOB ?"
+	if len(m.Name) > 0 {
+		whereClauses = append(whereClauses, "s.name GLOB ?")
+		args = append(args, m.Name)
+	}
 
-	args := append(cmdutil.ToAnySlice(labels), name)
+	if len(m.Labels) > 0 {
+		clauses := make([]string, len(m.Labels))
+		for i := range clauses {
+			clauses[i] = "l.name GLOB ?"
+			args = append(args, m.Labels[i]) //nolint:wsl
+		}
+
+		whereClauses = append(whereClauses, "("+strings.Join(clauses, " OR ")+")")
+	}
+
+	if len(whereClauses) > 0 {
+		query += " WHERE " + strings.Join(whereClauses, " AND ")
+	}
 
 	return s.secretsJoinLabels(ctx, query, args...)
 }
@@ -347,8 +335,8 @@ func (s *VaultDB) ExportSecrets(ctx context.Context) (map[int]SecretWithLabels, 
 	return reduce(secrets), nil
 }
 
-// DeleteByIDs deletes secrets by their IDs, along with their labels.
-func (s *VaultDB) DeleteByIDs(ctx context.Context, ids []int) (int64, error) {
+// DeleteSecretsByIDs deletes secrets by their IDs, along with their labels.
+func (s *VaultDB) DeleteSecretsByIDs(ctx context.Context, ids []int) (int64, error) {
 	if len(ids) == 0 {
 		return 0, ErrNoIDsProvided
 	}
@@ -376,21 +364,6 @@ func (s *VaultDB) DeleteByIDs(ctx context.Context, ids []int) (int64, error) {
 	}
 
 	return n, nil
-}
-
-// whereGlobOrClause generates a WHERE GLOB OR clause
-// for the given column and patterns.
-func whereGlobOrClause(col string, patterns ...string) string {
-	if len(patterns) == 0 {
-		return ""
-	}
-
-	clauses := make([]string, len(patterns))
-	for i := range clauses {
-		clauses[i] = col + " GLOB ?"
-	}
-
-	return "WHERE " + strings.Join(clauses, " OR ")
 }
 
 func reduce(secrets []secretWithLabelRow) map[int]SecretWithLabels {

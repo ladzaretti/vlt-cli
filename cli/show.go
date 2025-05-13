@@ -77,7 +77,9 @@ func (o *ShowOptions) validateConfigOptions() error {
 }
 
 // Run performs a secret lookup and outputs the result based on user flags.
-func (o *ShowOptions) Run(ctx context.Context, _ ...string) error {
+func (o *ShowOptions) Run(ctx context.Context, args ...string) error {
+	o.search.Args = args
+
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err
@@ -89,7 +91,7 @@ func (o *ShowOptions) Run(ctx context.Context, _ ...string) error {
 	case 1:
 		o.Debugf("Found one match.\n")
 
-		s, err := o.vault().Secret(ctx, matchingSecrets[0].id)
+		s, err := o.vault().ShowSecret(ctx, matchingSecrets[0].id)
 		if err != nil {
 			return err
 		}
@@ -125,7 +127,7 @@ func NewCmdShow(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault
 	o := NewShowOptions(stdio, vault)
 
 	cmd := &cobra.Command{
-		Use:     "show",
+		Use:     "show [glob]",
 		Aliases: []string{"get"},
 		Short:   "Retrieve a secret value from the vault",
 		Long: `Retrieve and display a secret value from the vault.

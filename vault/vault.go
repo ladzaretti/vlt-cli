@@ -560,19 +560,6 @@ func (vlt *Vault) UpdateSecret(ctx context.Context, id int, secret string) (int6
 	return vlt.db.UpdateSecret(ctx, id, nonce, ciphertext)
 }
 
-// SecretsWithLabels returns all secrets along with all labels associated with each.
-func (vlt *Vault) SecretsWithLabels(ctx context.Context) (map[int]vaultdb.SecretWithLabels, error) {
-	return vlt.db.SecretsWithLabels(ctx)
-}
-
-// SecretsByLabels returns secrets that match any of the provided label patterns,
-// along with all labels associated with each secret.
-//
-// If no patterns are provided, it returns all secrets along with all their labels.
-func (vlt *Vault) SecretsByLabels(ctx context.Context, labelPatterns ...string) (map[int]vaultdb.SecretWithLabels, error) {
-	return vlt.db.SecretsByLabels(ctx, labelPatterns...)
-}
-
 // ExportSecrets exports all secret-related data stored in the database.
 func (vlt *Vault) ExportSecrets(ctx context.Context) (map[int]vaultdb.SecretWithLabels, error) {
 	encryptedSecrets, err := vlt.db.ExportSecrets(ctx)
@@ -594,12 +581,15 @@ func (vlt *Vault) ExportSecrets(ctx context.Context) (map[int]vaultdb.SecretWith
 	return encryptedSecrets, nil
 }
 
-// SecretsByName returns secrets that match the provided name pattern,
-// along with all labels associated with it.
-//
-// If no pattern is provided, it returns all secrets along with all their labels.
-func (vlt *Vault) SecretsByName(ctx context.Context, namePattern string) (map[int]vaultdb.SecretWithLabels, error) {
-	return vlt.db.SecretsByName(ctx, namePattern)
+// FilterSecrets returns secrets that match the given filters.
+func (vlt *Vault) FilterSecrets(ctx context.Context, wildcard string, name string, labels []string) (map[int]vaultdb.SecretWithLabels, error) {
+	filters := vaultdb.Filters{
+		Wildcard: wildcard,
+		Name:     name,
+		Labels:   labels,
+	}
+
+	return vlt.db.FilterSecrets(ctx, filters)
 }
 
 // SecretsByIDs returns a map of secrets that match any of the provided IDs,
@@ -610,17 +600,9 @@ func (vlt *Vault) SecretsByIDs(ctx context.Context, ids ...int) (map[int]vaultdb
 	return vlt.db.SecretsByIDs(ctx, ids)
 }
 
-// SecretsByLabelsAndName returns secrets with labels that match any of the
-// provided label and name glob patterns.
-//
-// If no label patterns are provided, it returns [vaultdb.ErrNoLabelsProvided].
-func (vlt *Vault) SecretsByLabelsAndName(ctx context.Context, name string, labels ...string) (map[int]vaultdb.SecretWithLabels, error) {
-	return vlt.db.SecretsByLabelsAndName(ctx, name, labels...)
-}
-
-// Secret returns the decrypted ciphertext associated with the given secret ID.
-func (vlt *Vault) Secret(ctx context.Context, id int) (string, error) {
-	nonce, ciphertext, err := vlt.db.Secret(ctx, id)
+// ShowSecret returns the decrypted ciphertext associated with the given secret ID.
+func (vlt *Vault) ShowSecret(ctx context.Context, id int) (string, error) {
+	nonce, ciphertext, err := vlt.db.ShowSecret(ctx, id)
 	if err != nil {
 		return "", errf("secret: %w", err)
 	}
@@ -633,7 +615,7 @@ func (vlt *Vault) Secret(ctx context.Context, id int) (string, error) {
 	return string(secret), nil
 }
 
-// DeleteByIDs deletes secrets by their IDs, along with their labels.
-func (vlt *Vault) DeleteByIDs(ctx context.Context, ids ...int) (int64, error) {
-	return vlt.db.DeleteByIDs(ctx, ids)
+// DeleteSecretsByIDs deletes secrets by their IDs, along with their labels.
+func (vlt *Vault) DeleteSecretsByIDs(ctx context.Context, ids ...int) (int64, error) {
+	return vlt.db.DeleteSecretsByIDs(ctx, ids)
 }

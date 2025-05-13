@@ -25,7 +25,7 @@ func NewFindOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.V
 	return &FindOptions{
 		StdioOptions: stdio,
 		vault:        vault,
-		search:       NewSearchableOptions(WithStrict(false)),
+		search:       NewSearchableOptions(),
 	}
 }
 
@@ -38,7 +38,9 @@ func (o *FindOptions) Validate() error {
 }
 
 func (o *FindOptions) Run(ctx context.Context, args ...string) error {
-	matchingSecrets, err := o.search.search(ctx, o.vault(), args...)
+	o.search.Args = args
+
+	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err
 	}
@@ -53,11 +55,13 @@ func NewCmdFind(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault
 	o := NewFindOptions(stdio, vault)
 
 	cmd := &cobra.Command{
-		Use:     "find [string...]",
+		Use:     "find [glob]",
 		Args:    cobra.ArbitraryArgs,
 		Aliases: []string{"list", "ls"},
 		Short:   "Search for secrets in the vault",
 		Long: `Search for secrets stored in the vault using various filters.
+
+You may optionally provide a glob pattern to match against secret names or labels.
 
 Filters can be applied using --id, --name, or --label.
 Multiple --label flags can be applied and are logically ORed.

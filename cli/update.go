@@ -85,7 +85,9 @@ func (o *UpdateOptions) validateUpdateArgs() error {
 	return nil
 }
 
-func (o *UpdateOptions) Run(ctx context.Context, _ ...string) error {
+func (o *UpdateOptions) Run(ctx context.Context, args ...string) error {
+	o.search.Args = args
+
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err
@@ -114,7 +116,7 @@ func NewCmdUpdate(stdio *genericclioptions.StdioOptions, vault func() *vault.Vau
 	o := NewUpdateOptions(stdio, vault)
 
 	cmd := &cobra.Command{
-		Use:   "update",
+		Use:   "update [glob]",
 		Short: "Update secret data or metadata (subcommands available)",
 		Long: `Update metadata for an existing secret.
 
@@ -124,6 +126,9 @@ The update will proceed only if exactly one secret matches the given search crit
 To update the secret value, use the 'vlt update secret' subcommand.`,
 		Example: `  # Rename a secret by ID
   vlt update --id 123 --set-name new-name
+
+  # Add a label to all secrets whose name or label matches the given glob pattern
+  vlt update "*foo*" --add-label bar
 
   # Add a label to a secret by name
   vlt update --name github --add-label dev
@@ -204,7 +209,9 @@ func (o *UpdateSecretValueOptions) validateUpdateSecretArgs() error {
 	return nil
 }
 
-func (o *UpdateSecretValueOptions) Run(ctx context.Context, _ ...string) (retErr error) {
+func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (retErr error) {
+	o.search.Args = args
+
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
 		return err
@@ -322,7 +329,7 @@ func NewCmdUpdateSecretValue(stdio *genericclioptions.StdioOptions, vault func()
 	o := NewUpdateSecretValueOptions(stdio, vault)
 
 	cmd := &cobra.Command{
-		Use:   "secret",
+		Use:   "secret [glob]",
 		Short: "Update the value of an existing secret",
 		Long: `Update the value of an existing secret.
 
@@ -331,6 +338,9 @@ The update is performed only if exactly one secret matches the provided criteria
 You can provide the new value via prompt, clipboard, or by generating a random value.`,
 		Example: ` # Update value using prompt (interactive)
   vlt update secret --id 123
+
+  # Update value that matches a wildcard with a generated secret
+  vlt update secret "*suffix" --generate
 
   # Update value with a generated secret
   vlt update secret --name api-key --generate
