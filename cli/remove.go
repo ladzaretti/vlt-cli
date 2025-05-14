@@ -54,7 +54,7 @@ func (o *RemoveOptions) Validate() error {
 }
 
 func (o *RemoveOptions) Run(ctx context.Context, args ...string) error {
-	o.search.Args = args
+	o.search.WildcardFrom(args)
 
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
@@ -144,14 +144,14 @@ Multiple --label flags can be applied and are logically ORed.
 
   # Remove a secret by name without confirmation
   vlt remove --name api-key --yes`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		Run: func(cmd *cobra.Command, args []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
 	}
 
-	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, o.search.Usage(genericclioptions.ID))
-	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
-	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
+	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, FilterByID.Help())
+	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", FilterByName.Help())
+	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByName.Help())
 	cmd.Flags().BoolVarP(&o.assumeYes, "yes", "y", false, "skip confirmation prompts")
 	cmd.Flags().BoolVar(&o.removeAll, "all", false, "remove all matching secrets")
 

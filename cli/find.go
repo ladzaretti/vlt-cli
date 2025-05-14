@@ -38,7 +38,7 @@ func (o *FindOptions) Validate() error {
 }
 
 func (o *FindOptions) Run(ctx context.Context, args ...string) error {
-	o.search.Args = args
+	o.search.WildcardFrom(args)
 
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
@@ -72,9 +72,9 @@ Name and label values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
 		},
 	}
 
-	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, o.search.Usage(genericclioptions.ID))
-	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
-	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
+	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, FilterByID.Help())
+	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", FilterByName.Help())
+	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByLabels.Help())
 
 	return cmd
 }

@@ -78,7 +78,7 @@ func (o *ShowOptions) validateConfigOptions() error {
 
 // Run performs a secret lookup and outputs the result based on user flags.
 func (o *ShowOptions) Run(ctx context.Context, args ...string) error {
-	o.search.Args = args
+	o.search.WildcardFrom(args)
 
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
@@ -135,16 +135,16 @@ func NewCmdShow(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault
 The secret value will be displayed only if there is exactly one match for the given search criteria.
 
 Use --output to print to stdout (unsafe) or --copy to copy the value to the clipboard.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		Run: func(cmd *cobra.Command, args []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
 	}
 
-	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, o.search.Usage(genericclioptions.ID))
-	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
-	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
+	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, FilterByID.Help())
+	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", FilterByName.Help())
+	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByLabels.Help())
 	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the secret to stdout (unsafe)")
-	cmd.Flags().BoolVarP(&o.copy, "copy", "c", false, "copy the secret to the clipboard")
+	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the secret to the clipboard")
 
 	return cmd
 }

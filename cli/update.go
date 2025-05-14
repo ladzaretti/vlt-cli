@@ -86,7 +86,7 @@ func (o *UpdateOptions) validateUpdateArgs() error {
 }
 
 func (o *UpdateOptions) Run(ctx context.Context, args ...string) error {
-	o.search.Args = args
+	o.search.WildcardFrom(args)
 
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
@@ -127,7 +127,7 @@ To update the secret value, use the 'vlt update secret' subcommand.`,
 		Example: `  # Rename a secret by ID
   vlt update --id 123 --set-name new-name
 
-  # Add a label to all secrets whose name or label matches the given glob pattern
+  # Add a label to a secret whose name or label matches the given glob pattern
   vlt update "*foo*" --add-label bar
 
   # Add a label to a secret by name
@@ -135,14 +135,14 @@ To update the secret value, use the 'vlt update secret' subcommand.`,
 
   # Remove a label from a secret
   vlt update --id 456 --remove-label old-label`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		Run: func(cmd *cobra.Command, args []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
 	}
 
-	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, o.search.Usage(genericclioptions.ID))
-	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
-	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
+	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, FilterByID.Help())
+	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", FilterByName.Help())
+	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByLabels.Help())
 
 	cmd.Flags().StringVarP(&o.newName, "set-name", "", "", "new name for the secret")
 	cmd.Flags().StringSliceVarP(&o.addLabels, "add-label", "", nil, "label to add to the secret")
@@ -210,7 +210,7 @@ func (o *UpdateSecretValueOptions) validateUpdateSecretArgs() error {
 }
 
 func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (retErr error) {
-	o.search.Args = args
+	o.search.WildcardFrom(args)
 
 	matchingSecrets, err := o.search.search(ctx, o.vault())
 	if err != nil {
@@ -347,19 +347,19 @@ You can provide the new value via prompt, clipboard, or by generating a random v
 
   # Update value using the clipboard as input
   vlt update secret --label env=prod --paste`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		Run: func(cmd *cobra.Command, args []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
 	}
 
-	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, o.search.Usage(genericclioptions.ID))
-	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", o.search.Usage(genericclioptions.NAME))
-	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, o.search.Usage(genericclioptions.LABELS))
+	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, FilterByID.Help())
+	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", FilterByName.Help())
+	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByLabels.Help())
 
 	cmd.Flags().BoolVarP(&o.generate, "generate", "g", false, "generate a random secret")
 	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (unsafe)")
-	cmd.Flags().BoolVarP(&o.copy, "copy", "c", false, "copy the saved secret to the clipboard")
-	cmd.Flags().BoolVarP(&o.paste, "paste", "p", false, "read the secret from the clipboard")
+	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to the clipboard")
+	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret from the clipboard")
 
 	return cmd
 }

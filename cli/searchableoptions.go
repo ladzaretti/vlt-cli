@@ -12,16 +12,45 @@ import (
 	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultdb"
 )
 
+// SearchableOptions provides common filtering parameters and methods
+// used by CLI commands for querying secrets.
 type SearchableOptions struct {
-	*genericclioptions.SearchOptions
+	ID       int
+	IDs      []int
+	Name     string
+	Labels   []string
+	Wildcard string
 }
+
+type Filter int
+
+const (
+	_ Filter = iota
+	FilterByID
+	FilterByName
+	FilterByLabels
+)
+
+var help = map[Filter]string{
+	FilterByID:     "filter by id",
+	FilterByName:   "filter by name",
+	FilterByLabels: "filter by label",
+}
+
+func (u Filter) Help() string {
+	if s, ok := help[u]; ok {
+		return s
+	}
+
+	return "unknown usage"
+}
+
+var _ genericclioptions.BaseOptions = &SearchableOptions{}
 
 type SearchableOptionsOpt func(*SearchableOptions)
 
 func NewSearchableOptions(opts ...SearchableOptionsOpt) *SearchableOptions {
-	o := &SearchableOptions{
-		SearchOptions: &genericclioptions.SearchOptions{},
-	}
+	o := &SearchableOptions{}
 
 	for _, opt := range opts {
 		opt(o)
@@ -30,43 +59,47 @@ func NewSearchableOptions(opts ...SearchableOptionsOpt) *SearchableOptions {
 	return o
 }
 
+func (*SearchableOptions) Complete() error {
+	return nil
+}
+
+func (*SearchableOptions) Validate() error {
+	return nil
+}
+
+func (o *SearchableOptions) WildcardFrom(args []string) {
+	if len(args) > 0 {
+		o.Wildcard = args[0]
+	}
+}
+
 // search queries the vault for secrets based on the fields
 // set in [genericclioptions.SearchOptions].
 //
 // For any matched secret, it returns all labels associated with it,
 // regardless of the filter options used.
 func (o *SearchableOptions) search(ctx context.Context, vault *vault.Vault) ([]secretWithMarkedLabels, error) {
-	switch {
-	case o.ID > 0:
+	if o.ID > 0 {
 		return sortAndUnmarkSecrets(func() (map[int]vaultdb.SecretWithLabels, error) {
 			return vault.SecretsByIDs(ctx, o.ID)
 		})
+	}
 
-	case len(o.IDs) > 0:
+	if len(o.IDs) > 0 {
 		return sortAndUnmarkSecrets(func() (map[int]vaultdb.SecretWithLabels, error) {
 			return vault.SecretsByIDs(ctx, o.IDs...)
 		})
-
-	default:
-		glob := ""
-		if len(o.Args) > 0 {
-			glob = o.Args[0]
-		}
-
-		retrieveSecretsFunc := func() (map[int]vaultdb.SecretWithLabels, error) {
-			return vault.FilterSecrets(ctx, glob, o.Name, o.Labels)
-		}
-
-		if len(o.Labels) > 0 || len(glob) > 0 {
-			return sortAndMarkSecrets(ctx, vault, retrieveSecretsFunc)
-		}
-
-		return sortAndUnmarkSecrets(retrieveSecretsFunc)
 	}
-}
 
-func (*SearchableOptions) Validate() error {
-	return nil
+	retrieveSecretsFunc := func() (map[int]vaultdb.SecretWithLabels, error) {
+		return vault.FilterSecrets(ctx, o.Wildcard, o.Name, o.Labels)
+	}
+
+	if len(o.Labels) > 0 || len(o.Wildcard) > 0 {
+		return sortAndMarkSecrets(ctx, vault, retrieveSecretsFunc)
+	}
+
+	return sortAndUnmarkSecrets(retrieveSecretsFunc)
 }
 
 type secretWithLabels struct {

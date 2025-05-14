@@ -245,8 +245,8 @@ Note 2:
 
 	cmd.Flags().BoolVarP(&o.generate, "generate", "g", false, "generate a random secret")
 	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (unsafe)")
-	cmd.Flags().BoolVarP(&o.copy, "copy", "c", false, "copy the saved secret to the clipboard")
-	cmd.Flags().BoolVarP(&o.paste, "paste", "p", false, "read the secret from the clipboard")
+	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to the clipboard")
+	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret from the clipboard")
 
 	cmd.Flags().StringVarP(&o.name, "name", "", "", "the secret name (e.g., username)")
 	cmd.Flags().StringSliceVarP(&o.labels, "label", "", nil, "optional label to associate with the secret (comma-separated or repeated)")

@@ -111,7 +111,7 @@ func WithPasteCmd(pasteCmd string) Opt {
 // Copy writes the provided string to the clipboard.
 func (c *Clipboard) Copy(s string) error {
 	if _, err := exec.LookPath(c.copy.cmd); err != nil {
-		return &ConfigurationError{"copy", err}
+		return &ConfigurationError{"copy-clipboard", err}
 	}
 
 	//nolint:gosec // G204: safe, user config on local CLI tool
@@ -140,7 +140,7 @@ func (c *Clipboard) Copy(s string) error {
 // Paste reads and returns the current contents of the system clipboard.
 func (c *Clipboard) Paste() (string, error) {
 	if _, err := exec.LookPath(c.paste.cmd); err != nil {
-		return "", &ConfigurationError{"paste", err}
+		return "", &ConfigurationError{"paste-clipboard", err}
 	}
 
 	//nolint:gosec // G204: safe, user config on local CLI tool
