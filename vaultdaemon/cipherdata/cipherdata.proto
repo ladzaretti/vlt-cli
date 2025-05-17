@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package cipherdata;
+
+option go_package = "github.com/ladzaretti/vlt-cli/vaultdaemon/cipherdata";
+
+// SessionHandler provides login/logout and session 
+// state operations for vault cipher data.
+service SessionHandler {
+  // Login saves cipher data for a vault path.
+  rpc Login (LoginRequest) returns (Empty);
+
+  // GetSession retrieves cipher data for a vault path.
+  rpc GetSession (SessionRequest) returns (CipherData);
+
+  // Logout clears stored cipher data for a vault path.
+  rpc Logout (SessionRequest) returns (Empty);
+}
+
+// CipherData holds secure material used in authenticated sessions.
+message CipherData {
+  string auth_phc = 1; // PHC string for the authentication key
+  string kdf_phc = 2;  // PHC string for the KDF
+  bytes nonce = 3;     // Nonce (binary)
+}
+
+// LoginRequest is used to initiate a session.
+message LoginRequest {
+  string vault_path = 1;
+  CipherData cipher_data = 2;
+}
+
+// SessionRequest identifies a vault session by path.
+message SessionRequest {
+  string vault_path = 1;
+}
+
+message Empty {}

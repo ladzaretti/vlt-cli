@@ -25,6 +25,16 @@ patch-vendor: go-mod-vendor
 bin/vlt: patch-vendor go-mod-tidy
 	go build -o "bin/vlt" ./cmd/vlt
 
+.PHONY: protoc
+protoc:
+	protoc \
+		-I=./vaultdaemon \
+		--go_out=./vaultdaemon --go_opt=paths=source_relative \
+		--go-grpc_out=./vaultdaemon --go-grpc_opt=paths=source_relative \
+		cipherdata/cipherdata.proto
+
+
+
 .PHONY: go-mod-tidy
 go-mod-tidy:
 	go mod tidy
