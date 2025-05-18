@@ -121,8 +121,10 @@ func Run() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	s := grpc.NewServer()
-	pb.RegisterSessionHandlerServer(s, &server{})
+	srv := grpc.NewServer()
+	handler := newSessionHandler()
+
+	pb.RegisterSessionServer(srv, handler)
 
 	lis := &uidCheckingListener{
 		Listener:   socket,
@@ -135,7 +137,7 @@ func Run() {
 
 		log.Printf("server listening at: %v", socket.Addr())
 
-		if err := s.Serve(lis); err != nil {
+		if err := srv.Serve(lis); err != nil {
 			log.Printf("grpc server stopped with error: %v", err)
 			return
 		}
@@ -146,7 +148,9 @@ func Run() {
 	<-ctx.Done()
 
 	log.Printf("received shutdown signal: shutting down...")
-	s.Stop()
+
+	srv.Stop()
+	handler.stopAll()
 
 	<-done
 	log.Println("shutdown complete")

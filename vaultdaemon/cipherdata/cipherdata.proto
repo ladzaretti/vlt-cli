@@ -4,9 +4,9 @@ package cipherdata;
 
 option go_package = "github.com/ladzaretti/vlt-cli/vaultdaemon/cipherdata";
 
-// SessionHandler provides login/logout and session 
+// Session provides login/logout and session 
 // state operations for vault cipher data.
-service SessionHandler {
+service Session {
   // Login saves cipher data for a vault path.
   rpc Login (LoginRequest) returns (Empty);
 
@@ -28,6 +28,7 @@ message CipherData {
 message LoginRequest {
   string vault_path = 1;
   CipherData cipher_data = 2;
+  string duration = 3;
 }
 
 // SessionRequest identifies a vault session by path.

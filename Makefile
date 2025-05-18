@@ -25,6 +25,9 @@ patch-vendor: go-mod-vendor
 bin/vlt: patch-vendor go-mod-tidy
 	go build -o "bin/vlt" ./cmd/vlt
 
+bin/vltd: go-mod-tidy
+	go build -o "bin/vltd" ./cmd/vltd
+
 .PHONY: protoc
 protoc:
 	protoc \

@@ -19,18 +19,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SessionHandler_Login_FullMethodName      = "/cipherdata.SessionHandler/Login"
-	SessionHandler_GetSession_FullMethodName = "/cipherdata.SessionHandler/GetSession"
-	SessionHandler_Logout_FullMethodName     = "/cipherdata.SessionHandler/Logout"
+	Session_Login_FullMethodName      = "/cipherdata.Session/Login"
+	Session_GetSession_FullMethodName = "/cipherdata.Session/GetSession"
+	Session_Logout_FullMethodName     = "/cipherdata.Session/Logout"
 )
 
-// SessionHandlerClient is the client API for SessionHandler service.
+// SessionClient is the client API for Session service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// SessionHandler provides login/logout and session
+// Session provides login/logout and session
 // state operations for vault cipher data.
-type SessionHandlerClient interface {
+type SessionClient interface {
 	// Login saves cipher data for a vault path.
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*Empty, error)
 	// GetSession retrieves cipher data for a vault path.
@@ -39,169 +39,169 @@ type SessionHandlerClient interface {
 	Logout(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*Empty, error)
 }
 
-type sessionHandlerClient struct {
+type sessionClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewSessionHandlerClient(cc grpc.ClientConnInterface) SessionHandlerClient {
-	return &sessionHandlerClient{cc}
+func NewSessionClient(cc grpc.ClientConnInterface) SessionClient {
+	return &sessionClient{cc}
 }
 
-func (c *sessionHandlerClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*Empty, error) {
+func (c *sessionClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, SessionHandler_Login_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Session_Login_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *sessionHandlerClient) GetSession(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*CipherData, error) {
+func (c *sessionClient) GetSession(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*CipherData, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CipherData)
-	err := c.cc.Invoke(ctx, SessionHandler_GetSession_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Session_GetSession_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *sessionHandlerClient) Logout(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*Empty, error) {
+func (c *sessionClient) Logout(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, SessionHandler_Logout_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Session_Logout_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// SessionHandlerServer is the server API for SessionHandler service.
-// All implementations must embed UnimplementedSessionHandlerServer
+// SessionServer is the server API for Session service.
+// All implementations must embed UnimplementedSessionServer
 // for forward compatibility.
 //
-// SessionHandler provides login/logout and session
+// Session provides login/logout and session
 // state operations for vault cipher data.
-type SessionHandlerServer interface {
+type SessionServer interface {
 	// Login saves cipher data for a vault path.
 	Login(context.Context, *LoginRequest) (*Empty, error)
 	// GetSession retrieves cipher data for a vault path.
 	GetSession(context.Context, *SessionRequest) (*CipherData, error)
 	// Logout clears stored cipher data for a vault path.
 	Logout(context.Context, *SessionRequest) (*Empty, error)
-	mustEmbedUnimplementedSessionHandlerServer()
+	mustEmbedUnimplementedSessionServer()
 }
 
-// UnimplementedSessionHandlerServer must be embedded to have
+// UnimplementedSessionServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedSessionHandlerServer struct{}
+type UnimplementedSessionServer struct{}
 
-func (UnimplementedSessionHandlerServer) Login(context.Context, *LoginRequest) (*Empty, error) {
+func (UnimplementedSessionServer) Login(context.Context, *LoginRequest) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
-func (UnimplementedSessionHandlerServer) GetSession(context.Context, *SessionRequest) (*CipherData, error) {
+func (UnimplementedSessionServer) GetSession(context.Context, *SessionRequest) (*CipherData, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSession not implemented")
 }
-func (UnimplementedSessionHandlerServer) Logout(context.Context, *SessionRequest) (*Empty, error) {
+func (UnimplementedSessionServer) Logout(context.Context, *SessionRequest) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
 }
-func (UnimplementedSessionHandlerServer) mustEmbedUnimplementedSessionHandlerServer() {}
-func (UnimplementedSessionHandlerServer) testEmbeddedByValue()                        {}
+func (UnimplementedSessionServer) mustEmbedUnimplementedSessionServer() {}
+func (UnimplementedSessionServer) testEmbeddedByValue()                 {}
 
-// UnsafeSessionHandlerServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to SessionHandlerServer will
+// UnsafeSessionServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to SessionServer will
 // result in compilation errors.
-type UnsafeSessionHandlerServer interface {
-	mustEmbedUnimplementedSessionHandlerServer()
+type UnsafeSessionServer interface {
+	mustEmbedUnimplementedSessionServer()
 }
 
-func RegisterSessionHandlerServer(s grpc.ServiceRegistrar, srv SessionHandlerServer) {
-	// If the following call pancis, it indicates UnimplementedSessionHandlerServer was
+func RegisterSessionServer(s grpc.ServiceRegistrar, srv SessionServer) {
+	// If the following call pancis, it indicates UnimplementedSessionServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&SessionHandler_ServiceDesc, srv)
+	s.RegisterService(&Session_ServiceDesc, srv)
 }
 
-func _SessionHandler_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Session_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LoginRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SessionHandlerServer).Login(ctx, in)
+		return srv.(SessionServer).Login(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SessionHandler_Login_FullMethodName,
+		FullMethod: Session_Login_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SessionHandlerServer).Login(ctx, req.(*LoginRequest))
+		return srv.(SessionServer).Login(ctx, req.(*LoginRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SessionHandler_GetSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Session_GetSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SessionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SessionHandlerServer).GetSession(ctx, in)
+		return srv.(SessionServer).GetSession(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SessionHandler_GetSession_FullMethodName,
+		FullMethod: Session_GetSession_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SessionHandlerServer).GetSession(ctx, req.(*SessionRequest))
+		return srv.(SessionServer).GetSession(ctx, req.(*SessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SessionHandler_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Session_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SessionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SessionHandlerServer).Logout(ctx, in)
+		return srv.(SessionServer).Logout(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SessionHandler_Logout_FullMethodName,
+		FullMethod: Session_Logout_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SessionHandlerServer).Logout(ctx, req.(*SessionRequest))
+		return srv.(SessionServer).Logout(ctx, req.(*SessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// SessionHandler_ServiceDesc is the grpc.ServiceDesc for SessionHandler service.
+// Session_ServiceDesc is the grpc.ServiceDesc for Session service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var SessionHandler_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "cipherdata.SessionHandler",
-	HandlerType: (*SessionHandlerServer)(nil),
+var Session_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "cipherdata.Session",
+	HandlerType: (*SessionServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Login",
-			Handler:    _SessionHandler_Login_Handler,
+			Handler:    _Session_Login_Handler,
 		},
 		{
 			MethodName: "GetSession",
-			Handler:    _SessionHandler_GetSession_Handler,
+			Handler:    _Session_GetSession_Handler,
 		},
 		{
 			MethodName: "Logout",
-			Handler:    _SessionHandler_Logout_Handler,
+			Handler:    _Session_Logout_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

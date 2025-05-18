@@ -87,6 +87,7 @@ type LoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	VaultPath     string                 `protobuf:"bytes,1,opt,name=vault_path,json=vaultPath,proto3" json:"vault_path,omitempty"`
 	CipherData    *CipherData            `protobuf:"bytes,2,opt,name=cipher_data,json=cipherData,proto3" json:"cipher_data,omitempty"`
+	Duration      string                 `protobuf:"bytes,3,opt,name=duration,proto3" json:"duration,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -133,6 +134,13 @@ func (x *LoginRequest) GetCipherData() *CipherData {
 		return x.CipherData
 	}
 	return nil
+}
+
+func (x *LoginRequest) GetDuration() string {
+	if x != nil {
+		return x.Duration
+	}
+	return ""
 }
 
 // SessionRequest identifies a vault session by path.
@@ -226,17 +234,18 @@ const file_cipherdata_cipherdata_proto_rawDesc = "" +
 	"CipherData\x12\x19\n" +
 	"\bauth_phc\x18\x01 \x01(\tR\aauthPhc\x12\x17\n" +
 	"\akdf_phc\x18\x02 \x01(\tR\x06kdfPhc\x12\x14\n" +
-	"\x05nonce\x18\x03 \x01(\fR\x05nonce\"f\n" +
+	"\x05nonce\x18\x03 \x01(\fR\x05nonce\"\x82\x01\n" +
 	"\fLoginRequest\x12\x1d\n" +
 	"\n" +
 	"vault_path\x18\x01 \x01(\tR\tvaultPath\x127\n" +
 	"\vcipher_data\x18\x02 \x01(\v2\x16.cipherdata.CipherDataR\n" +
-	"cipherData\"/\n" +
+	"cipherData\x12\x1a\n" +
+	"\bduration\x18\x03 \x01(\tR\bduration\"/\n" +
 	"\x0eSessionRequest\x12\x1d\n" +
 	"\n" +
 	"vault_path\x18\x01 \x01(\tR\tvaultPath\"\a\n" +
-	"\x05Empty2\xc1\x01\n" +
-	"\x0eSessionHandler\x124\n" +
+	"\x05Empty2\xba\x01\n" +
+	"\aSession\x124\n" +
 	"\x05Login\x12\x18.cipherdata.LoginRequest\x1a\x11.cipherdata.Empty\x12@\n" +
 	"\n" +
 	"GetSession\x12\x1a.cipherdata.SessionRequest\x1a\x16.cipherdata.CipherData\x127\n" +
@@ -263,12 +272,12 @@ var file_cipherdata_cipherdata_proto_goTypes = []any{
 }
 var file_cipherdata_cipherdata_proto_depIdxs = []int32{
 	0, // 0: cipherdata.LoginRequest.cipher_data:type_name -> cipherdata.CipherData
-	1, // 1: cipherdata.SessionHandler.Login:input_type -> cipherdata.LoginRequest
-	2, // 2: cipherdata.SessionHandler.GetSession:input_type -> cipherdata.SessionRequest
-	2, // 3: cipherdata.SessionHandler.Logout:input_type -> cipherdata.SessionRequest
-	3, // 4: cipherdata.SessionHandler.Login:output_type -> cipherdata.Empty
-	0, // 5: cipherdata.SessionHandler.GetSession:output_type -> cipherdata.CipherData
-	3, // 6: cipherdata.SessionHandler.Logout:output_type -> cipherdata.Empty
+	1, // 1: cipherdata.Session.Login:input_type -> cipherdata.LoginRequest
+	2, // 2: cipherdata.Session.GetSession:input_type -> cipherdata.SessionRequest
+	2, // 3: cipherdata.Session.Logout:input_type -> cipherdata.SessionRequest
+	3, // 4: cipherdata.Session.Login:output_type -> cipherdata.Empty
+	0, // 5: cipherdata.Session.GetSession:output_type -> cipherdata.CipherData
+	3, // 6: cipherdata.Session.Logout:output_type -> cipherdata.Empty
 	4, // [4:7] is the sub-list for method output_type
 	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
