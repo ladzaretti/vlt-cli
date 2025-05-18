@@ -23,77 +23,6 @@ const socketPerm = 0o600
 // used by the daemon.
 var socketPath = fmt.Sprintf("/run/user/%d/vlt.sock", os.Getuid())
 
-// getCred returns the credentials from the remote end of a unix socket.
-func getCred(conn net.Conn) (*unix.Ucred, error) {
-	unixConn, ok := conn.(*net.UnixConn)
-	if !ok {
-		return nil, fmt.Errorf("connection is not a *net.UnixConn: got %T", conn)
-	}
-
-	rawConn, err := unixConn.SyscallConn()
-	if err != nil {
-		return nil, err
-	}
-
-	var (
-		ucred    *unix.Ucred
-		ucredErr error
-	)
-
-	err = rawConn.Control(func(fd uintptr) {
-		// Getsockopt syscall to retrieve peer credentials (uid, gid, pid)
-		// from the remote end of the connected unix socket
-		//
-		// https://man7.org/linux/man-pages/man7/unix.7.html (SO_PEERCRED details)
-		ucred, ucredErr = unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED)
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if ucredErr != nil {
-		return nil, ucredErr
-	}
-
-	return ucred, nil
-}
-
-// uidCheckingListener wraps a [net.Listener] and only accepts connections
-// from clients matching the allowed UID.
-type uidCheckingListener struct {
-	net.Listener
-	allowedUID int
-}
-
-// Accept returns the next connection if the client's UID matches allowedUID.
-// Other connections are closed and skipped.
-func (l *uidCheckingListener) Accept() (net.Conn, error) {
-	for {
-		conn, err := l.Listener.Accept()
-		if err != nil {
-			return nil, err
-		}
-
-		ucred, err := getCred(conn)
-		if err != nil {
-			log.Printf("uid check failed: %v", err)
-			_ = conn.Close() //nolint:wsl
-
-			continue
-		}
-
-		if int(ucred.Uid) != l.allowedUID {
-			log.Printf("connection from disallowed uid: %d", ucred.Uid)
-			_ = conn.Close() //nolint:wsl
-
-			continue
-		}
-
-		// connection allowed
-		return conn, nil
-	}
-}
-
 // Run starts the vltd daemon and serves gRPC over a UNIX domain socket.
 //
 // It creates the socket with 0600 permissions and only allows connections
@@ -126,7 +55,7 @@ func Run() {
 
 	pb.RegisterSessionServer(srv, handler)
 
-	lis := &uidCheckingListener{
+	lis := &secureUnixListener{
 		Listener:   socket,
 		allowedUID: os.Getuid(),
 	}
@@ -154,4 +83,76 @@ func Run() {
 
 	<-done
 	log.Println("shutdown complete")
+}
+
+// secureUnixListener wraps a unix [net.Listener] and only accepts connections
+// from clients matching the allowed UID.
+type secureUnixListener struct {
+	net.Listener
+	allowedUID int
+}
+
+// Accept returns the next connection if the client's UID matches allowedUID.
+// Other connections are closed and skipped.
+func (l *secureUnixListener) Accept() (net.Conn, error) {
+	for {
+		conn, err := l.Listener.Accept()
+		if err != nil {
+			return nil, err
+		}
+
+		ucred, err := getCred(conn)
+		if err != nil {
+			log.Printf("uid check failed: %v", err)
+			_ = conn.Close() //nolint:wsl
+
+			continue
+		}
+
+		if int(ucred.Uid) != l.allowedUID {
+			log.Printf("connection from disallowed uid: %d", ucred.Uid)
+			_ = conn.Close() //nolint:wsl
+
+			continue
+		}
+
+		// connection allowed
+		return conn, nil
+	}
+}
+
+// getCred returns the credentials from the remote end of a unix socket.
+func getCred(conn net.Conn) (*unix.Ucred, error) {
+	unixConn, ok := conn.(*net.UnixConn)
+	if !ok {
+		return nil, fmt.Errorf("connection is not a *net.UnixConn: got %T", conn)
+	}
+
+	rawConn, err := unixConn.SyscallConn()
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		ucred    *unix.Ucred
+		ucredErr error
+	)
+
+	err = rawConn.Control(func(fd uintptr) {
+		// Getsockopt syscall to retrieve peer credentials (uid, gid, pid)
+		// from the remote end of the connected unix socket
+		//
+		// see SO_PEERCRED:
+		// https://man7.org/linux/man-pages/man7/unix.7.html
+		ucred, ucredErr = unix.GetsockoptUcred(int(fd), unix.SOL_SOCKET, unix.SO_PEERCRED)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if ucredErr != nil {
+		return nil, ucredErr
+	}
+
+	return ucred, nil
 }
