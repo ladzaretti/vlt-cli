@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -32,11 +33,11 @@ const (
 // state operations for vault cipher data.
 type SessionClient interface {
 	// Login saves cipher data for a vault path.
-	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*Empty, error)
+	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetSession retrieves cipher data for a vault path.
 	GetSession(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*CipherData, error)
 	// Logout clears stored cipher data for a vault path.
-	Logout(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*Empty, error)
+	Logout(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type sessionClient struct {
@@ -47,9 +48,9 @@ func NewSessionClient(cc grpc.ClientConnInterface) SessionClient {
 	return &sessionClient{cc}
 }
 
-func (c *sessionClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*Empty, error) {
+func (c *sessionClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Session_Login_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -67,9 +68,9 @@ func (c *sessionClient) GetSession(ctx context.Context, in *SessionRequest, opts
 	return out, nil
 }
 
-func (c *sessionClient) Logout(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*Empty, error) {
+func (c *sessionClient) Logout(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Session_Logout_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -85,11 +86,11 @@ func (c *sessionClient) Logout(ctx context.Context, in *SessionRequest, opts ...
 // state operations for vault cipher data.
 type SessionServer interface {
 	// Login saves cipher data for a vault path.
-	Login(context.Context, *LoginRequest) (*Empty, error)
+	Login(context.Context, *LoginRequest) (*emptypb.Empty, error)
 	// GetSession retrieves cipher data for a vault path.
 	GetSession(context.Context, *SessionRequest) (*CipherData, error)
 	// Logout clears stored cipher data for a vault path.
-	Logout(context.Context, *SessionRequest) (*Empty, error)
+	Logout(context.Context, *SessionRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedSessionServer()
 }
 
@@ -100,13 +101,13 @@ type SessionServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSessionServer struct{}
 
-func (UnimplementedSessionServer) Login(context.Context, *LoginRequest) (*Empty, error) {
+func (UnimplementedSessionServer) Login(context.Context, *LoginRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
 func (UnimplementedSessionServer) GetSession(context.Context, *SessionRequest) (*CipherData, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSession not implemented")
 }
-func (UnimplementedSessionServer) Logout(context.Context, *SessionRequest) (*Empty, error) {
+func (UnimplementedSessionServer) Logout(context.Context, *SessionRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
 }
 func (UnimplementedSessionServer) mustEmbedUnimplementedSessionServer() {}

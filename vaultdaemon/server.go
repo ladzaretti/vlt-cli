@@ -11,6 +11,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type safeMap[K comparable, V any] struct {
@@ -117,7 +118,7 @@ func (sh *sessionServer) stopAll() {
 	})
 }
 
-func (sh *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*pb.Empty, error) {
+func (sh *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*emptypb.Empty, error) {
 	cipherdate := vaultcontainer.CipherData{
 		AuthPHC: req.GetCipherData().GetAuthPhc(),
 		KDFPHC:  req.GetCipherData().GetKdfPhc(),
@@ -142,10 +143,10 @@ func (sh *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*pb.Emp
 		log.Printf("session ended for vault: %s", vaultPath)
 	})
 
-	return &pb.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (sh *sessionServer) Logout(_ context.Context, req *pb.SessionRequest) (*pb.Empty, error) {
+func (sh *sessionServer) Logout(_ context.Context, req *pb.SessionRequest) (*emptypb.Empty, error) {
 	s, ok := sh.sessions.load(req.GetVaultPath())
 	if !ok {
 		return nil, status.Error(codes.NotFound, "no session found for the given path")
@@ -155,7 +156,7 @@ func (sh *sessionServer) Logout(_ context.Context, req *pb.SessionRequest) (*pb.
 
 	sh.sessions.delete(req.GetVaultPath())
 
-	return &pb.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (sh *sessionServer) GetSession(_ context.Context, req *pb.SessionRequest) (*pb.CipherData, error) {

@@ -32,6 +32,7 @@ bin/vltd: go-mod-tidy
 protoc:
 	protoc \
 		-I=./vaultdaemon \
+		-I=third_party \
 		--go_out=./vaultdaemon --go_opt=paths=source_relative \
 		--go-grpc_out=./vaultdaemon --go-grpc_opt=paths=source_relative \
 		cipherdata/cipherdata.proto

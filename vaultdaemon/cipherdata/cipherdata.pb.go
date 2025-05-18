@@ -9,6 +9,7 @@ package cipherdata
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -188,48 +189,12 @@ func (x *SessionRequest) GetVaultPath() string {
 	return ""
 }
 
-type Empty struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Empty) Reset() {
-	*x = Empty{}
-	mi := &file_cipherdata_cipherdata_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Empty) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Empty) ProtoMessage() {}
-
-func (x *Empty) ProtoReflect() protoreflect.Message {
-	mi := &file_cipherdata_cipherdata_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Empty.ProtoReflect.Descriptor instead.
-func (*Empty) Descriptor() ([]byte, []int) {
-	return file_cipherdata_cipherdata_proto_rawDescGZIP(), []int{3}
-}
-
 var File_cipherdata_cipherdata_proto protoreflect.FileDescriptor
 
 const file_cipherdata_cipherdata_proto_rawDesc = "" +
 	"\n" +
 	"\x1bcipherdata/cipherdata.proto\x12\n" +
-	"cipherdata\"V\n" +
+	"cipherdata\x1a\x1bgoogle/protobuf/empty.proto\"V\n" +
 	"\n" +
 	"CipherData\x12\x19\n" +
 	"\bauth_phc\x18\x01 \x01(\tR\aauthPhc\x12\x17\n" +
@@ -243,13 +208,12 @@ const file_cipherdata_cipherdata_proto_rawDesc = "" +
 	"\bduration\x18\x03 \x01(\tR\bduration\"/\n" +
 	"\x0eSessionRequest\x12\x1d\n" +
 	"\n" +
-	"vault_path\x18\x01 \x01(\tR\tvaultPath\"\a\n" +
-	"\x05Empty2\xba\x01\n" +
-	"\aSession\x124\n" +
-	"\x05Login\x12\x18.cipherdata.LoginRequest\x1a\x11.cipherdata.Empty\x12@\n" +
+	"vault_path\x18\x01 \x01(\tR\tvaultPath2\xc4\x01\n" +
+	"\aSession\x129\n" +
+	"\x05Login\x12\x18.cipherdata.LoginRequest\x1a\x16.google.protobuf.Empty\x12@\n" +
 	"\n" +
-	"GetSession\x12\x1a.cipherdata.SessionRequest\x1a\x16.cipherdata.CipherData\x127\n" +
-	"\x06Logout\x12\x1a.cipherdata.SessionRequest\x1a\x11.cipherdata.EmptyB6Z4github.com/ladzaretti/vlt-cli/vaultdaemon/cipherdatab\x06proto3"
+	"GetSession\x12\x1a.cipherdata.SessionRequest\x1a\x16.cipherdata.CipherData\x12<\n" +
+	"\x06Logout\x12\x1a.cipherdata.SessionRequest\x1a\x16.google.protobuf.EmptyB6Z4github.com/ladzaretti/vlt-cli/vaultdaemon/cipherdatab\x06proto3"
 
 var (
 	file_cipherdata_cipherdata_proto_rawDescOnce sync.Once
@@ -263,21 +227,21 @@ func file_cipherdata_cipherdata_proto_rawDescGZIP() []byte {
 	return file_cipherdata_cipherdata_proto_rawDescData
 }
 
-var file_cipherdata_cipherdata_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_cipherdata_cipherdata_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_cipherdata_cipherdata_proto_goTypes = []any{
 	(*CipherData)(nil),     // 0: cipherdata.CipherData
 	(*LoginRequest)(nil),   // 1: cipherdata.LoginRequest
 	(*SessionRequest)(nil), // 2: cipherdata.SessionRequest
-	(*Empty)(nil),          // 3: cipherdata.Empty
+	(*emptypb.Empty)(nil),  // 3: google.protobuf.Empty
 }
 var file_cipherdata_cipherdata_proto_depIdxs = []int32{
 	0, // 0: cipherdata.LoginRequest.cipher_data:type_name -> cipherdata.CipherData
 	1, // 1: cipherdata.Session.Login:input_type -> cipherdata.LoginRequest
 	2, // 2: cipherdata.Session.GetSession:input_type -> cipherdata.SessionRequest
 	2, // 3: cipherdata.Session.Logout:input_type -> cipherdata.SessionRequest
-	3, // 4: cipherdata.Session.Login:output_type -> cipherdata.Empty
+	3, // 4: cipherdata.Session.Login:output_type -> google.protobuf.Empty
 	0, // 5: cipherdata.Session.GetSession:output_type -> cipherdata.CipherData
-	3, // 6: cipherdata.Session.Logout:output_type -> cipherdata.Empty
+	3, // 6: cipherdata.Session.Logout:output_type -> google.protobuf.Empty
 	4, // [4:7] is the sub-list for method output_type
 	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -296,7 +260,7 @@ func file_cipherdata_cipherdata_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cipherdata_cipherdata_proto_rawDesc), len(file_cipherdata_cipherdata_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

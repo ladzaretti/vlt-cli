@@ -1,5 +1,5 @@
 syntax = "proto3";
-
+import "google/protobuf/empty.proto";
 package cipherdata;
 
 option go_package = "github.com/ladzaretti/vlt-cli/vaultdaemon/cipherdata";
@@ -8,13 +8,13 @@ option go_package = "github.com/ladzaretti/vlt-cli/vaultdaemon/cipherdata";
 // state operations for vault cipher data.
 service Session {
   // Login saves cipher data for a vault path.
-  rpc Login (LoginRequest) returns (Empty);
+  rpc Login (LoginRequest) returns (google.protobuf.Empty);
 
   // GetSession retrieves cipher data for a vault path.
   rpc GetSession (SessionRequest) returns (CipherData);
 
   // Logout clears stored cipher data for a vault path.
-  rpc Logout (SessionRequest) returns (Empty);
+  rpc Logout (SessionRequest) returns (google.protobuf.Empty);
 }
 
 // CipherData holds secure material used in authenticated sessions.
@@ -35,5 +35,3 @@ message LoginRequest {
 message SessionRequest {
   string vault_path = 1;
 }
-
-message Empty {}
