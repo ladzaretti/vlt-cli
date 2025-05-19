@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"crypto/subtle"
 	"database/sql"
 	"embed"
 	"errors"
@@ -16,6 +17,8 @@ import (
 	// Package sqlite is a CGo-free port of SQLite/SQLite3.
 	_ "modernc.org/sqlite"
 )
+
+var ErrAuthenticationFailed = errors.New("authentication failed")
 
 var (
 	//go:embed db/migrations/sqlite/vault_container
@@ -56,12 +59,12 @@ type Vault struct {
 	cleanupFuncs         []cleanupFunc         // cleanupFuncs contains deferred cleanup functions.
 }
 
-// Config options for creating a [Vault] instance.
-type Config struct {
+// config options for creating a [Vault] instance.
+type config struct {
 	snapshot []byte // snapshot is the serialized vault container database to restore from, if set.
 }
 
-type Option func(*Config)
+type Option func(*config)
 
 // WithSnapshot sets a snapshot to restore the [Vault] from.
 // obtained via [Vault.Serialize].
@@ -69,7 +72,7 @@ func WithSnapshot(snapshot []byte) Option {
 	copied := make([]byte, len(snapshot))
 	copy(copied, snapshot) // copied to avoid side effects from the underlying sqlite3 driver.
 
-	return func(c *Config) {
+	return func(c *config) {
 		c.snapshot = copied
 	}
 }
@@ -92,13 +95,13 @@ func newVault(path string, nonce []byte, aesgcm *vaultcrypto.AESGCM, vch *vaultC
 // but is not used unless explicitly restored.
 //
 // On success, the function returns a [*Vault] ready for use.
-func New(ctx context.Context, password string, path string, opts ...Option) (vlt *Vault, retErr error) {
-	cfg := &Config{}
+func New(ctx context.Context, path string, password string, opts ...Option) (vlt *Vault, retErr error) {
+	config := &config{}
 	for _, opt := range opts {
-		opt(cfg)
+		opt(config)
 	}
 
-	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, cfg.snapshot)
+	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.snapshot)
 	if err != nil {
 		return nil, errf("new: %w", err)
 	}
@@ -121,7 +124,7 @@ func New(ctx context.Context, password string, path string, opts ...Option) (vlt
 
 	aes, err := deriveAESGCM(phc, password)
 	if err != nil {
-		return nil, err
+		return nil, errf("new: %w", err)
 	}
 
 	vlt = newVault(path, cipherdata.Nonce, aes, vaultContainerHandle)
@@ -152,13 +155,13 @@ func New(ctx context.Context, password string, path string, opts ...Option) (vlt
 // and decrypts and deserializes the vault contents into memory.
 //
 // On success, the function returns a [*Vault] ready for use.
-func Open(ctx context.Context, password string, path string, opts ...Option) (vlt *Vault, retErr error) {
-	cfg := &Config{}
+func Open(ctx context.Context, path string, password string, opts ...Option) (vlt *Vault, retErr error) {
+	config := &config{}
 	for _, opt := range opts {
-		opt(cfg)
+		opt(config)
 	}
 
-	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, cfg.snapshot)
+	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.snapshot)
 	if err != nil {
 		return nil, errf("open: %w", err)
 	}
@@ -174,6 +177,10 @@ func Open(ctx context.Context, password string, path string, opts ...Option) (vl
 		return nil, errf("open: %w", err)
 	}
 
+	if err := verifyPassword([]byte(password), cipherdata.AuthPHC); err != nil {
+		return nil, errf("open: %w", err)
+	}
+
 	phc, err := vaultcrypto.DecodeAragon2idPHC(cipherdata.KDFPHC)
 	if err != nil {
 		return nil, errf("open: %w", err)
@@ -181,7 +188,7 @@ func Open(ctx context.Context, password string, path string, opts ...Option) (vl
 
 	aes, err := deriveAESGCM(phc, password)
 	if err != nil {
-		return nil, err
+		return nil, errf("open: %w", err)
 	}
 
 	vlt = newVault(path, cipherdata.Nonce, aes, vaultContainerHandle)
@@ -250,6 +257,23 @@ func (vlt *Vault) cleanup() error {
 
 	if err := executeCleanup(vlt.cleanupFuncs); err != nil {
 		return errf("vault cleanup: %w", err)
+	}
+
+	return nil
+}
+
+// verifyPassword checks whether the given password matches the Argon2id PHC hash.
+func verifyPassword(password []byte, phc string) error {
+	authPHC, err := vaultcrypto.DecodeAragon2idPHC(phc)
+	if err != nil {
+		return errf("verify password: %w", err)
+	}
+
+	kdf := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithPHC(authPHC))
+	derived := kdf.Derive(password)
+
+	if subtle.ConstantTimeCompare(authPHC.Hash, derived) != 1 {
+		return ErrAuthenticationFailed
 	}
 
 	return nil
@@ -334,10 +358,10 @@ func newVaultContainerHandle(ctx context.Context, path string, snapshot []byte) 
 
 // vaultCipherData generates [vaultcontainer.CipherData] containing salts, nonce,
 // and derived authentication hash used for password authentication and vault encryption.
-func vaultCipherData(password []byte) (vaultcontainer.CipherData, error) {
+func vaultCipherData(password []byte) (*vaultcontainer.CipherData, error) {
 	authSalt, err := vaultcrypto.RandBytes(16)
 	if err != nil {
-		return vaultcontainer.CipherData{}, errf("cipher data: %w", err)
+		return nil, errf("cipher data: %w", err)
 	}
 
 	authKDF := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithSalt(authSalt))
@@ -346,17 +370,17 @@ func vaultCipherData(password []byte) (vaultcontainer.CipherData, error) {
 
 	vaultSalt, err := vaultcrypto.RandBytes(16)
 	if err != nil {
-		return vaultcontainer.CipherData{}, errf("cipher data: %w", err)
+		return nil, errf("cipher data: %w", err)
 	}
 
 	vaultKDF := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithSalt(vaultSalt))
 
 	vaultNonce, err := vaultcrypto.RandBytes(12)
 	if err != nil {
-		return vaultcontainer.CipherData{}, errf("cipher data: %w", err)
+		return nil, errf("cipher data: %w", err)
 	}
 
-	return vaultcontainer.CipherData{
+	return &vaultcontainer.CipherData{
 		AuthPHC: authPHC.String(),
 		KDFPHC:  vaultKDF.PHC().String(),
 		Nonce:   vaultNonce,
@@ -432,7 +456,7 @@ func deriveAESGCM(phc vaultcrypto.Argon2idPHC, password string) (*vaultcrypto.AE
 
 	aes, err := vaultcrypto.NewAESGCM(key)
 	if err != nil {
-		return nil, errf("vault aesgsm: %w", err)
+		return nil, errf("derive aesgsm: %w", err)
 	}
 
 	return aes, nil

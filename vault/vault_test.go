@@ -16,7 +16,7 @@ func TestVault_New(t *testing.T) {
 		t.Error("Dummy test")
 	}
 
-	v, err := vault.New(t.Context(), "password", "/tmp/.vlt.temp")
+	v, err := vault.New(t.Context(), "/tmp/.vlt.temp", "password")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestVault_New(t *testing.T) {
 		t.Error(err)
 	}
 
-	v, err = vault.Open(t.Context(), "password", "/tmp/.vlt.temp")
+	v, err = vault.Open(t.Context(), "/tmp/.vlt.temp", "password")
 	if err != nil {
 		t.Error(err)
 	}

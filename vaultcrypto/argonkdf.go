@@ -15,7 +15,6 @@ type Argon2Params struct {
 
 type Argon2idKDF struct {
 	phc    Argon2idPHC
-	salt   []byte
 	keyLen uint32 // keyLen is the length of the derived key in bytes
 }
 
@@ -53,7 +52,7 @@ func NewArgon2idKDF(opts ...Argon2idKDFOpt) *Argon2idKDF {
 
 func WithSalt(salt []byte) Argon2idKDFOpt {
 	return func(kdf *Argon2idKDF) {
-		kdf.salt = salt
+		kdf.phc.Salt = salt
 	}
 }
 
@@ -83,7 +82,7 @@ func WithKeyLen(n uint32) Argon2idKDFOpt {
 
 func (a *Argon2idKDF) Derive(password []byte) []byte {
 	params := a.phc.Argon2Params
-	return argon2.IDKey(password, a.salt, params.Time, params.Memory, params.Parallelism, a.keyLen)
+	return argon2.IDKey(password, a.phc.Salt, params.Time, params.Memory, params.Parallelism, a.keyLen)
 }
 
 func (a *Argon2idKDF) PHC() Argon2idPHC {

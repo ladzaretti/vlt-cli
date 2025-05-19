@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	masterKeyMinLen = 8
+	masterPasswordMinLen = 8
 )
 
 // CreateOptions have the data required to perform the create operation.
@@ -54,12 +54,12 @@ func (o *CreateOptions) Validate() error {
 }
 
 func (o *CreateOptions) Run(ctx context.Context, _ ...string) error {
-	mk, err := input.PromptNewPassword(o.Out, int(o.In.Fd()), masterKeyMinLen)
+	password, err := input.PromptNewPassword(o.Out, int(o.In.Fd()), masterPasswordMinLen)
 	if err != nil {
 		return fmt.Errorf("read new master key: %w", err)
 	}
 
-	_, err = vault.New(ctx, mk, o.vaultOptions.Path)
+	_, err = vault.New(ctx, o.vaultOptions.Path, password)
 	if err != nil {
 		return fmt.Errorf("create vault: %w", err)
 	}

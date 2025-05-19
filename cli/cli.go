@@ -82,7 +82,7 @@ func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOpti
 		return fmt.Errorf("prompt password: %v", err)
 	}
 
-	v, err := vault.Open(ctx, password, o.Path)
+	v, err := vault.Open(ctx, o.Path, password)
 	if err != nil {
 		return err
 	}
