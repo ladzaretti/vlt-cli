@@ -50,7 +50,11 @@ func (o *LoginOptions) Run(context.Context, ...string) error {
 		return fmt.Errorf("prompt password: %v", err)
 	}
 
-	// FIXME: auth somehow
+	// FIXME: utilize vltd for auth session:
+	// 	  create derived keys and store in in the vltd daemon.
+	// TODO1: consume the session cipher data when opening the vault.
+	// TODO2: end session in the logout cmd.
+	// TODO3: add session duration config opt.
 	dbKey, err := "", nil
 	if err != nil {
 		return fmt.Errorf("get master key: %v", err)

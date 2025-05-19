@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v3.19.6
-// source: cipherdata/cipherdata.proto
+// source: sessionpb/session.proto
 
-package cipherdata
+package sessionpb
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -34,7 +34,7 @@ type CipherData struct {
 
 func (x *CipherData) Reset() {
 	*x = CipherData{}
-	mi := &file_cipherdata_cipherdata_proto_msgTypes[0]
+	mi := &file_sessionpb_session_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -46,7 +46,7 @@ func (x *CipherData) String() string {
 func (*CipherData) ProtoMessage() {}
 
 func (x *CipherData) ProtoReflect() protoreflect.Message {
-	mi := &file_cipherdata_cipherdata_proto_msgTypes[0]
+	mi := &file_sessionpb_session_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,7 +59,7 @@ func (x *CipherData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CipherData.ProtoReflect.Descriptor instead.
 func (*CipherData) Descriptor() ([]byte, []int) {
-	return file_cipherdata_cipherdata_proto_rawDescGZIP(), []int{0}
+	return file_sessionpb_session_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *CipherData) GetAuthPhc() string {
@@ -95,7 +95,7 @@ type LoginRequest struct {
 
 func (x *LoginRequest) Reset() {
 	*x = LoginRequest{}
-	mi := &file_cipherdata_cipherdata_proto_msgTypes[1]
+	mi := &file_sessionpb_session_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -107,7 +107,7 @@ func (x *LoginRequest) String() string {
 func (*LoginRequest) ProtoMessage() {}
 
 func (x *LoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cipherdata_cipherdata_proto_msgTypes[1]
+	mi := &file_sessionpb_session_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -120,7 +120,7 @@ func (x *LoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
 func (*LoginRequest) Descriptor() ([]byte, []int) {
-	return file_cipherdata_cipherdata_proto_rawDescGZIP(), []int{1}
+	return file_sessionpb_session_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *LoginRequest) GetVaultPath() string {
@@ -154,7 +154,7 @@ type SessionRequest struct {
 
 func (x *SessionRequest) Reset() {
 	*x = SessionRequest{}
-	mi := &file_cipherdata_cipherdata_proto_msgTypes[2]
+	mi := &file_sessionpb_session_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -166,7 +166,7 @@ func (x *SessionRequest) String() string {
 func (*SessionRequest) ProtoMessage() {}
 
 func (x *SessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cipherdata_cipherdata_proto_msgTypes[2]
+	mi := &file_sessionpb_session_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -179,7 +179,7 @@ func (x *SessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionRequest.ProtoReflect.Descriptor instead.
 func (*SessionRequest) Descriptor() ([]byte, []int) {
-	return file_cipherdata_cipherdata_proto_rawDescGZIP(), []int{2}
+	return file_sessionpb_session_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SessionRequest) GetVaultPath() string {
@@ -189,59 +189,58 @@ func (x *SessionRequest) GetVaultPath() string {
 	return ""
 }
 
-var File_cipherdata_cipherdata_proto protoreflect.FileDescriptor
+var File_sessionpb_session_proto protoreflect.FileDescriptor
 
-const file_cipherdata_cipherdata_proto_rawDesc = "" +
+const file_sessionpb_session_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcipherdata/cipherdata.proto\x12\n" +
-	"cipherdata\x1a\x1bgoogle/protobuf/empty.proto\"V\n" +
+	"\x17sessionpb/session.proto\x12\tsessionpb\x1a\x1bgoogle/protobuf/empty.proto\"V\n" +
 	"\n" +
 	"CipherData\x12\x19\n" +
 	"\bauth_phc\x18\x01 \x01(\tR\aauthPhc\x12\x17\n" +
 	"\akdf_phc\x18\x02 \x01(\tR\x06kdfPhc\x12\x14\n" +
-	"\x05nonce\x18\x03 \x01(\fR\x05nonce\"\x82\x01\n" +
+	"\x05nonce\x18\x03 \x01(\fR\x05nonce\"\x81\x01\n" +
 	"\fLoginRequest\x12\x1d\n" +
 	"\n" +
-	"vault_path\x18\x01 \x01(\tR\tvaultPath\x127\n" +
-	"\vcipher_data\x18\x02 \x01(\v2\x16.cipherdata.CipherDataR\n" +
+	"vault_path\x18\x01 \x01(\tR\tvaultPath\x126\n" +
+	"\vcipher_data\x18\x02 \x01(\v2\x15.sessionpb.CipherDataR\n" +
 	"cipherData\x12\x1a\n" +
 	"\bduration\x18\x03 \x01(\tR\bduration\"/\n" +
 	"\x0eSessionRequest\x12\x1d\n" +
 	"\n" +
-	"vault_path\x18\x01 \x01(\tR\tvaultPath2\xc4\x01\n" +
-	"\aSession\x129\n" +
-	"\x05Login\x12\x18.cipherdata.LoginRequest\x1a\x16.google.protobuf.Empty\x12@\n" +
+	"vault_path\x18\x01 \x01(\tR\tvaultPath2\xc0\x01\n" +
+	"\aSession\x128\n" +
+	"\x05Login\x12\x17.sessionpb.LoginRequest\x1a\x16.google.protobuf.Empty\x12>\n" +
 	"\n" +
-	"GetSession\x12\x1a.cipherdata.SessionRequest\x1a\x16.cipherdata.CipherData\x12<\n" +
-	"\x06Logout\x12\x1a.cipherdata.SessionRequest\x1a\x16.google.protobuf.EmptyB6Z4github.com/ladzaretti/vlt-cli/vaultdaemon/cipherdatab\x06proto3"
+	"GetSession\x12\x19.sessionpb.SessionRequest\x1a\x15.sessionpb.CipherData\x12;\n" +
+	"\x06Logout\x12\x19.sessionpb.SessionRequest\x1a\x16.google.protobuf.EmptyB;Z9github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpbb\x06proto3"
 
 var (
-	file_cipherdata_cipherdata_proto_rawDescOnce sync.Once
-	file_cipherdata_cipherdata_proto_rawDescData []byte
+	file_sessionpb_session_proto_rawDescOnce sync.Once
+	file_sessionpb_session_proto_rawDescData []byte
 )
 
-func file_cipherdata_cipherdata_proto_rawDescGZIP() []byte {
-	file_cipherdata_cipherdata_proto_rawDescOnce.Do(func() {
-		file_cipherdata_cipherdata_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_cipherdata_cipherdata_proto_rawDesc), len(file_cipherdata_cipherdata_proto_rawDesc)))
+func file_sessionpb_session_proto_rawDescGZIP() []byte {
+	file_sessionpb_session_proto_rawDescOnce.Do(func() {
+		file_sessionpb_session_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_sessionpb_session_proto_rawDesc), len(file_sessionpb_session_proto_rawDesc)))
 	})
-	return file_cipherdata_cipherdata_proto_rawDescData
+	return file_sessionpb_session_proto_rawDescData
 }
 
-var file_cipherdata_cipherdata_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_cipherdata_cipherdata_proto_goTypes = []any{
-	(*CipherData)(nil),     // 0: cipherdata.CipherData
-	(*LoginRequest)(nil),   // 1: cipherdata.LoginRequest
-	(*SessionRequest)(nil), // 2: cipherdata.SessionRequest
+var file_sessionpb_session_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_sessionpb_session_proto_goTypes = []any{
+	(*CipherData)(nil),     // 0: sessionpb.CipherData
+	(*LoginRequest)(nil),   // 1: sessionpb.LoginRequest
+	(*SessionRequest)(nil), // 2: sessionpb.SessionRequest
 	(*emptypb.Empty)(nil),  // 3: google.protobuf.Empty
 }
-var file_cipherdata_cipherdata_proto_depIdxs = []int32{
-	0, // 0: cipherdata.LoginRequest.cipher_data:type_name -> cipherdata.CipherData
-	1, // 1: cipherdata.Session.Login:input_type -> cipherdata.LoginRequest
-	2, // 2: cipherdata.Session.GetSession:input_type -> cipherdata.SessionRequest
-	2, // 3: cipherdata.Session.Logout:input_type -> cipherdata.SessionRequest
-	3, // 4: cipherdata.Session.Login:output_type -> google.protobuf.Empty
-	0, // 5: cipherdata.Session.GetSession:output_type -> cipherdata.CipherData
-	3, // 6: cipherdata.Session.Logout:output_type -> google.protobuf.Empty
+var file_sessionpb_session_proto_depIdxs = []int32{
+	0, // 0: sessionpb.LoginRequest.cipher_data:type_name -> sessionpb.CipherData
+	1, // 1: sessionpb.Session.Login:input_type -> sessionpb.LoginRequest
+	2, // 2: sessionpb.Session.GetSession:input_type -> sessionpb.SessionRequest
+	2, // 3: sessionpb.Session.Logout:input_type -> sessionpb.SessionRequest
+	3, // 4: sessionpb.Session.Login:output_type -> google.protobuf.Empty
+	0, // 5: sessionpb.Session.GetSession:output_type -> sessionpb.CipherData
+	3, // 6: sessionpb.Session.Logout:output_type -> google.protobuf.Empty
 	4, // [4:7] is the sub-list for method output_type
 	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -249,26 +248,26 @@ var file_cipherdata_cipherdata_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_cipherdata_cipherdata_proto_init() }
-func file_cipherdata_cipherdata_proto_init() {
-	if File_cipherdata_cipherdata_proto != nil {
+func init() { file_sessionpb_session_proto_init() }
+func file_sessionpb_session_proto_init() {
+	if File_sessionpb_session_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cipherdata_cipherdata_proto_rawDesc), len(file_cipherdata_cipherdata_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sessionpb_session_proto_rawDesc), len(file_sessionpb_session_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_cipherdata_cipherdata_proto_goTypes,
-		DependencyIndexes: file_cipherdata_cipherdata_proto_depIdxs,
-		MessageInfos:      file_cipherdata_cipherdata_proto_msgTypes,
+		GoTypes:           file_sessionpb_session_proto_goTypes,
+		DependencyIndexes: file_sessionpb_session_proto_depIdxs,
+		MessageInfos:      file_sessionpb_session_proto_msgTypes,
 	}.Build()
-	File_cipherdata_cipherdata_proto = out.File
-	file_cipherdata_cipherdata_proto_goTypes = nil
-	file_cipherdata_cipherdata_proto_depIdxs = nil
+	File_sessionpb_session_proto = out.File
+	file_sessionpb_session_proto_goTypes = nil
+	file_sessionpb_session_proto_depIdxs = nil
 }

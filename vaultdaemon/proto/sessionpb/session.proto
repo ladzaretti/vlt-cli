@@ -1,8 +1,8 @@
 syntax = "proto3";
 import "google/protobuf/empty.proto";
-package cipherdata;
+package sessionpb;
 
-option go_package = "github.com/ladzaretti/vlt-cli/vaultdaemon/cipherdata";
+option go_package = "github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpb";
 
 // Session provides login/logout and session 
 // state operations for vault cipher data.

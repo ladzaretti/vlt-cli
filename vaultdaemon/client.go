@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultcontainer"
-	pb "github.com/ladzaretti/vlt-cli/vaultdaemon/cipherdata"
+	pb "github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -20,16 +20,32 @@ var ErrEmptyVaultPath = errors.New("vault path must not be empty")
 // SessionClient wraps the gRPC SessionHandlerClient and provides
 // a higher-level interface for session operations.
 type SessionClient struct {
-	pb      pb.SessionClient
-	cleanup func() error
+	conn *grpc.ClientConn
+	pb   pb.SessionClient
 }
 
-func NewSessionClient(client pb.SessionClient, cleanup func() error) *SessionClient {
-	return &SessionClient{pb: client, cleanup: cleanup}
+func NewSessionClient() (*SessionClient, error) {
+	if err := verifySocketSecure(socketPath, os.Getuid()); err != nil {
+		return nil, err
+	}
+
+	conn, err := grpc.NewClient("unix://"+socketPath,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect: %v", err)
+	}
+
+	c := &SessionClient{
+		conn: conn,
+		pb:   pb.NewSessionClient(conn),
+	}
+
+	return c, nil
 }
 
 // Login starts a new session by storing cipher data for the given vault path.
-func (c *SessionClient) Login(ctx context.Context, vaultPath string, cipherdata vaultcontainer.CipherData, duration string) error {
+func (sc *SessionClient) Login(ctx context.Context, vaultPath string, cipherdata vaultcontainer.CipherData, duration string) error {
 	if len(vaultPath) == 0 {
 		return ErrEmptyVaultPath
 	}
@@ -44,31 +60,31 @@ func (c *SessionClient) Login(ctx context.Context, vaultPath string, cipherdata 
 		Duration: duration,
 	}
 
-	_, err := c.pb.Login(ctx, in)
+	_, err := sc.pb.Login(ctx, in)
 
 	return err
 }
 
-func (c *SessionClient) Logout(ctx context.Context, vaultPath string) error {
+func (sc *SessionClient) Logout(ctx context.Context, vaultPath string) error {
 	log.Printf("logout request received for vault: %s", vaultPath)
 
 	if len(vaultPath) == 0 {
 		return ErrEmptyVaultPath
 	}
 
-	_, err := c.pb.Logout(ctx, &pb.SessionRequest{VaultPath: vaultPath})
+	_, err := sc.pb.Logout(ctx, &pb.SessionRequest{VaultPath: vaultPath})
 
 	return err
 }
 
-func (c *SessionClient) GetSession(ctx context.Context, vaultPath string) (*vaultcontainer.CipherData, error) {
+func (sc *SessionClient) GetSession(ctx context.Context, vaultPath string) (*vaultcontainer.CipherData, error) {
 	log.Printf("get session request received for vault: %s", vaultPath)
 
 	if len(vaultPath) == 0 {
 		return nil, ErrEmptyVaultPath
 	}
 
-	session, err := c.pb.GetSession(ctx, &pb.SessionRequest{VaultPath: vaultPath})
+	session, err := sc.pb.GetSession(ctx, &pb.SessionRequest{VaultPath: vaultPath})
 	if err != nil {
 		return nil, err
 	}
@@ -80,29 +96,8 @@ func (c *SessionClient) GetSession(ctx context.Context, vaultPath string) (*vaul
 	}, nil
 }
 
-func (c *SessionClient) Close() error {
-	return c.cleanup()
-}
-
-func Client() (*SessionClient, error) {
-	if err := verifySocketSecure(socketPath, os.Getuid()); err != nil {
-		return nil, err
-	}
-
-	conn, err := grpc.NewClient("unix://"+socketPath,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect: %v", err)
-	}
-
-	client := pb.NewSessionClient(conn)
-	c := NewSessionClient(client, func() error {
-		// return conn.Close()
-		return nil
-	})
-
-	return c, nil
+func (sc *SessionClient) Close() error {
+	return sc.conn.Close()
 }
 
 func verifySocketSecure(path string, uid int) error {

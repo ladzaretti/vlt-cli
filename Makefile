@@ -28,14 +28,17 @@ bin/vlt: patch-vendor go-mod-tidy
 bin/vltd: go-mod-tidy
 	go build -o "bin/vltd" ./cmd/vltd
 
+.PHONY: build
+build: bin/vlt bin/vltd
+
 .PHONY: protoc
 protoc:
 	protoc \
-		-I=./vaultdaemon \
+		-I=./vaultdaemon/proto \
 		-I=third_party \
-		--go_out=./vaultdaemon --go_opt=paths=source_relative \
-		--go-grpc_out=./vaultdaemon --go-grpc_opt=paths=source_relative \
-		cipherdata/cipherdata.proto
+		--go_out=./vaultdaemon/proto --go_opt=paths=source_relative \
+		--go-grpc_out=./vaultdaemon/proto --go-grpc_opt=paths=source_relative \
+		sessionpb/session.proto
 
 
 

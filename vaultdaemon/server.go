@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultcontainer"
-	pb "github.com/ladzaretti/vlt-cli/vaultdaemon/cipherdata"
+	pb "github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpb"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -104,21 +104,21 @@ type sessionServer struct {
 	sessions *safeMap[string, *session]
 }
 
-func newSessionHandler() *sessionServer {
+func newSessionServer() *sessionServer {
 	return &sessionServer{
 		sessions: newSafeMap[string, *session](),
 	}
 }
 
 // stopAll stops all active sessions safely via safeMap.
-func (sh *sessionServer) stopAll() {
-	sh.sessions.Range(func(_ string, s *session) bool {
+func (s *sessionServer) stopAll() {
+	s.sessions.Range(func(_ string, s *session) bool {
 		s.stop()
 		return true
 	})
 }
 
-func (sh *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*emptypb.Empty, error) {
+func (s *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*emptypb.Empty, error) {
 	cipherdate := vaultcontainer.CipherData{
 		AuthPHC: req.GetCipherData().GetAuthPhc(),
 		KDFPHC:  req.GetCipherData().GetKdfPhc(),
@@ -134,40 +134,40 @@ func (sh *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*emptyp
 	}
 
 	session := newSession(duration, cipherdate)
-	sh.sessions.store(req.GetVaultPath(), session)
+	s.sessions.store(req.GetVaultPath(), session)
 
 	log.Printf("session started for vault: %q: duration %s", vaultPath, durationStr)
 
 	go session.start(func() {
-		sh.sessions.delete(vaultPath)
+		s.sessions.delete(vaultPath)
 		log.Printf("session ended for vault: %s", vaultPath)
 	})
 
 	return &emptypb.Empty{}, nil
 }
 
-func (sh *sessionServer) Logout(_ context.Context, req *pb.SessionRequest) (*emptypb.Empty, error) {
-	s, ok := sh.sessions.load(req.GetVaultPath())
+func (s *sessionServer) Logout(_ context.Context, req *pb.SessionRequest) (*emptypb.Empty, error) {
+	session, ok := s.sessions.load(req.GetVaultPath())
 	if !ok {
 		return nil, status.Error(codes.NotFound, "no session found for the given path")
 	}
 
-	s.stop()
+	session.stop()
 
-	sh.sessions.delete(req.GetVaultPath())
+	s.sessions.delete(req.GetVaultPath())
 
 	return &emptypb.Empty{}, nil
 }
 
-func (sh *sessionServer) GetSession(_ context.Context, req *pb.SessionRequest) (*pb.CipherData, error) {
-	s, ok := sh.sessions.load(req.GetVaultPath())
+func (s *sessionServer) GetSession(_ context.Context, req *pb.SessionRequest) (*pb.CipherData, error) {
+	session, ok := s.sessions.load(req.GetVaultPath())
 	if !ok {
 		return nil, status.Error(codes.NotFound, "no session found for the given path")
 	}
 
 	return &pb.CipherData{
-		AuthPhc: s.cipherdate.AuthPHC,
-		KdfPhc:  s.cipherdate.KDFPHC,
-		Nonce:   s.cipherdate.Nonce,
+		AuthPhc: session.cipherdate.AuthPHC,
+		KdfPhc:  session.cipherdate.KDFPHC,
+		Nonce:   session.cipherdate.Nonce,
 	}, nil
 }

@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	pb "github.com/ladzaretti/vlt-cli/vaultdaemon/cipherdata"
+	pb "github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpb"
 
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
@@ -51,7 +51,7 @@ func Run() {
 	defer cancel()
 
 	srv := grpc.NewServer()
-	handler := newSessionHandler()
+	handler := newSessionServer()
 
 	pb.RegisterSessionServer(srv, handler)
 

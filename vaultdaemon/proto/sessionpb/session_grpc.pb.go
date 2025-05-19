@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v3.19.6
-// source: cipherdata/cipherdata.proto
+// source: sessionpb/session.proto
 
-package cipherdata
+package sessionpb
 
 import (
 	context "context"
@@ -20,9 +20,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Session_Login_FullMethodName      = "/cipherdata.Session/Login"
-	Session_GetSession_FullMethodName = "/cipherdata.Session/GetSession"
-	Session_Logout_FullMethodName     = "/cipherdata.Session/Logout"
+	Session_Login_FullMethodName      = "/sessionpb.Session/Login"
+	Session_GetSession_FullMethodName = "/sessionpb.Session/GetSession"
+	Session_Logout_FullMethodName     = "/sessionpb.Session/Logout"
 )
 
 // SessionClient is the client API for Session service.
@@ -189,7 +189,7 @@ func _Session_Logout_Handler(srv interface{}, ctx context.Context, dec func(inte
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Session_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "cipherdata.Session",
+	ServiceName: "sessionpb.Session",
 	HandlerType: (*SessionServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -206,5 +206,5 @@ var Session_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "cipherdata/cipherdata.proto",
+	Metadata: "sessionpb/session.proto",
 }
