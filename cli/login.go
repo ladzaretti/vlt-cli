@@ -2,13 +2,13 @@ package cli
 
 import (
 	"context"
-	"crypto/subtle"
 	"fmt"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
 	"github.com/ladzaretti/vlt-cli/vault"
+	"github.com/ladzaretti/vlt-cli/vaultdaemon"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
 
 	"github.com/spf13/cobra"
@@ -17,20 +17,28 @@ import (
 // LoginOptions holds data required to run the command.
 type LoginOptions struct {
 	*genericclioptions.StdioOptions
-	vault func() *vault.Vault
+	path    func() string
+	session *vaultdaemon.SessionClient
 }
 
 var _ genericclioptions.CmdOptions = &LoginOptions{}
 
 // NewLoginOptions initializes the options struct.
-func NewLoginOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *LoginOptions {
+func NewLoginOptions(stdio *genericclioptions.StdioOptions, path func() string) *LoginOptions {
 	return &LoginOptions{
 		StdioOptions: stdio,
-		vault:        vault,
+		path:         path,
 	}
 }
 
-func (*LoginOptions) Complete() error {
+func (o *LoginOptions) Complete() error {
+	s, err := vaultdaemon.NewSessionClient()
+	if err != nil {
+		return err
+	}
+
+	o.session = s
+
 	return nil
 }
 
@@ -42,12 +50,21 @@ func (o *LoginOptions) Validate() error {
 	return nil
 }
 
-func (o *LoginOptions) Run(context.Context, ...string) error {
-	v := o.vault()
+func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
+	path := o.path()
 
-	usrKey, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "Password for vault at %q:", v.Path)
+	password, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "[vlt] Password for %q:", path)
 	if err != nil {
 		return fmt.Errorf("prompt password: %v", err)
+	}
+
+	key, nonce, err := vault.Login(ctx, path, password)
+	if err != nil {
+		return err
+	}
+
+	if err := o.session.Login(ctx, path, key, nonce, "1m"); err != nil {
+		return err
 	}
 
 	// TODO: session only needs the aesgcm, not cipherdate -> rewrite proto def
@@ -57,14 +74,6 @@ func (o *LoginOptions) Run(context.Context, ...string) error {
 	// TODO3: add session duration config opt.
 	// TODO1: possible refactor the table render for easier fzf searching
 	// 	  also, consider printing the create/update timestamps
-	dbKey, err := "", nil
-	if err != nil {
-		return fmt.Errorf("get master key: %v", err)
-	}
-
-	if subtle.ConstantTimeCompare([]byte(usrKey), []byte(dbKey)) == 0 {
-		return vaulterrors.ErrWrongPassword
-	}
 
 	o.Infof("Login successful")
 
@@ -72,8 +81,8 @@ func (o *LoginOptions) Run(context.Context, ...string) error {
 }
 
 // NewCmdLogin creates the login cobra command.
-func NewCmdLogin(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
-	o := NewLoginOptions(stdio, vault)
+func NewCmdLogin(stdio *genericclioptions.StdioOptions, path func() string) *cobra.Command {
+	o := NewLoginOptions(stdio, path)
 
 	return &cobra.Command{
 		Use:   "login",

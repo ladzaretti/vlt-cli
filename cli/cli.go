@@ -30,9 +30,13 @@ var (
 	// bypass the persistent pre-run logic.
 	preRunSkipCommands = []string{"config", "generate", "validate", "create"}
 
+	// preRunPartialCommands lists commands that require partial
+	// pre-run execution, skipping vault opening.
+	preRunPartialCommands = []string{"login"}
+
 	// postRunSkipCommands lists command names that should
 	// bypass the persistent post-run logic.
-	postRunSkipCommands = []string{"config", "generate", "validate", "create"}
+	postRunSkipCommands = []string{"config", "generate", "validate", "create", "login"}
 )
 
 type VaultOptions struct {
@@ -82,7 +86,7 @@ func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOpti
 		return fmt.Errorf("prompt password: %v", err)
 	}
 
-	v, err := vault.Open(ctx, o.Path, password)
+	v, err := vault.Open(ctx, o.Path, vault.WithPassword(password))
 	if err != nil {
 		return err
 	}
@@ -173,7 +177,7 @@ func (o *DefaultVltOptions) Validate() error {
 	return o.vaultOptions.Validate()
 }
 
-func (o *DefaultVltOptions) Run(ctx context.Context, _ ...string) error {
+func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 	if err := o.configOptions.Run(ctx); err != nil {
 		return err
 	}
@@ -181,6 +185,15 @@ func (o *DefaultVltOptions) Run(ctx context.Context, _ ...string) error {
 	p := o.configOptions.Vault.Path
 	if len(p) > 0 {
 		o.vaultOptions.Path = p
+	}
+
+	cmd := ""
+	if len(args) == 1 {
+		cmd = args[0]
+	}
+
+	if slices.Contains(preRunPartialCommands, cmd) {
+		return nil
 	}
 
 	return o.vaultOptions.Open(ctx, o.StdioOptions)
@@ -204,7 +217,7 @@ Environment Variables:
 				return
 			}
 
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, cmd.Name()))
 		},
 		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
 			if slices.Contains(postRunSkipCommands, cmd.Name()) {
@@ -230,9 +243,9 @@ Environment Variables:
 
 	cmd.AddCommand(NewCmdConfig(o.StdioOptions))
 	cmd.AddCommand(NewCmdGenerate(o.StdioOptions))
+	cmd.AddCommand(NewCmdLogin(o.StdioOptions, func() string { return o.vaultOptions.Path }))
 
 	cmd.AddCommand(NewCmdCreate(o.StdioOptions, o.vaultOptions))
-	cmd.AddCommand(NewCmdLogin(o.StdioOptions, o.vaultOptions.VaultFunc))
 	cmd.AddCommand(NewCmdLogout(o.StdioOptions, o.vaultOptions.VaultFunc))
 	cmd.AddCommand(NewCmdSave(o.StdioOptions, o.vaultOptions.VaultFunc))
 	cmd.AddCommand(NewCmdFind(o.StdioOptions, o.vaultOptions.VaultFunc))

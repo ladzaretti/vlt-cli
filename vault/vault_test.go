@@ -38,7 +38,7 @@ func TestVault_New(t *testing.T) {
 		t.Error(err)
 	}
 
-	v, err = vault.Open(t.Context(), "/tmp/.vlt.temp", "password")
+	v, err = vault.Open(t.Context(), "/tmp/.vlt.temp", vault.WithPassword("password"))
 	if err != nil {
 		t.Error(err)
 	}

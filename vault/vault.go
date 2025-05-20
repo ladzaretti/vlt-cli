@@ -59,9 +59,15 @@ type Vault struct {
 	cleanupFuncs         []cleanupFunc         // cleanupFuncs contains deferred cleanup functions.
 }
 
+type session struct {
+	key, nonce []byte
+}
+
 // config options for creating a [Vault] instance.
 type config struct {
 	snapshot []byte // snapshot is the serialized vault container database to restore from, if set.
+	password string
+	session
 }
 
 type Option func(*config)
@@ -74,6 +80,22 @@ func WithSnapshot(snapshot []byte) Option {
 
 	return func(c *config) {
 		c.snapshot = copied
+	}
+}
+
+// WithPassword sets the password used to unlock the vault.
+func WithPassword(p string) Option {
+	return func(c *config) {
+		c.password = p
+	}
+}
+
+// WithSessionKey sets the AES-GCM key and nonce used
+// for session-based unlocking.
+func WithSessionKey(key, nonce []byte) Option {
+	return func(c *config) {
+		c.key = key
+		c.nonce = nonce
 	}
 }
 
@@ -150,12 +172,48 @@ func New(ctx context.Context, path string, password string, opts ...Option) (vlt
 	return vlt, nil
 }
 
+// Login verifies the password and derives the AES-GCM key
+// for the vault at the given path.
+func Login(ctx context.Context, path string, password string, opts ...Option) (key []byte, nonce []byte, _ error) {
+	config := &config{}
+	for _, opt := range opts {
+		opt(config)
+	}
+
+	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.snapshot)
+	if err != nil {
+		return nil, nil, errf("open: %w", err)
+	}
+	defer func() { //nolint:wsl
+		_ = vaultContainerHandle.cleanup()
+	}()
+
+	cipherdata, err := vaultContainerHandle.db.SelectVault(ctx)
+	if err != nil {
+		return nil, nil, errf("open: %w", err)
+	}
+
+	if err := verifyPassword([]byte(password), cipherdata.AuthPHC); err != nil {
+		return nil, nil, errf("login: %w", err)
+	}
+
+	phc, err := vaultcrypto.DecodeAragon2idPHC(cipherdata.KDFPHC)
+	if err != nil {
+		return nil, nil, errf("login: %w", err)
+	}
+
+	kdf := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithPHC(phc))
+	key = kdf.Derive([]byte(password))
+
+	return key, cipherdata.Nonce, nil
+}
+
 // Open opens an existing vault container database at the given path,
 // derives the encryption key from the provided password,
 // and decrypts and deserializes the vault contents into memory.
 //
 // On success, the function returns a [*Vault] ready for use.
-func Open(ctx context.Context, path string, password string, opts ...Option) (vlt *Vault, retErr error) {
+func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr error) {
 	config := &config{}
 	for _, opt := range opts {
 		opt(config)
@@ -176,21 +234,32 @@ func Open(ctx context.Context, path string, password string, opts ...Option) (vl
 		return nil, errf("open: %w", err)
 	}
 
-	if err := verifyPassword([]byte(password), cipherdata.AuthPHC); err != nil {
-		return nil, errf("open: %w", err)
+	var (
+		aes   *vaultcrypto.AESGCM
+		nonce []byte
+	)
+
+	// choose key derivation method: password-based or session-based
+	switch {
+	case len(config.password) > 0:
+		a, err := deriveAESFromPassword(cipherdata, config.password)
+		if err != nil {
+			return nil, errf("open: %w", err)
+		}
+
+		aes, nonce = a, cipherdata.Nonce
+	case config.key != nil && config.nonce != nil:
+		a, err := vaultcrypto.NewAESGCM(config.key)
+		if err != nil {
+			return nil, errf("open: %w", err)
+		}
+
+		aes, nonce = a, config.nonce
+	default:
+		return nil, errf("open: no password or session key provided")
 	}
 
-	phc, err := vaultcrypto.DecodeAragon2idPHC(cipherdata.KDFPHC)
-	if err != nil {
-		return nil, errf("open: %w", err)
-	}
-
-	aes, err := deriveAESGCM(phc, []byte(password))
-	if err != nil {
-		return nil, errf("open: %w", err)
-	}
-
-	vlt = newVault(path, cipherdata.Nonce, aes, vaultContainerHandle)
+	vlt = newVault(path, nonce, aes, vaultContainerHandle)
 	defer func() { //nolint:wsl
 		if retErr != nil {
 			_ = vlt.cleanup()
@@ -202,6 +271,24 @@ func Open(ctx context.Context, path string, password string, opts ...Option) (vl
 	}
 
 	return vlt, nil
+}
+
+func deriveAESFromPassword(cipherdata *vaultcontainer.CipherData, password string) (*vaultcrypto.AESGCM, error) {
+	if err := verifyPassword([]byte(password), cipherdata.AuthPHC); err != nil {
+		return nil, errf("login: %w", err)
+	}
+
+	phc, err := vaultcrypto.DecodeAragon2idPHC(cipherdata.KDFPHC)
+	if err != nil {
+		return nil, errf("login: %w", err)
+	}
+
+	aes, err := deriveAESGCM(phc, []byte(password))
+	if err != nil {
+		return nil, errf("login: %w", err)
+	}
+
+	return aes, nil
 }
 
 // Close serializes the in-memory SQLite database, encrypts it, and stores the
