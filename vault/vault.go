@@ -122,7 +122,7 @@ func New(ctx context.Context, path string, password string, opts ...Option) (vlt
 		return nil, errf("new: %w", err)
 	}
 
-	aes, err := deriveAESGCM(phc, password)
+	aes, err := deriveAESGCM(phc, []byte(password))
 	if err != nil {
 		return nil, errf("new: %w", err)
 	}
@@ -168,7 +168,6 @@ func Open(ctx context.Context, path string, password string, opts ...Option) (vl
 	defer func() { //nolint:wsl
 		if retErr != nil {
 			_ = vaultContainerHandle.cleanup()
-			_ = vlt.cleanup()
 		}
 	}()
 
@@ -186,12 +185,17 @@ func Open(ctx context.Context, path string, password string, opts ...Option) (vl
 		return nil, errf("open: %w", err)
 	}
 
-	aes, err := deriveAESGCM(phc, password)
+	aes, err := deriveAESGCM(phc, []byte(password))
 	if err != nil {
 		return nil, errf("open: %w", err)
 	}
 
 	vlt = newVault(path, cipherdata.Nonce, aes, vaultContainerHandle)
+	defer func() { //nolint:wsl
+		if retErr != nil {
+			_ = vlt.cleanup()
+		}
+	}()
 
 	if err := vlt.open(ctx, cipherdata.Vault); err != nil {
 		return vlt, errf("open: %w", err)
@@ -449,10 +453,10 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 // deriveAESGCM derives an AES-GCM cipher using the given PHC and password.
 // The [vaultcrypto.Argon2idPHC] provides the key derivation parameters,
 // and the password is used to derive the encryption key.
-func deriveAESGCM(phc vaultcrypto.Argon2idPHC, password string) (*vaultcrypto.AESGCM, error) {
+func deriveAESGCM(phc vaultcrypto.Argon2idPHC, password []byte) (*vaultcrypto.AESGCM, error) {
 	kdf := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithPHC(phc))
 
-	key := kdf.Derive([]byte(password))
+	key := kdf.Derive(password)
 
 	aes, err := vaultcrypto.NewAESGCM(key)
 	if err != nil {

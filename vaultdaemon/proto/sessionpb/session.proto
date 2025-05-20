@@ -10,25 +10,25 @@ service Session {
   // Login saves cipher data for a vault path.
   rpc Login (LoginRequest) returns (google.protobuf.Empty);
 
-  // GetSession retrieves cipher data for a vault path.
-  rpc GetSession (SessionRequest) returns (CipherData);
+  // GetSessionKey retrieves cipher data for a vault path.
+  rpc GetSessionKey (SessionRequest) returns (VaultKey);
 
   // Logout clears stored cipher data for a vault path.
   rpc Logout (SessionRequest) returns (google.protobuf.Empty);
 }
 
-// CipherData holds secure material used in authenticated sessions.
-message CipherData {
-  string auth_phc = 1; // PHC string for the authentication key
-  string kdf_phc = 2;  // PHC string for the KDF
-  bytes nonce = 3;     // Nonce (binary)
+// SessionData holds AES-GCM key and nonce for decrypting vault data.
+message VaultKey {
+  bytes key = 1;   // AES-GCM key
+  bytes nonce = 2; // AES-GCM nonce
 }
 
 // LoginRequest is used to initiate a session.
 message LoginRequest {
   string vault_path = 1;
-  CipherData cipher_data = 2;
-  string duration = 3;
+  // Session duration (e.g. "30s", "10m").
+  string duration = 2; 
+  VaultKey vault_key = 3;
 }
 
 // SessionRequest identifies a vault session by path.

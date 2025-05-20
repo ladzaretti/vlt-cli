@@ -20,9 +20,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Session_Login_FullMethodName      = "/sessionpb.Session/Login"
-	Session_GetSession_FullMethodName = "/sessionpb.Session/GetSession"
-	Session_Logout_FullMethodName     = "/sessionpb.Session/Logout"
+	Session_Login_FullMethodName         = "/sessionpb.Session/Login"
+	Session_GetSessionKey_FullMethodName = "/sessionpb.Session/GetSessionKey"
+	Session_Logout_FullMethodName        = "/sessionpb.Session/Logout"
 )
 
 // SessionClient is the client API for Session service.
@@ -34,8 +34,8 @@ const (
 type SessionClient interface {
 	// Login saves cipher data for a vault path.
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// GetSession retrieves cipher data for a vault path.
-	GetSession(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*CipherData, error)
+	// GetSessionKey retrieves cipher data for a vault path.
+	GetSessionKey(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*VaultKey, error)
 	// Logout clears stored cipher data for a vault path.
 	Logout(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -58,10 +58,10 @@ func (c *sessionClient) Login(ctx context.Context, in *LoginRequest, opts ...grp
 	return out, nil
 }
 
-func (c *sessionClient) GetSession(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*CipherData, error) {
+func (c *sessionClient) GetSessionKey(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*VaultKey, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CipherData)
-	err := c.cc.Invoke(ctx, Session_GetSession_FullMethodName, in, out, cOpts...)
+	out := new(VaultKey)
+	err := c.cc.Invoke(ctx, Session_GetSessionKey_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +87,8 @@ func (c *sessionClient) Logout(ctx context.Context, in *SessionRequest, opts ...
 type SessionServer interface {
 	// Login saves cipher data for a vault path.
 	Login(context.Context, *LoginRequest) (*emptypb.Empty, error)
-	// GetSession retrieves cipher data for a vault path.
-	GetSession(context.Context, *SessionRequest) (*CipherData, error)
+	// GetSessionKey retrieves cipher data for a vault path.
+	GetSessionKey(context.Context, *SessionRequest) (*VaultKey, error)
 	// Logout clears stored cipher data for a vault path.
 	Logout(context.Context, *SessionRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedSessionServer()
@@ -104,8 +104,8 @@ type UnimplementedSessionServer struct{}
 func (UnimplementedSessionServer) Login(context.Context, *LoginRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
-func (UnimplementedSessionServer) GetSession(context.Context, *SessionRequest) (*CipherData, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetSession not implemented")
+func (UnimplementedSessionServer) GetSessionKey(context.Context, *SessionRequest) (*VaultKey, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSessionKey not implemented")
 }
 func (UnimplementedSessionServer) Logout(context.Context, *SessionRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
@@ -149,20 +149,20 @@ func _Session_Login_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Session_GetSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Session_GetSessionKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SessionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SessionServer).GetSession(ctx, in)
+		return srv.(SessionServer).GetSessionKey(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Session_GetSession_FullMethodName,
+		FullMethod: Session_GetSessionKey_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SessionServer).GetSession(ctx, req.(*SessionRequest))
+		return srv.(SessionServer).GetSessionKey(ctx, req.(*SessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -197,8 +197,8 @@ var Session_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Session_Login_Handler,
 		},
 		{
-			MethodName: "GetSession",
-			Handler:    _Session_GetSession_Handler,
+			MethodName: "GetSessionKey",
+			Handler:    _Session_GetSessionKey_Handler,
 		},
 		{
 			MethodName: "Logout",

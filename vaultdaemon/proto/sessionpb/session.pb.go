@@ -22,30 +22,29 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// CipherData holds secure material used in authenticated sessions.
-type CipherData struct {
+// SessionData holds AES-GCM key and nonce for decrypting vault data.
+type VaultKey struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AuthPhc       string                 `protobuf:"bytes,1,opt,name=auth_phc,json=authPhc,proto3" json:"auth_phc,omitempty"` // PHC string for the authentication key
-	KdfPhc        string                 `protobuf:"bytes,2,opt,name=kdf_phc,json=kdfPhc,proto3" json:"kdf_phc,omitempty"`    // PHC string for the KDF
-	Nonce         []byte                 `protobuf:"bytes,3,opt,name=nonce,proto3" json:"nonce,omitempty"`                    // Nonce (binary)
+	Key           []byte                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`     // AES-GCM key
+	Nonce         []byte                 `protobuf:"bytes,2,opt,name=nonce,proto3" json:"nonce,omitempty"` // AES-GCM nonce
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CipherData) Reset() {
-	*x = CipherData{}
+func (x *VaultKey) Reset() {
+	*x = VaultKey{}
 	mi := &file_sessionpb_session_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CipherData) String() string {
+func (x *VaultKey) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CipherData) ProtoMessage() {}
+func (*VaultKey) ProtoMessage() {}
 
-func (x *CipherData) ProtoReflect() protoreflect.Message {
+func (x *VaultKey) ProtoReflect() protoreflect.Message {
 	mi := &file_sessionpb_session_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -57,26 +56,19 @@ func (x *CipherData) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CipherData.ProtoReflect.Descriptor instead.
-func (*CipherData) Descriptor() ([]byte, []int) {
+// Deprecated: Use VaultKey.ProtoReflect.Descriptor instead.
+func (*VaultKey) Descriptor() ([]byte, []int) {
 	return file_sessionpb_session_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *CipherData) GetAuthPhc() string {
+func (x *VaultKey) GetKey() []byte {
 	if x != nil {
-		return x.AuthPhc
+		return x.Key
 	}
-	return ""
+	return nil
 }
 
-func (x *CipherData) GetKdfPhc() string {
-	if x != nil {
-		return x.KdfPhc
-	}
-	return ""
-}
-
-func (x *CipherData) GetNonce() []byte {
+func (x *VaultKey) GetNonce() []byte {
 	if x != nil {
 		return x.Nonce
 	}
@@ -85,10 +77,11 @@ func (x *CipherData) GetNonce() []byte {
 
 // LoginRequest is used to initiate a session.
 type LoginRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	VaultPath     string                 `protobuf:"bytes,1,opt,name=vault_path,json=vaultPath,proto3" json:"vault_path,omitempty"`
-	CipherData    *CipherData            `protobuf:"bytes,2,opt,name=cipher_data,json=cipherData,proto3" json:"cipher_data,omitempty"`
-	Duration      string                 `protobuf:"bytes,3,opt,name=duration,proto3" json:"duration,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	VaultPath string                 `protobuf:"bytes,1,opt,name=vault_path,json=vaultPath,proto3" json:"vault_path,omitempty"`
+	// Session duration (e.g. "30s", "10m").
+	Duration      string    `protobuf:"bytes,2,opt,name=duration,proto3" json:"duration,omitempty"`
+	VaultKey      *VaultKey `protobuf:"bytes,3,opt,name=vault_key,json=vaultKey,proto3" json:"vault_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -130,18 +123,18 @@ func (x *LoginRequest) GetVaultPath() string {
 	return ""
 }
 
-func (x *LoginRequest) GetCipherData() *CipherData {
-	if x != nil {
-		return x.CipherData
-	}
-	return nil
-}
-
 func (x *LoginRequest) GetDuration() string {
 	if x != nil {
 		return x.Duration
 	}
 	return ""
+}
+
+func (x *LoginRequest) GetVaultKey() *VaultKey {
+	if x != nil {
+		return x.VaultKey
+	}
+	return nil
 }
 
 // SessionRequest identifies a vault session by path.
@@ -193,25 +186,21 @@ var File_sessionpb_session_proto protoreflect.FileDescriptor
 
 const file_sessionpb_session_proto_rawDesc = "" +
 	"\n" +
-	"\x17sessionpb/session.proto\x12\tsessionpb\x1a\x1bgoogle/protobuf/empty.proto\"V\n" +
-	"\n" +
-	"CipherData\x12\x19\n" +
-	"\bauth_phc\x18\x01 \x01(\tR\aauthPhc\x12\x17\n" +
-	"\akdf_phc\x18\x02 \x01(\tR\x06kdfPhc\x12\x14\n" +
-	"\x05nonce\x18\x03 \x01(\fR\x05nonce\"\x81\x01\n" +
+	"\x17sessionpb/session.proto\x12\tsessionpb\x1a\x1bgoogle/protobuf/empty.proto\"2\n" +
+	"\bVaultKey\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\fR\x03key\x12\x14\n" +
+	"\x05nonce\x18\x02 \x01(\fR\x05nonce\"{\n" +
 	"\fLoginRequest\x12\x1d\n" +
 	"\n" +
-	"vault_path\x18\x01 \x01(\tR\tvaultPath\x126\n" +
-	"\vcipher_data\x18\x02 \x01(\v2\x15.sessionpb.CipherDataR\n" +
-	"cipherData\x12\x1a\n" +
-	"\bduration\x18\x03 \x01(\tR\bduration\"/\n" +
+	"vault_path\x18\x01 \x01(\tR\tvaultPath\x12\x1a\n" +
+	"\bduration\x18\x02 \x01(\tR\bduration\x120\n" +
+	"\tvault_key\x18\x03 \x01(\v2\x13.sessionpb.VaultKeyR\bvaultKey\"/\n" +
 	"\x0eSessionRequest\x12\x1d\n" +
 	"\n" +
-	"vault_path\x18\x01 \x01(\tR\tvaultPath2\xc0\x01\n" +
+	"vault_path\x18\x01 \x01(\tR\tvaultPath2\xc1\x01\n" +
 	"\aSession\x128\n" +
-	"\x05Login\x12\x17.sessionpb.LoginRequest\x1a\x16.google.protobuf.Empty\x12>\n" +
-	"\n" +
-	"GetSession\x12\x19.sessionpb.SessionRequest\x1a\x15.sessionpb.CipherData\x12;\n" +
+	"\x05Login\x12\x17.sessionpb.LoginRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
+	"\rGetSessionKey\x12\x19.sessionpb.SessionRequest\x1a\x13.sessionpb.VaultKey\x12;\n" +
 	"\x06Logout\x12\x19.sessionpb.SessionRequest\x1a\x16.google.protobuf.EmptyB;Z9github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpbb\x06proto3"
 
 var (
@@ -228,18 +217,18 @@ func file_sessionpb_session_proto_rawDescGZIP() []byte {
 
 var file_sessionpb_session_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_sessionpb_session_proto_goTypes = []any{
-	(*CipherData)(nil),     // 0: sessionpb.CipherData
+	(*VaultKey)(nil),       // 0: sessionpb.VaultKey
 	(*LoginRequest)(nil),   // 1: sessionpb.LoginRequest
 	(*SessionRequest)(nil), // 2: sessionpb.SessionRequest
 	(*emptypb.Empty)(nil),  // 3: google.protobuf.Empty
 }
 var file_sessionpb_session_proto_depIdxs = []int32{
-	0, // 0: sessionpb.LoginRequest.cipher_data:type_name -> sessionpb.CipherData
+	0, // 0: sessionpb.LoginRequest.vault_key:type_name -> sessionpb.VaultKey
 	1, // 1: sessionpb.Session.Login:input_type -> sessionpb.LoginRequest
-	2, // 2: sessionpb.Session.GetSession:input_type -> sessionpb.SessionRequest
+	2, // 2: sessionpb.Session.GetSessionKey:input_type -> sessionpb.SessionRequest
 	2, // 3: sessionpb.Session.Logout:input_type -> sessionpb.SessionRequest
 	3, // 4: sessionpb.Session.Login:output_type -> google.protobuf.Empty
-	0, // 5: sessionpb.Session.GetSession:output_type -> sessionpb.CipherData
+	0, // 5: sessionpb.Session.GetSessionKey:output_type -> sessionpb.VaultKey
 	3, // 6: sessionpb.Session.Logout:output_type -> google.protobuf.Empty
 	4, // [4:7] is the sub-list for method output_type
 	1, // [1:4] is the sub-list for method input_type

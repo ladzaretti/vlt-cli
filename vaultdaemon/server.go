@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultcontainer"
 	pb "github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpb"
 
 	"google.golang.org/grpc/codes"
@@ -63,16 +62,16 @@ func (m *safeMap[K, V]) delete(key K) {
 }
 
 type session struct {
-	cipherdate vaultcontainer.CipherData
-	duration   time.Duration
-	done       chan struct{}
+	key      *pb.VaultKey
+	duration time.Duration
+	done     chan struct{}
 }
 
-func newSession(duration time.Duration, cipherdate vaultcontainer.CipherData) *session {
+func newSession(duration time.Duration, key *pb.VaultKey) *session {
 	return &session{
-		cipherdate: cipherdate,
-		duration:   duration,
-		done:       make(chan struct{}),
+		key:      key,
+		duration: duration,
+		done:     make(chan struct{}),
 	}
 }
 
@@ -119,12 +118,6 @@ func (s *sessionServer) stopAll() {
 }
 
 func (s *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*emptypb.Empty, error) {
-	cipherdate := vaultcontainer.CipherData{
-		AuthPHC: req.GetCipherData().GetAuthPhc(),
-		KDFPHC:  req.GetCipherData().GetKdfPhc(),
-		Nonce:   req.GetCipherData().GetNonce(),
-	}
-
 	vaultPath := req.GetVaultPath()
 	durationStr := req.GetDuration()
 
@@ -133,12 +126,17 @@ func (s *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*emptypb
 		return nil, status.Errorf(codes.InvalidArgument, "invalid duration: %v", err)
 	}
 
-	session := newSession(duration, cipherdate)
+	session := newSession(duration, req.GetVaultKey())
 	s.sessions.store(req.GetVaultPath(), session)
 
 	log.Printf("session started for vault: %q: duration %s", vaultPath, durationStr)
 
 	go session.start(func() {
+		cur, ok := s.sessions.load(vaultPath)
+		if ok {
+			cur.key = nil
+		}
+
 		s.sessions.delete(vaultPath)
 		log.Printf("session ended for vault: %s", vaultPath)
 	})
@@ -159,15 +157,11 @@ func (s *sessionServer) Logout(_ context.Context, req *pb.SessionRequest) (*empt
 	return &emptypb.Empty{}, nil
 }
 
-func (s *sessionServer) GetSession(_ context.Context, req *pb.SessionRequest) (*pb.CipherData, error) {
+func (s *sessionServer) GetSessionKey(_ context.Context, req *pb.SessionRequest) (*pb.VaultKey, error) {
 	session, ok := s.sessions.load(req.GetVaultPath())
 	if !ok {
 		return nil, status.Error(codes.NotFound, "no session found for the given path")
 	}
 
-	return &pb.CipherData{
-		AuthPhc: session.cipherdate.AuthPHC,
-		KdfPhc:  session.cipherdate.KDFPHC,
-		Nonce:   session.cipherdate.Nonce,
-	}, nil
+	return session.key, nil
 }

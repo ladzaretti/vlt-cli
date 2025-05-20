@@ -50,11 +50,13 @@ func (o *LoginOptions) Run(context.Context, ...string) error {
 		return fmt.Errorf("prompt password: %v", err)
 	}
 
+	// TODO: session only needs the aesgcm, not cipherdate -> rewrite proto def
 	// FIXME: utilize vltd for auth session:
 	// 	  create derived keys and store in in the vltd daemon.
-	// TODO1: consume the session cipher data when opening the vault.
 	// TODO2: end session in the logout cmd.
 	// TODO3: add session duration config opt.
+	// TODO1: possible refactor the table render for easier fzf searching
+	// 	  also, consider printing the create/update timestamps
 	dbKey, err := "", nil
 	if err != nil {
 		return fmt.Errorf("get master key: %v", err)

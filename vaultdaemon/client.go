@@ -8,7 +8,6 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultcontainer"
 	pb "github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpb"
 
 	"google.golang.org/grpc"
@@ -45,19 +44,18 @@ func NewSessionClient() (*SessionClient, error) {
 }
 
 // Login starts a new session by storing cipher data for the given vault path.
-func (sc *SessionClient) Login(ctx context.Context, vaultPath string, cipherdata vaultcontainer.CipherData, duration string) error {
+func (sc *SessionClient) Login(ctx context.Context, vaultPath string, key []byte, nonce []byte, duration string) error {
 	if len(vaultPath) == 0 {
 		return ErrEmptyVaultPath
 	}
 
 	in := &pb.LoginRequest{
 		VaultPath: vaultPath,
-		CipherData: &pb.CipherData{
-			AuthPhc: cipherdata.AuthPHC,
-			KdfPhc:  cipherdata.KDFPHC,
-			Nonce:   cipherdata.Nonce,
+		Duration:  duration,
+		VaultKey: &pb.VaultKey{
+			Key:   key,
+			Nonce: nonce,
 		},
-		Duration: duration,
 	}
 
 	_, err := sc.pb.Login(ctx, in)
@@ -77,23 +75,19 @@ func (sc *SessionClient) Logout(ctx context.Context, vaultPath string) error {
 	return err
 }
 
-func (sc *SessionClient) GetSession(ctx context.Context, vaultPath string) (*vaultcontainer.CipherData, error) {
+func (sc *SessionClient) GetSessionKey(ctx context.Context, vaultPath string) (key []byte, nonce []byte, _ error) {
 	log.Printf("get session request received for vault: %s", vaultPath)
 
 	if len(vaultPath) == 0 {
-		return nil, ErrEmptyVaultPath
+		return nil, nil, ErrEmptyVaultPath
 	}
 
-	session, err := sc.pb.GetSession(ctx, &pb.SessionRequest{VaultPath: vaultPath})
+	vaultKey, err := sc.pb.GetSessionKey(ctx, &pb.SessionRequest{VaultPath: vaultPath})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &vaultcontainer.CipherData{
-		AuthPHC: session.GetAuthPhc(),
-		KDFPHC:  session.GetKdfPhc(),
-		Nonce:   session.GetNonce(),
-	}, nil
+	return vaultKey.GetKey(), vaultKey.GetNonce(), nil
 }
 
 func (sc *SessionClient) Close() error {
