@@ -17,8 +17,8 @@ import (
 // LoginOptions holds data required to run the command.
 type LoginOptions struct {
 	*genericclioptions.StdioOptions
-	path    func() string
-	session *vaultdaemon.SessionClient
+	path          func() string
+	sessionClient *vaultdaemon.SessionClient
 }
 
 var _ genericclioptions.CmdOptions = &LoginOptions{}
@@ -37,7 +37,7 @@ func (o *LoginOptions) Complete() error {
 		return err
 	}
 
-	o.session = s
+	o.sessionClient = s
 
 	return nil
 }
@@ -63,11 +63,10 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 		return err
 	}
 
-	if err := o.session.Login(ctx, path, key, nonce, "1m"); err != nil {
+	if err := o.sessionClient.Login(ctx, path, key, nonce, "1m"); err != nil {
 		return err
 	}
 
-	// FIXME: consume session from daemon.
 	// TODO2: end session in the logout cmd.
 
 	// TODO3: add session duration config opt.

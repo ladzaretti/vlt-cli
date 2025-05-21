@@ -52,6 +52,10 @@ func NewSessionClient() (*SessionClient, error) {
 
 // Login starts a new session by storing cipher data for the given vault path.
 func (sc *SessionClient) Login(ctx context.Context, vaultPath string, key []byte, nonce []byte, duration string) error {
+	if sc == nil {
+		return nil
+	}
+
 	if len(vaultPath) == 0 {
 		return ErrEmptyVaultPath
 	}
@@ -70,7 +74,12 @@ func (sc *SessionClient) Login(ctx context.Context, vaultPath string, key []byte
 	return err
 }
 
+// Logout requests the daemon to clear the session for the given vault path.
 func (sc *SessionClient) Logout(ctx context.Context, vaultPath string) error {
+	if sc == nil {
+		return nil
+	}
+
 	log.Printf("logout request received for vault: %s", vaultPath)
 
 	if len(vaultPath) == 0 {
@@ -82,8 +91,11 @@ func (sc *SessionClient) Logout(ctx context.Context, vaultPath string) error {
 	return err
 }
 
+// GetSessionKey retrieves the session key and nonce for the given vault path.
 func (sc *SessionClient) GetSessionKey(ctx context.Context, vaultPath string) (key []byte, nonce []byte, _ error) {
-	log.Printf("get session request received for vault: %s", vaultPath)
+	if sc == nil {
+		return nil, nil, nil
+	}
 
 	if len(vaultPath) == 0 {
 		return nil, nil, ErrEmptyVaultPath
@@ -97,7 +109,13 @@ func (sc *SessionClient) GetSessionKey(ctx context.Context, vaultPath string) (k
 	return vaultKey.GetKey(), vaultKey.GetNonce(), nil
 }
 
+// Close safely shuts down the gRPC connection.
+// No-op if the client or connection is nil.
 func (sc *SessionClient) Close() error {
+	if sc == nil || sc.conn == nil {
+		return nil
+	}
+
 	return sc.conn.Close()
 }
 

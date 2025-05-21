@@ -22,4 +22,4 @@ A command-line password manager backed by SQLite.
   - [x] export
   - [x] generate (alias: rand, gen)
 - [x] Add a cryptographic layer
-- [ ] Add session support
+- [x] Add session support

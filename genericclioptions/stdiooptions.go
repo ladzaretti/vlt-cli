@@ -1,6 +1,7 @@
 package genericclioptions
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
@@ -44,7 +45,7 @@ func (o *StdioOptions) Validate() error {
 	}
 
 	if o.NonInteractive && !input.IsPipedOrRedirected(fi) {
-		return fmt.Errorf("non-interactive mode requires piped or redirected input")
+		return errors.New("non-interactive mode requires piped or redirected input")
 	}
 
 	return nil

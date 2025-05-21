@@ -72,7 +72,8 @@ func debugPrint(err error) {
 	if !debugMode {
 		return
 	}
-	fprintf(os.Stderr, "debug: %+v\n", err)
+
+	_, _ = fprintf(os.Stderr, "debug: %+v\n", err)
 }
 
 // ErrExit may be passed to CheckError to instruct it to output nothing but exit with

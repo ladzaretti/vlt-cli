@@ -14,6 +14,7 @@ import (
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
 	"github.com/ladzaretti/vlt-cli/vault"
+	"github.com/ladzaretti/vlt-cli/vaultdaemon"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
 
 	"github.com/spf13/cobra"
@@ -80,13 +81,34 @@ func (o *VaultOptions) Validate() error {
 }
 
 // Run initializes the Vault object from the specified existing file.
-func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOptions) error {
-	password, err := input.PromptReadSecure(io.Out, int(io.In.Fd()), "[vlt] Password for %q:", o.Path)
+func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.SessionClient, io *genericclioptions.StdioOptions) error {
+	opts := []vault.Option{}
+
+	// nil-safe: sessionClient methods handle nil receivers safely.
+	key, nonce, err := sessionClient.GetSessionKey(ctx, o.Path)
 	if err != nil {
-		return fmt.Errorf("prompt password: %v", err)
+		io.Debugf("vlt: no session found, falling back to password: %v\n", err)
 	}
 
-	v, err := vault.Open(ctx, o.Path, vault.WithPassword(password))
+	if key == nil || nonce == nil {
+		password, err := input.PromptReadSecure(io.Out, int(io.In.Fd()), "[vlt] Password for %q:", o.Path)
+		if err != nil {
+			return fmt.Errorf("prompt password: %v", err)
+		}
+
+		key, nonce, err := vault.Login(ctx, o.Path, password)
+		if err != nil {
+			io.Debugf("%v", err)
+		} else {
+			_ = sessionClient.Login(ctx, o.Path, key, nonce, "1m") // safe even if sessionClient is nil
+		}
+
+		opts = append(opts, vault.WithPassword(password))
+	} else {
+		opts = append(opts, vault.WithSessionKey(key, nonce))
+	}
+
+	v, err := vault.Open(ctx, o.Path, opts...)
 	if err != nil {
 		return err
 	}
@@ -126,6 +148,10 @@ type DefaultVltOptions struct {
 
 	vaultOptions  *VaultOptions
 	configOptions *ConfigOptions
+
+	// sessionClient is used for daemon communication,
+	// it is lazily initialized in [DefaultVltOptions.Run].
+	sessionClient *vaultdaemon.SessionClient
 }
 
 var _ genericclioptions.CmdOptions = &DefaultVltOptions{}
@@ -196,7 +222,14 @@ func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 		return nil
 	}
 
-	return o.vaultOptions.Open(ctx, o.StdioOptions)
+	c, err := vaultdaemon.NewSessionClient()
+	if err != nil {
+		o.Infof("vlt: daemon unavailable, continuing without session support")
+	}
+
+	o.sessionClient = c
+
+	return o.vaultOptions.Open(ctx, o.sessionClient, o.StdioOptions)
 }
 
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.
@@ -224,7 +257,10 @@ Environment Variables:
 				return
 			}
 
-			clierror.Check(o.vaultOptions.Vault.Close(cmd.Context()))
+			clierror.Check(errors.Join(
+				o.vaultOptions.Vault.Close(cmd.Context()),
+				o.sessionClient.Close(),
+			))
 		},
 	}
 
