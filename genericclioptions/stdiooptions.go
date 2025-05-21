@@ -1,14 +1,11 @@
 package genericclioptions
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/input"
 )
-
-// ErrInvalidStdinUsage indicates stdin flag is used incorrectly.
-var ErrInvalidStdinUsage = errors.New("stdin flag can only be used with piped input")
 
 // StdioOptions provides stdin-related CLI helpers,
 // intended to be embedded in option structs.
@@ -34,6 +31,8 @@ func (o *StdioOptions) Complete() error {
 		}
 	}
 
+	clierror.DebugMode(o.Verbose)
+
 	return nil
 }
 
@@ -45,7 +44,7 @@ func (o *StdioOptions) Validate() error {
 	}
 
 	if o.NonInteractive && !input.IsPipedOrRedirected(fi) {
-		return ErrInvalidStdinUsage
+		return fmt.Errorf("non-interactive mode requires piped or redirected input")
 	}
 
 	return nil

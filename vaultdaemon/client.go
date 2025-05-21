@@ -14,7 +14,10 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var ErrEmptyVaultPath = errors.New("vault path must not be empty")
+var (
+	ErrEmptyVaultPath    = errors.New("vault path must not be empty")
+	ErrSocketUnavailable = errors.New("vault daemon socket unavailable")
+)
 
 // SessionClient wraps the gRPC SessionHandlerClient and provides
 // a higher-level interface for session operations.
@@ -23,6 +26,10 @@ type SessionClient struct {
 	pb   pb.SessionClient
 }
 
+// NewSessionClient connects to the local vault daemon over a UNIX socket
+// and returns a SessionClient.
+//
+// It returns [ErrSocketUnavailable] if the daemon socket is missing or inaccessible.
 func NewSessionClient() (*SessionClient, error) {
 	if err := verifySocketSecure(socketPath, os.Getuid()); err != nil {
 		return nil, err
@@ -32,7 +39,7 @@ func NewSessionClient() (*SessionClient, error) {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect: %v", err)
+		return nil, fmt.Errorf("%w: failed to connect: %v", ErrSocketUnavailable, err)
 	}
 
 	c := &SessionClient{
@@ -94,31 +101,31 @@ func (sc *SessionClient) Close() error {
 	return sc.conn.Close()
 }
 
-func verifySocketSecure(path string, uid int) error {
+func verifySocketSecure(path string, uid int) (retErr error) {
 	fi, err := os.Stat(path)
 	if err != nil {
-		return fmt.Errorf("could not stat socket: %w", err)
+		return fmt.Errorf("%w: could not stat socket: %w", ErrSocketUnavailable, err)
 	}
 
 	stat, ok := fi.Sys().(*syscall.Stat_t)
 	if !ok {
-		return errors.New("unexpected file stat type")
+		return errors.New("socket verify: unexpected file stat type")
 	}
 
 	if int(stat.Uid) != uid {
-		return fmt.Errorf("unexpected socket owner uid: got %d, want %d", stat.Uid, uid)
+		return fmt.Errorf("socket verify: unexpected socket owner uid: got %d, want %d", stat.Uid, uid)
 	}
 
 	if (fi.Mode() & os.ModeSymlink) != 0 {
-		return fmt.Errorf("refusing to follow symlink: %s", socketPath)
-	}
-
-	if fi.Mode().Perm() != socketPerm {
-		return fmt.Errorf("socket file has insecure permissions: %v", fi.Mode().Perm())
+		return fmt.Errorf("socket verify: refusing to follow symlink: %s", path)
 	}
 
 	if (fi.Mode() & os.ModeSocket) == 0 {
-		return fmt.Errorf("file is not a socket: %s", socketPath)
+		return fmt.Errorf("socket verify: file is not a socket: %s", path)
+	}
+
+	if fi.Mode().Perm() != socketPerm {
+		return fmt.Errorf("socket verify: socket file has insecure permissions: %v", fi.Mode().Perm())
 	}
 
 	return nil
