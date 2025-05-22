@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"syscall"
 
@@ -79,8 +78,6 @@ func (sc *SessionClient) Logout(ctx context.Context, vaultPath string) error {
 	if sc == nil {
 		return nil
 	}
-
-	log.Printf("logout request received for vault: %s", vaultPath)
 
 	if len(vaultPath) == 0 {
 		return ErrEmptyVaultPath

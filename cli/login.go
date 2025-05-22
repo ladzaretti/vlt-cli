@@ -50,7 +50,13 @@ func (o *LoginOptions) Validate() error {
 	return nil
 }
 
+func (o *LoginOptions) Close() error {
+	return o.sessionClient.Close()
+}
+
 func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
+	defer func() { _ = o.Close() }()
+
 	path := o.path()
 
 	password, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "[vlt] Password for %q:", path)
@@ -66,8 +72,6 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 	if err := o.sessionClient.Login(ctx, path, key, nonce, "1m"); err != nil {
 		return err
 	}
-
-	// TODO2: end session in the logout cmd.
 
 	// TODO3: add session duration config opt.
 	// TODO1: possible refactor the table render for easier fzf searching

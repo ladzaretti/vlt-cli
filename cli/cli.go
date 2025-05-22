@@ -32,17 +32,17 @@ var (
 	preRunSkipCommands = []string{"config", "generate", "validate", "create"}
 
 	// preRunPartialCommands lists commands that require partial
-	// pre-run execution, skipping vault opening.
-	preRunPartialCommands = []string{"login"}
+	// preRunPartialCommands run setup like path resolution, but skip vault opening.
+	preRunPartialCommands = []string{"login", "logout"}
 
 	// postRunSkipCommands lists command names that should
 	// bypass the persistent post-run logic.
-	postRunSkipCommands = []string{"config", "generate", "validate", "create", "login"}
+	postRunSkipCommands = []string{"config", "generate", "validate", "create", "login", "logout"}
 )
 
 type VaultOptions struct {
-	Path  string
-	Vault *vault.Vault
+	path  string
+	vault *vault.Vault
 }
 
 var _ genericclioptions.BaseOptions = &VaultOptions{}
@@ -63,13 +63,13 @@ func NewVaultOptions(opts ...VaultOptionsOpts) *VaultOptions {
 
 // Complete sets the default vault file path if not provided.
 func (o *VaultOptions) Complete() error {
-	if len(o.Path) == 0 {
+	if len(o.path) == 0 {
 		p, err := defaultVaultPath()
 		if err != nil {
 			return err
 		}
 
-		o.Path = p
+		o.path = p
 	}
 
 	return nil
@@ -85,22 +85,22 @@ func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.Sess
 	opts := []vault.Option{}
 
 	// nil-safe: sessionClient methods handle nil receivers safely.
-	key, nonce, err := sessionClient.GetSessionKey(ctx, o.Path)
+	key, nonce, err := sessionClient.GetSessionKey(ctx, o.path)
 	if err != nil {
 		io.Debugf("vlt: no session found, falling back to password: %v\n", err)
 	}
 
 	if key == nil || nonce == nil {
-		password, err := input.PromptReadSecure(io.Out, int(io.In.Fd()), "[vlt] Password for %q:", o.Path)
+		password, err := input.PromptReadSecure(io.Out, int(io.In.Fd()), "[vlt] Password for %q:", o.path)
 		if err != nil {
 			return fmt.Errorf("prompt password: %v", err)
 		}
 
-		key, nonce, err := vault.Login(ctx, o.Path, password)
+		key, nonce, err := vault.Login(ctx, o.path, password)
 		if err != nil {
 			io.Debugf("%v", err)
 		} else {
-			_ = sessionClient.Login(ctx, o.Path, key, nonce, "1m") // safe even if sessionClient is nil
+			_ = sessionClient.Login(ctx, o.path, key, nonce, "1m") // safe even if sessionClient is nil
 		}
 
 		opts = append(opts, vault.WithPassword(password))
@@ -108,18 +108,18 @@ func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.Sess
 		opts = append(opts, vault.WithSessionKey(key, nonce))
 	}
 
-	v, err := vault.Open(ctx, o.Path, opts...)
+	v, err := vault.Open(ctx, o.path, opts...)
 	if err != nil {
 		return err
 	}
 
-	o.Vault = v
+	o.vault = v
 
 	return nil
 }
 
 func (o *VaultOptions) validateExistingVault() error {
-	if _, err := os.Stat(o.Path); err != nil {
+	if _, err := os.Stat(o.path); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return vaulterrors.ErrVaultFileNotFound
 		}
@@ -130,8 +130,12 @@ func (o *VaultOptions) validateExistingVault() error {
 	return nil
 }
 
-func (o *VaultOptions) VaultFunc() *vault.Vault {
-	return o.Vault
+func (o *VaultOptions) Vault() *vault.Vault {
+	return o.vault
+}
+
+func (o *VaultOptions) Path() string {
+	return o.path
 }
 
 func defaultVaultPath() (string, error) {
@@ -210,7 +214,7 @@ func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 
 	p := o.configOptions.Vault.Path
 	if len(p) > 0 {
-		o.vaultOptions.Path = p
+		o.vaultOptions.path = p
 	}
 
 	cmd := ""
@@ -224,7 +228,7 @@ func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 
 	c, err := vaultdaemon.NewSessionClient()
 	if err != nil {
-		o.Infof("vlt: daemon unavailable, continuing without session support")
+		o.Infof("vlt: daemon unavailable, continuing without session support\nTo enable session support, make sure the 'vltd' daemon is running.\n\n")
 	}
 
 	o.sessionClient = c
@@ -258,7 +262,7 @@ Environment Variables:
 			}
 
 			clierror.Check(errors.Join(
-				o.vaultOptions.Vault.Close(cmd.Context()),
+				o.vaultOptions.vault.Close(cmd.Context()),
 				o.sessionClient.Close(),
 			))
 		},
@@ -267,7 +271,7 @@ Environment Variables:
 	cmd.SetArgs(args)
 
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
-	cmd.PersistentFlags().StringVarP(&o.vaultOptions.Path, "file", "f", "",
+	cmd.PersistentFlags().StringVarP(&o.vaultOptions.path, "file", "f", "",
 		fmt.Sprintf("database file path (default: ~/%s)", defaultDatabaseFilename))
 	cmd.PersistentFlags().StringVarP(
 		&o.configOptions.userPath,
@@ -279,17 +283,18 @@ Environment Variables:
 
 	cmd.AddCommand(NewCmdConfig(o.StdioOptions))
 	cmd.AddCommand(NewCmdGenerate(o.StdioOptions))
-	cmd.AddCommand(NewCmdLogin(o.StdioOptions, func() string { return o.vaultOptions.Path }))
+
+	cmd.AddCommand(NewCmdLogin(o.StdioOptions, o.vaultOptions.Path))
+	cmd.AddCommand(NewCmdLogout(o.StdioOptions, o.vaultOptions.Path))
 
 	cmd.AddCommand(NewCmdCreate(o.StdioOptions, o.vaultOptions))
-	cmd.AddCommand(NewCmdLogout(o.StdioOptions, o.vaultOptions.VaultFunc))
-	cmd.AddCommand(NewCmdSave(o.StdioOptions, o.vaultOptions.VaultFunc))
-	cmd.AddCommand(NewCmdFind(o.StdioOptions, o.vaultOptions.VaultFunc))
-	cmd.AddCommand(NewCmdShow(o.StdioOptions, o.vaultOptions.VaultFunc))
-	cmd.AddCommand(NewCmdRemove(o.StdioOptions, o.vaultOptions.VaultFunc))
-	cmd.AddCommand(NewCmdUpdate(o.StdioOptions, o.vaultOptions.VaultFunc))
-	cmd.AddCommand(NewCmdImport(o.StdioOptions, o.vaultOptions.VaultFunc))
-	cmd.AddCommand(NewCmdExport(o.StdioOptions, o.vaultOptions.VaultFunc))
+	cmd.AddCommand(NewCmdSave(o.StdioOptions, o.vaultOptions.Vault))
+	cmd.AddCommand(NewCmdFind(o.StdioOptions, o.vaultOptions.Vault))
+	cmd.AddCommand(NewCmdShow(o.StdioOptions, o.vaultOptions.Vault))
+	cmd.AddCommand(NewCmdRemove(o.StdioOptions, o.vaultOptions.Vault))
+	cmd.AddCommand(NewCmdUpdate(o.StdioOptions, o.vaultOptions.Vault))
+	cmd.AddCommand(NewCmdImport(o.StdioOptions, o.vaultOptions.Vault))
+	cmd.AddCommand(NewCmdExport(o.StdioOptions, o.vaultOptions.Vault))
 
 	return cmd
 }

@@ -42,7 +42,7 @@ func (o *CreateOptions) Complete() error {
 }
 
 func (o *CreateOptions) Validate() error {
-	if _, err := os.Stat(o.vaultOptions.Path); !errors.Is(err, fs.ErrNotExist) {
+	if _, err := os.Stat(o.vaultOptions.path); !errors.Is(err, fs.ErrNotExist) {
 		return vaulterrors.ErrVaultFileExists
 	}
 
@@ -59,12 +59,12 @@ func (o *CreateOptions) Run(ctx context.Context, _ ...string) error {
 		return fmt.Errorf("read new master key: %w", err)
 	}
 
-	_, err = vault.New(ctx, o.vaultOptions.Path, password)
+	_, err = vault.New(ctx, o.vaultOptions.path, password)
 	if err != nil {
 		return fmt.Errorf("create vault: %w", err)
 	}
 
-	o.Infof("New vault successfully created at %q\n", o.vaultOptions.Path)
+	o.Infof("New vault successfully created at %q\n", o.vaultOptions.path)
 
 	return nil
 }
