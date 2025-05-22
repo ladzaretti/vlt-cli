@@ -38,7 +38,7 @@ github.com/spf13/pflag
 ## explicit; go 1.23.0
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
-# golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
+# golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0
 ## explicit; go 1.23.0
 golang.org/x/exp/constraints
 # golang.org/x/net v0.35.0
@@ -166,7 +166,7 @@ google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/timestamppb
-# modernc.org/libc v1.62.1
+# modernc.org/libc v1.65.7
 ## explicit; go 1.23.0
 modernc.org/libc
 modernc.org/libc/errno
@@ -197,10 +197,10 @@ modernc.org/libc/wctype
 # modernc.org/mathutil v1.7.1
 ## explicit; go 1.21
 modernc.org/mathutil
-# modernc.org/memory v1.9.1
+# modernc.org/memory v1.11.0
 ## explicit; go 1.23.0
 modernc.org/memory
-# modernc.org/sqlite v1.37.0
+# modernc.org/sqlite v1.37.1
 ## explicit; go 1.23.0
 modernc.org/sqlite
 modernc.org/sqlite/lib

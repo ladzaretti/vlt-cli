@@ -100,7 +100,7 @@ func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.Sess
 		if err != nil {
 			io.Debugf("%v", err)
 		} else {
-			_ = sessionClient.Login(ctx, o.path, key, nonce, "1m") // safe even if sessionClient is nil
+			_ = sessionClient.Login(ctx, o.path, key, nonce, "1m")
 		}
 
 		opts = append(opts, vault.WithPassword(password))
