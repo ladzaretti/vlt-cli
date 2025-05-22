@@ -414,19 +414,34 @@ func newVaultContainerHandle(ctx context.Context, path string, snapshot []byte) 
 		}
 	}()
 
+	var (
+		db   *sql.DB
+		conn *sql.Conn
+	)
+
+	handle.cleanupFuncs = append(handle.cleanupFuncs, func() error {
+		// prefer conn.Close if available to avoid double-closing
+		// the shared driver connection.
+		if conn != nil {
+			return conn.Close()
+		}
+
+		if db != nil {
+			return db.Close()
+		}
+
+		return nil
+	})
+
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, errf("open vault container: %w", err)
 	}
 
-	handle.cleanupFuncs = append(handle.cleanupFuncs, db.Close)
-
-	conn, err := db.Conn(ctx)
+	conn, err = db.Conn(ctx)
 	if err != nil {
 		return nil, errf("open vault container: %w", err)
 	}
-
-	handle.cleanupFuncs = append(handle.cleanupFuncs, conn.Close)
 
 	if snapshot != nil {
 		if err := Deserialize(conn, snapshot); err != nil {
@@ -493,19 +508,34 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 		}
 	}()
 
+	var (
+		db   *sql.DB
+		conn *sql.Conn
+	)
+
+	vlt.cleanupFuncs = append(vlt.cleanupFuncs, func() error {
+		// prefer conn.Close if available to avoid double-closing
+		// the shared driver connection.
+		if conn != nil {
+			return conn.Close()
+		}
+
+		if db != nil {
+			return db.Close()
+		}
+
+		return nil
+	})
+
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		return err
 	}
 
-	vlt.cleanupFuncs = append(vlt.cleanupFuncs, db.Close)
-
-	conn, err := db.Conn(ctx)
+	conn, err = db.Conn(ctx)
 	if err != nil {
 		return err
 	}
-
-	vlt.cleanupFuncs = append(vlt.cleanupFuncs, conn.Close)
 
 	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
 		return err
