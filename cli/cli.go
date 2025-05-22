@@ -121,7 +121,7 @@ func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.Sess
 func (o *VaultOptions) validateExistingVault() error {
 	if _, err := os.Stat(o.path); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return vaulterrors.ErrVaultFileNotFound
+			return fmt.Errorf("%w: %s", vaulterrors.ErrVaultFileNotFound, o.path)
 		}
 
 		return fmt.Errorf("stat vault file: %w", err)
@@ -156,6 +156,9 @@ type DefaultVltOptions struct {
 	// sessionClient is used for daemon communication,
 	// it is lazily initialized in [DefaultVltOptions.Run].
 	sessionClient *vaultdaemon.SessionClient
+
+	// vaultPath is bound to the --file flag.
+	vaultPath string
 }
 
 var _ genericclioptions.CmdOptions = &DefaultVltOptions{}
@@ -169,6 +172,23 @@ func NewDefaultVltOptions(iostreams *genericclioptions.IOStreams, vaultOptions *
 }
 
 func (o *DefaultVltOptions) Complete() error {
+	if err := o.StdioOptions.Complete(); err != nil {
+		return err
+	}
+
+	if err := o.configOptions.Complete(); err != nil {
+		return err
+	}
+
+	if err := o.vaultOptions.Complete(); err != nil {
+		return err
+	}
+
+	return o.complete()
+}
+
+//nolint:revive // allow internal complete() alongside public Complete()
+func (o *DefaultVltOptions) complete() error {
 	copyCmd, pasteCmd := o.configOptions.Clipboard.CopyCmd, o.configOptions.Clipboard.PasteCmd
 
 	var opts []clipboard.Opt
@@ -184,15 +204,15 @@ func (o *DefaultVltOptions) Complete() error {
 		clipboard.SetDefault(clipboard.New(opts...))
 	}
 
-	if err := o.StdioOptions.Complete(); err != nil {
-		return err
+	if len(o.configOptions.Vault.Path) > 0 {
+		o.vaultOptions.path = o.configOptions.Vault.Path
 	}
 
-	if err := o.configOptions.Complete(); err != nil {
-		return err
+	if len(o.vaultPath) > 0 {
+		o.vaultOptions.path = o.vaultPath
 	}
 
-	return o.vaultOptions.Complete()
+	return nil
 }
 
 func (o *DefaultVltOptions) Validate() error {
@@ -210,11 +230,6 @@ func (o *DefaultVltOptions) Validate() error {
 func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 	if err := o.configOptions.Run(ctx); err != nil {
 		return err
-	}
-
-	p := o.configOptions.Vault.Path
-	if len(p) > 0 {
-		o.vaultOptions.path = p
 	}
 
 	cmd := ""
@@ -271,7 +286,7 @@ Environment Variables:
 	cmd.SetArgs(args)
 
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
-	cmd.PersistentFlags().StringVarP(&o.vaultOptions.path, "file", "f", "",
+	cmd.PersistentFlags().StringVarP(&o.vaultPath, "file", "f", "",
 		fmt.Sprintf("database file path (default: ~/%s)", defaultDatabaseFilename))
 	cmd.PersistentFlags().StringVarP(
 		&o.configOptions.userPath,

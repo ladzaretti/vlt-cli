@@ -143,15 +143,7 @@ func NewConfigOptions(stdio *genericclioptions.StdioOptions) *ConfigOptions {
 	}
 }
 
-func (*ConfigOptions) Complete() error {
-	return nil
-}
-
-func (*ConfigOptions) Validate() error {
-	return nil
-}
-
-func (o *ConfigOptions) Run(context.Context, ...string) error {
+func (o *ConfigOptions) Complete() error {
 	c, err := LoadConfig(o.userPath)
 	if err != nil {
 		return err
@@ -159,6 +151,14 @@ func (o *ConfigOptions) Run(context.Context, ...string) error {
 
 	o.Config = c
 
+	return nil
+}
+
+func (*ConfigOptions) Validate() error {
+	return nil
+}
+
+func (*ConfigOptions) Run(context.Context, ...string) error {
 	return nil
 }
 
