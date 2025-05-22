@@ -51,8 +51,8 @@ func (o *FindOptions) Run(ctx context.Context, args ...string) error {
 }
 
 // NewCmdFind creates the find cobra command.
-func NewCmdFind(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
-	o := NewFindOptions(stdio, vault)
+func NewCmdFind(vltOpts *DefaultVltOptions) *cobra.Command {
+	o := NewFindOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
 
 	cmd := &cobra.Command{
 		Use:     "find [glob]",

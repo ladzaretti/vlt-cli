@@ -104,8 +104,8 @@ func (o *ExportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 }
 
 // NewCmdExport creates the export cobra command.
-func NewCmdExport(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
-	o := NewExportOptions(stdio, vault)
+func NewCmdExport(vltOpts *DefaultVltOptions) *cobra.Command {
+	o := NewExportOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
 
 	cmd := &cobra.Command{
 		Use:   "export",

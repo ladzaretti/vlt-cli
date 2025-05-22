@@ -278,8 +278,8 @@ func (o *ImportOptions) importerForHeader(header string) Importer {
 }
 
 // NewCmdImport creates the import cobra command.
-func NewCmdImport(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
-	o := NewImportOptions(stdio, vault)
+func NewCmdImport(vltOpts *DefaultVltOptions) *cobra.Command {
+	o := NewImportOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
 
 	cmd := &cobra.Command{
 		Use:   "import",

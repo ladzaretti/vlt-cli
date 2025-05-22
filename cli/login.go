@@ -83,8 +83,8 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 }
 
 // NewCmdLogin creates the login cobra command.
-func NewCmdLogin(stdio *genericclioptions.StdioOptions, path func() string) *cobra.Command {
-	o := NewLoginOptions(stdio, path)
+func NewCmdLogin(vltOpts *DefaultVltOptions) *cobra.Command {
+	o := NewLoginOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Path)
 
 	return &cobra.Command{
 		Use:   "login",

@@ -123,8 +123,8 @@ func (o *ShowOptions) outputSecret(s string) error {
 }
 
 // NewCmdShow creates the Show cobra command.
-func NewCmdShow(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
-	o := NewShowOptions(stdio, vault)
+func NewCmdShow(vltOpts *DefaultVltOptions) *cobra.Command {
+	o := NewShowOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
 
 	cmd := &cobra.Command{
 		Use:     "show [glob]",

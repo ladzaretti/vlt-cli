@@ -220,8 +220,8 @@ func (o *SaveOptions) validateInputSource() error {
 }
 
 // NewCmdSave creates the save cobra command.
-func NewCmdSave(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
-	o := NewSaveOptions(stdio, vault)
+func NewCmdSave(vltOpts *DefaultVltOptions) *cobra.Command {
+	o := NewSaveOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
 
 	cmd := &cobra.Command{
 		Use:     "save",

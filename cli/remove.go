@@ -119,8 +119,8 @@ func confirm(out io.Writer, in io.Reader, prompt string, a ...any) (bool, error)
 }
 
 // NewCmdRemove creates the remove cobra command.
-func NewCmdRemove(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
-	o := NewRemoveOptions(stdio, vault)
+func NewCmdRemove(vltOpts *DefaultVltOptions) *cobra.Command {
+	o := NewRemoveOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
 
 	cmd := &cobra.Command{
 		Use:     "remove [glob]",

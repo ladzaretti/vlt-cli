@@ -60,8 +60,8 @@ func (o *LogoutOptions) Close() error {
 }
 
 // NewCmdLogout creates the logout cobra command.
-func NewCmdLogout(stdio *genericclioptions.StdioOptions, path func() string) *cobra.Command {
-	o := NewLogoutOptions(stdio, path)
+func NewCmdLogout(vltOpts *DefaultVltOptions) *cobra.Command {
+	o := NewLogoutOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Path)
 
 	cmd := &cobra.Command{
 		Use:   "logout",

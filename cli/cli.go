@@ -296,20 +296,18 @@ Environment Variables:
 		fmt.Sprintf("configuration file path (default: ~/%s)", defaultConfigName),
 	)
 
-	cmd.AddCommand(NewCmdConfig(o.StdioOptions))
-	cmd.AddCommand(NewCmdGenerate(o.StdioOptions))
-
-	cmd.AddCommand(NewCmdLogin(o.StdioOptions, o.vaultOptions.Path))
-	cmd.AddCommand(NewCmdLogout(o.StdioOptions, o.vaultOptions.Path))
-
-	cmd.AddCommand(NewCmdCreate(o.StdioOptions, o.vaultOptions))
-	cmd.AddCommand(NewCmdSave(o.StdioOptions, o.vaultOptions.Vault))
-	cmd.AddCommand(NewCmdFind(o.StdioOptions, o.vaultOptions.Vault))
-	cmd.AddCommand(NewCmdShow(o.StdioOptions, o.vaultOptions.Vault))
-	cmd.AddCommand(NewCmdRemove(o.StdioOptions, o.vaultOptions.Vault))
-	cmd.AddCommand(NewCmdUpdate(o.StdioOptions, o.vaultOptions.Vault))
-	cmd.AddCommand(NewCmdImport(o.StdioOptions, o.vaultOptions.Vault))
-	cmd.AddCommand(NewCmdExport(o.StdioOptions, o.vaultOptions.Vault))
+	cmd.AddCommand(NewCmdGenerate(o))
+	cmd.AddCommand(NewCmdConfig(o))
+	cmd.AddCommand(NewCmdLogout(o))
+	cmd.AddCommand(NewCmdCreate(o))
+	cmd.AddCommand(NewCmdRemove(o))
+	cmd.AddCommand(NewCmdUpdate(o))
+	cmd.AddCommand(NewCmdImport(o))
+	cmd.AddCommand(NewCmdExport(o))
+	cmd.AddCommand(NewCmdLogin(o))
+	cmd.AddCommand(NewCmdSave(o))
+	cmd.AddCommand(NewCmdFind(o))
+	cmd.AddCommand(NewCmdShow(o))
 
 	return cmd
 }

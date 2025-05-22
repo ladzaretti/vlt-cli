@@ -112,8 +112,8 @@ func (o *UpdateOptions) Run(ctx context.Context, args ...string) error {
 }
 
 // NewCmdUpdate creates the update cobra command.
-func NewCmdUpdate(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
-	o := NewUpdateOptions(stdio, vault)
+func NewCmdUpdate(vltOpts *DefaultVltOptions) *cobra.Command {
+	o := NewUpdateOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
 
 	cmd := &cobra.Command{
 		Use:   "update [glob]",
@@ -148,7 +148,7 @@ To update the secret value, use the 'vlt update secret' subcommand.`,
 	cmd.Flags().StringSliceVarP(&o.addLabels, "add-label", "", nil, "label to add to the secret")
 	cmd.Flags().StringSliceVarP(&o.removeLabels, "remove-label", "", nil, "label to remove from the secret")
 
-	cmd.AddCommand(NewCmdUpdateSecretValue(stdio, vault))
+	cmd.AddCommand(NewCmdUpdateSecretValue(vltOpts))
 
 	return cmd
 }
@@ -325,8 +325,8 @@ func (o *UpdateSecretValueOptions) UpdateSecretValue(ctx context.Context, id int
 }
 
 // NewCmdUpdateSecretValue creates the cobra command.
-func NewCmdUpdateSecretValue(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *cobra.Command {
-	o := NewUpdateSecretValueOptions(stdio, vault)
+func NewCmdUpdateSecretValue(vltOpts *DefaultVltOptions) *cobra.Command {
+	o := NewUpdateSecretValueOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
 
 	cmd := &cobra.Command{
 		Use:   "secret [glob]",
