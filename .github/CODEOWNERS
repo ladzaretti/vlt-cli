@@ -1,3 +1,5 @@
 * @Gabriel-Ladzaretti
 go.mod
 go.sum
+.github/**/*.yml
+Makefile
