@@ -15,22 +15,23 @@ import (
 	"google.golang.org/grpc"
 )
 
-// socketPerm defines the file permission mode
-// for the unix domain socket.
+// socketPerm is the file permission mode for the unix domain socket.
 const socketPerm = 0o600
 
-// socketPath is the location of the unix domain socket
+// socketPath is the path of the unix domain socket
 // used by the daemon.
 var socketPath = fmt.Sprintf("/run/user/%d/vlt.sock", os.Getuid())
 
-// Run starts the vltd daemon and serves gRPC over a UNIX domain socket.
-//
-// It creates the socket with 0600 permissions and only allows connections
-// from the current user, validated by UID.
-func Run() {
+// Run starts the vltd daemon and serves grpc over a unix domain socket
+// that only allows connections from the same user that runs the daemon.
+func Run() error {
 	log.SetPrefix("[vltd] ")
 
 	log.Printf("daemon started")
+
+	if socketInUse(socketPath) {
+		return fmt.Errorf("socket already in use: %v", socketPath)
+	}
 
 	_ = os.Remove(socketPath) // remove stale socket
 
@@ -83,16 +84,28 @@ func Run() {
 
 	<-done
 	log.Println("shutdown complete")
+
+	return ctx.Err()
+}
+
+func socketInUse(path string) bool {
+	conn, err := net.Dial("unix", path)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close() //nolint:wsl
+
+	return true
 }
 
 // secureUnixListener wraps a unix [net.Listener] and only accepts connections
-// from clients matching the allowed UID.
+// from clients matching the allowed uid.
 type secureUnixListener struct {
 	net.Listener
 	allowedUID int
 }
 
-// Accept returns the next connection if the client's UID matches allowedUID.
+// Accept only returns the next connection if the client's uid matches [secureUnixListener.allowedUID].
 // Other connections are closed and skipped.
 func (l *secureUnixListener) Accept() (net.Conn, error) {
 	for {

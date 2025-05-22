@@ -29,6 +29,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 
 	"github.com/ladzaretti/vlt-cli/vaultdaemon"
 )
@@ -54,5 +55,5 @@ Options:
 		return
 	}
 
-	vaultdaemon.Run()
+	log.Fatal(vaultdaemon.Run())
 }
