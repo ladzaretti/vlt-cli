@@ -28,13 +28,9 @@ func NewGenerateOptions(stdio *genericclioptions.StdioOptions) *GenerateOptions 
 	}
 }
 
-func (*GenerateOptions) Complete() error {
-	return nil
-}
+func (*GenerateOptions) Complete() error { return nil }
 
-func (*GenerateOptions) Validate() error {
-	return nil
-}
+func (*GenerateOptions) Validate() error { return nil }
 
 func (o *GenerateOptions) Run(context.Context, ...string) error {
 	policy := o.policy

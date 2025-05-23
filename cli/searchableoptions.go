@@ -59,13 +59,9 @@ func NewSearchableOptions(opts ...SearchableOptionsOpt) *SearchableOptions {
 	return o
 }
 
-func (*SearchableOptions) Complete() error {
-	return nil
-}
+func (*SearchableOptions) Complete() error { return nil }
 
-func (*SearchableOptions) Validate() error {
-	return nil
-}
+func (*SearchableOptions) Validate() error { return nil }
 
 func (o *SearchableOptions) WildcardFrom(args []string) {
 	if len(args) > 0 {
