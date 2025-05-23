@@ -44,9 +44,7 @@ func NewExportOptions(stdio *genericclioptions.StdioOptions, vault func() *vault
 	}
 }
 
-func (*ExportOptions) Complete() error {
-	return nil
-}
+func (*ExportOptions) Complete() error { return nil }
 
 func (o *ExportOptions) Validate() error {
 	if len(o.output) == 0 && !o.stdout {

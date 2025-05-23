@@ -51,9 +51,7 @@ func NewUpdateOptions(stdio *genericclioptions.StdioOptions, vault func() *vault
 	}
 }
 
-func (*UpdateOptions) Complete() error {
-	return nil
-}
+func (*UpdateOptions) Complete() error { return nil }
 
 func (o *UpdateOptions) Validate() error {
 	if err := o.search.Validate(); err != nil {

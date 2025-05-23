@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"slices"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
@@ -24,6 +23,13 @@ const (
 	// defaultDatabaseFilename is the default name for the vault file,
 	// created under the user's home directory.
 	defaultDatabaseFilename = ".vlt"
+
+	// defaultConfigName is the default name of the configuration file
+	// expected under the user's home directory.
+	defaultConfigName = ".vlt.toml"
+
+	// defaultSessionDuration is the fallback when no session duration is set.
+	defaultSessionDuration = "1m"
 )
 
 var (
@@ -62,16 +68,7 @@ func NewVaultOptions(opts ...VaultOptionsOpts) *VaultOptions {
 }
 
 // Complete sets the default vault file path if not provided.
-func (o *VaultOptions) Complete() error {
-	if len(o.path) == 0 {
-		p, err := defaultVaultPath()
-		if err != nil {
-			return err
-		}
-
-		o.path = p
-	}
-
+func (*VaultOptions) Complete() error {
 	return nil
 }
 
@@ -138,15 +135,6 @@ func (o *VaultOptions) Path() string {
 	return o.path
 }
 
-func defaultVaultPath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(home, defaultDatabaseFilename), nil
-}
-
 type DefaultVltOptions struct {
 	*genericclioptions.StdioOptions
 
@@ -156,17 +144,16 @@ type DefaultVltOptions struct {
 	// sessionClient is used for daemon communication,
 	// it is lazily initialized in [DefaultVltOptions.Run].
 	sessionClient *vaultdaemon.SessionClient
-
-	// vaultPath is bound to the --file flag.
-	vaultPath string
 }
 
 var _ genericclioptions.CmdOptions = &DefaultVltOptions{}
 
 func NewDefaultVltOptions(iostreams *genericclioptions.IOStreams, vaultOptions *VaultOptions) (*DefaultVltOptions, error) {
+	stdio := &genericclioptions.StdioOptions{IOStreams: iostreams}
+
 	return &DefaultVltOptions{
-		configOptions: &ConfigOptions{},
-		StdioOptions:  &genericclioptions.StdioOptions{IOStreams: iostreams},
+		configOptions: NewConfigOptions(stdio),
+		StdioOptions:  stdio,
 		vaultOptions:  vaultOptions,
 	}, nil
 }
@@ -189,7 +176,7 @@ func (o *DefaultVltOptions) Complete() error {
 
 //nolint:revive // allow internal complete() alongside public Complete()
 func (o *DefaultVltOptions) complete() error {
-	copyCmd, pasteCmd := o.configOptions.Clipboard.CopyCmd, o.configOptions.Clipboard.PasteCmd
+	copyCmd, pasteCmd := o.configOptions.resolved.copyCmd, o.configOptions.resolved.pasteCmd
 
 	var opts []clipboard.Opt
 	if len(copyCmd) > 0 {
@@ -204,13 +191,7 @@ func (o *DefaultVltOptions) complete() error {
 		clipboard.SetDefault(clipboard.New(opts...))
 	}
 
-	if len(o.configOptions.Vault.Path) > 0 {
-		o.vaultOptions.path = o.configOptions.Vault.Path
-	}
-
-	if len(o.vaultPath) > 0 {
-		o.vaultOptions.path = o.vaultPath
-	}
+	o.vaultOptions.path = o.configOptions.resolved.vaultPath
 
 	return nil
 }
@@ -286,10 +267,10 @@ Environment Variables:
 	cmd.SetArgs(args)
 
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
-	cmd.PersistentFlags().StringVarP(&o.vaultPath, "file", "f", "",
+	cmd.PersistentFlags().StringVarP(&o.configOptions.cliFlags.vaultPath, "file", "f", "",
 		fmt.Sprintf("database file path (default: ~/%s)", defaultDatabaseFilename))
 	cmd.PersistentFlags().StringVarP(
-		&o.configOptions.userPath,
+		&o.configOptions.cliFlags.configPath,
 		"config",
 		"",
 		"",

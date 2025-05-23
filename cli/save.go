@@ -53,9 +53,7 @@ func NewSaveOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.V
 	}
 }
 
-func (*SaveOptions) Complete() error {
-	return nil
-}
+func (*SaveOptions) Complete() error { return nil }
 
 func (o *SaveOptions) Validate() error {
 	if strings.HasPrefix(o.name, "-") {

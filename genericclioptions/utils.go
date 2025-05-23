@@ -20,7 +20,7 @@ func MarkFlagsHidden(sub *cobra.Command, hidden ...string) {
 	})
 }
 
-func RejectGlobalFlags(cmd *cobra.Command, disallowed ...string) error {
+func RejectDisallowedFlags(cmd *cobra.Command, disallowed ...string) error {
 	for _, name := range disallowed {
 		if cmd.Flags().Changed(name) {
 			return fmt.Errorf("flag --%s is not allowed with '%s' command", name, cmd.Name())

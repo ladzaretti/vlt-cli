@@ -37,9 +37,7 @@ func (o *LogoutOptions) Complete() error {
 	return nil
 }
 
-func (*LogoutOptions) Validate() error {
-	return nil
-}
+func (*LogoutOptions) Validate() error { return nil }
 
 func (o *LogoutOptions) Run(ctx context.Context, _ ...string) error {
 	defer func() { _ = o.Close() }()

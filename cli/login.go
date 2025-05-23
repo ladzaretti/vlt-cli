@@ -73,7 +73,6 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 		return err
 	}
 
-	// TODO3: add session duration config opt.
 	// TODO1: possible refactor the table render for easier fzf searching
 	// 	  also, consider printing the create/update timestamps
 
