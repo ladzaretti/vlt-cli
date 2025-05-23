@@ -23,10 +23,18 @@ var ErrPartialClipboardConfig = errors.New("invalid partial clipboard config")
 //
 //nolint:tagalign
 type FileConfig struct {
-	Vault     VaultConfig     `toml:"vault" json:"vault"`
-	Clipboard ClipboardConfig `toml:"clipboard,commented" comment:"Clipboard configuration: Both copy and paste commands must be either both set or both unset." json:"clipboard"`
+	Vault     VaultConfig      `toml:"vault" json:"vault"`
+	Clipboard *ClipboardConfig `toml:"clipboard,commented" comment:"Clipboard configuration: Both copy and paste commands must be either both set or both unset." json:"clipboard"`
+	Pipeline  *PipelineConfig  `toml:"pipeline,commented" comment:"Pipeline configuration for vault search commands (e.g., 'vlt find')"`
 
 	path string // path to the loaded config file. Empty if no config file was used.
+}
+
+func newFileConfig() FileConfig {
+	return FileConfig{
+		Clipboard: &ClipboardConfig{},
+		Pipeline:  &PipelineConfig{},
+	}
 }
 
 // VaultConfig holds vault-related configuration.
@@ -43,6 +51,14 @@ type VaultConfig struct {
 type ClipboardConfig struct {
 	CopyCmd  string `toml:"copy_cmd,commented"  comment:"The command used for copying to the clipboard (default: 'xsel -ib' if not set)" json:"copy_cmd,omitempty"`
 	PasteCmd string `toml:"paste_cmd,commented" comment:"The command used for pasting from the clipboard (default: 'xsel -ob' if not set)" json:"paste_cmd,omitempty"`
+}
+
+// Pipeline configuration for vault search commands.
+//
+//nolint:tagalign,tagliatelle
+type PipelineConfig struct {
+	Shell       string `toml:"shell,commented" comment:"Optional shell to execute 'pipe_find_cmd' (default: '/bin/sh')" json:"shell,omitempty"`
+	PipeFindCmd string `toml:"pipe_find_cmd,commented" comment:"Optional shell command that takes 'vlt ls' output as input. Example: 'fzf | awk '{print $1}' | xargs -r -n1 vlt show -c --id'" json:"pipe_find_cmd,omitempty"`
 }
 
 // LoadFileConfig loads the config from the given or default path.

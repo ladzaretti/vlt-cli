@@ -1,7 +1,11 @@
 package cli
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"os/exec"
+	"strings"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
@@ -15,16 +19,20 @@ type FindOptions struct {
 	*genericclioptions.StdioOptions
 
 	vault  func() *vault.Vault
+	config func() *ResolvedConfig
 	search *SearchableOptions
+
+	pipe bool
 }
 
 var _ genericclioptions.CmdOptions = &FindOptions{}
 
 // NewFindOptions initializes the options struct.
-func NewFindOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *FindOptions {
+func NewFindOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault, config func() *ResolvedConfig) *FindOptions {
 	return &FindOptions{
 		StdioOptions: stdio,
 		vault:        vault,
+		config:       config,
 		search:       NewSearchableOptions(),
 	}
 }
@@ -34,7 +42,15 @@ func (o *FindOptions) Complete() error {
 }
 
 func (o *FindOptions) Validate() error {
-	return o.search.Validate()
+	if err := o.search.Validate(); err != nil {
+		return err
+	}
+
+	if o.pipe && len(o.config().PipeFindCmd) == 0 {
+		return errors.New("cannot use --pipe: 'pipe_find_cmd' is not configured")
+	}
+
+	return nil
 }
 
 func (o *FindOptions) Run(ctx context.Context, args ...string) error {
@@ -45,14 +61,39 @@ func (o *FindOptions) Run(ctx context.Context, args ...string) error {
 		return err
 	}
 
-	printTable(o.Out, matchingSecrets)
+	var buf bytes.Buffer
 
-	return nil
+	printTable(&buf, matchingSecrets)
+
+	if o.pipe {
+		return o.runWithPipe(ctx, buf.String())
+	}
+
+	_, err = buf.WriteTo(o.Out)
+
+	return err
+}
+
+func (o *FindOptions) runWithPipe(ctx context.Context, output string) error {
+	shell, pipeCmd := o.config().Shell, o.config().PipeFindCmd
+
+	//nolint:gosec //G204 - intentional use of shell for user-configured pipeline
+	cmd := exec.CommandContext(ctx, shell, "-c", pipeCmd)
+
+	cmd.Stdin = strings.NewReader(output)
+	cmd.Stdout = o.Out
+	cmd.Stderr = o.ErrOut
+
+	return cmd.Run()
 }
 
 // NewCmdFind creates the find cobra command.
 func NewCmdFind(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewFindOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
+	o := NewFindOptions(
+		vltOpts.StdioOptions,
+		vltOpts.vaultOptions.Vault,
+		vltOpts.configOptions.Resolved,
+	)
 
 	cmd := &cobra.Command{
 		Use:     "find [glob]",
@@ -75,6 +116,7 @@ Name and label values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
 	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, FilterByID.Help())
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", FilterByName.Help())
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByLabels.Help())
+	cmd.Flags().BoolVarP(&o.pipe, "pipe", "p", false, "pipe output using 'pipe_find_cmd' if configured")
 
 	return cmd
 }

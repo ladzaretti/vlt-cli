@@ -76,6 +76,8 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 	// TODO1: possible refactor the table render for easier fzf searching
 	// 	  also, consider printing the create/update timestamps
 
+	// TODO2: consume the session duration
+
 	o.Infof("Login successful")
 
 	return nil

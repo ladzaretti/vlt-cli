@@ -30,6 +30,10 @@ const (
 
 	// defaultSessionDuration is the fallback when no session duration is set.
 	defaultSessionDuration = "1m"
+
+	// defaultShell is the fallback shell used to run pipeline commands
+	// when none is configured.
+	defaultShell = "/bin/sh"
 )
 
 var (
@@ -127,13 +131,9 @@ func (o *VaultOptions) validateExistingVault() error {
 	return nil
 }
 
-func (o *VaultOptions) Vault() *vault.Vault {
-	return o.vault
-}
+func (o *VaultOptions) Vault() *vault.Vault { return o.vault }
 
-func (o *VaultOptions) Path() string {
-	return o.path
-}
+func (o *VaultOptions) Path() string { return o.path }
 
 type DefaultVltOptions struct {
 	*genericclioptions.StdioOptions

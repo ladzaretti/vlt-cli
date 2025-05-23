@@ -41,17 +41,15 @@ type ResolvedConfig struct {
 	PasteCmd        string   `json:"paste_cmd,omitempty"`
 	SessionDuration Duration `json:"session_duration,omitempty"`
 	VaultPath       string   `json:"vault_path,omitempty"`
+	Shell           string   `json:"shell,omitempty"`
+	PipeFindCmd     string   `json:"pipe_find_cmd,omitempty"`
 }
 
 type Duration time.Duration
 
-func (d Duration) String() string {
-	return time.Duration(d).String()
-}
+func (d Duration) String() string { return time.Duration(d).String() }
 
-func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.String())
-}
+func (d Duration) MarshalJSON() ([]byte, error) { return json.Marshal(d.String()) }
 
 var _ genericclioptions.CmdOptions = &ConfigOptions{}
 
@@ -64,6 +62,8 @@ func NewConfigOptions(stdio *genericclioptions.StdioOptions) *ConfigOptions {
 		resolved:     &ResolvedConfig{},
 	}
 }
+
+func (o *ConfigOptions) Resolved() *ResolvedConfig { return o.resolved }
 
 func (o *ConfigOptions) Complete() error {
 	c, err := LoadFileConfig(o.cliFlags.configPath)
@@ -79,6 +79,8 @@ func (o *ConfigOptions) Complete() error {
 func (o *ConfigOptions) resolve() error {
 	o.resolved.CopyCmd = o.fileConfig.Clipboard.CopyCmd
 	o.resolved.PasteCmd = o.fileConfig.Clipboard.PasteCmd
+	o.resolved.PipeFindCmd = o.fileConfig.Pipeline.PipeFindCmd
+	o.resolved.Shell = cmp.Or(o.fileConfig.Pipeline.Shell, defaultShell)
 	o.resolved.VaultPath = cmp.Or(o.cliFlags.vaultPath, o.fileConfig.Vault.Path)
 
 	if len(o.resolved.VaultPath) == 0 {
@@ -179,7 +181,9 @@ func (*generateConfigOptions) Complete() error { return nil }
 func (*generateConfigOptions) Validate() error { return nil }
 
 func (o *generateConfigOptions) Run(context.Context, ...string) error {
-	out, err := toml.Marshal(&FileConfig{})
+	c := newFileConfig()
+
+	out, err := toml.Marshal(&c)
 	clierror.Check(err)
 
 	o.Infof("%s", string(out))
