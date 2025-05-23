@@ -21,28 +21,28 @@ var ErrPartialClipboardConfig = errors.New("invalid partial clipboard config")
 
 // FileConfig represents the full structure of the configuration file,
 //
-//nolint:tagalign,recvcheck
+//nolint:tagalign
 type FileConfig struct {
-	Vault     VaultConfig     `toml:"vault"`
-	Clipboard ClipboardConfig `toml:"clipboard,commented" comment:"Clipboard configuration: Both copy and paste commands must be either both set or both unset."`
+	Vault     VaultConfig     `toml:"vault" json:"vault"`
+	Clipboard ClipboardConfig `toml:"clipboard,commented" comment:"Clipboard configuration: Both copy and paste commands must be either both set or both unset." json:"clipboard"`
 
 	path string // path to the loaded config file. Empty if no config file was used.
 }
 
 // VaultConfig holds vault-related configuration.
 //
-//nolint:tagalign
+//nolint:tagalign,tagliatelle
 type VaultConfig struct {
-	Path            string `toml:"path,commented" comment:"Vlt database path (default: '~/.vlt' if not set)"`
-	SessionDuration string `toml:"session_duration,commented" comment:"How long a session lasts before requiring login again (default: '1m')"`
+	Path            string `toml:"path,commented" comment:"Vlt database path (default: '~/.vlt' if not set)" json:"path,omitempty"`
+	SessionDuration string `toml:"session_duration,commented" comment:"How long a session lasts before requiring login again (default: '1m')" json:"session_duration,omitempty"`
 }
 
 // ClipboardConfig defines commands for clipboard ops.
 //
-//nolint:tagalign
+//nolint:tagalign,tagliatelle
 type ClipboardConfig struct {
-	CopyCmd  string `toml:"copy_cmd,commented"  comment:"The command used for copying to the clipboard (default: 'xsel -ib' if not set)"`
-	PasteCmd string `toml:"paste_cmd,commented" comment:"The command used for pasting from the clipboard (default: 'xsel -ob' if not set)"`
+	CopyCmd  string `toml:"copy_cmd,commented"  comment:"The command used for copying to the clipboard (default: 'xsel -ib' if not set)" json:"copy_cmd,omitempty"`
+	PasteCmd string `toml:"paste_cmd,commented" comment:"The command used for pasting from the clipboard (default: 'xsel -ob' if not set)" json:"paste_cmd,omitempty"`
 }
 
 // LoadFileConfig loads the config from the given or default path.
@@ -112,17 +112,4 @@ func (c *FileConfig) validate() error {
 // hasPartialClipboard checks if only one of the clipboard commands is set.
 func (c *FileConfig) hasPartialClipboard() bool {
 	return (c.Clipboard.CopyCmd == "") != (c.Clipboard.PasteCmd == "")
-}
-
-func (c FileConfig) String() string {
-	return fmt.Sprintf(`Config{
-  Vault: {
-    Path: %q
-    SessionDuration: %q
-  },
-  Clipboard: {
-    CopyCmd:  %q,
-    PasteCmd: %q
-  }
-}`, c.Vault.Path, c.Vault.SessionDuration, c.Clipboard.CopyCmd, c.Clipboard.PasteCmd)
 }

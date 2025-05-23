@@ -176,7 +176,7 @@ func (o *DefaultVltOptions) Complete() error {
 
 //nolint:revive // allow internal complete() alongside public Complete()
 func (o *DefaultVltOptions) complete() error {
-	copyCmd, pasteCmd := o.configOptions.resolved.copyCmd, o.configOptions.resolved.pasteCmd
+	copyCmd, pasteCmd := o.configOptions.resolved.CopyCmd, o.configOptions.resolved.PasteCmd
 
 	var opts []clipboard.Opt
 	if len(copyCmd) > 0 {
@@ -191,7 +191,7 @@ func (o *DefaultVltOptions) complete() error {
 		clipboard.SetDefault(clipboard.New(opts...))
 	}
 
-	o.vaultOptions.path = o.configOptions.resolved.vaultPath
+	o.vaultOptions.path = o.configOptions.resolved.VaultPath
 
 	return nil
 }

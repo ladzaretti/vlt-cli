@@ -3,6 +3,7 @@ package cli
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,11 +34,23 @@ type Flags struct {
 
 // ResolvedConfig contains the final merged configuration.
 // cli flags take precedence over config file values.
+//
+//nolint:tagliatelle
 type ResolvedConfig struct {
-	copyCmd         string
-	pasteCmd        string
-	sessionDuration time.Duration
-	vaultPath       string
+	CopyCmd         string   `json:"copy_cmd,omitempty"`
+	PasteCmd        string   `json:"paste_cmd,omitempty"`
+	SessionDuration Duration `json:"session_duration,omitempty"`
+	VaultPath       string   `json:"vault_path,omitempty"`
+}
+
+type Duration time.Duration
+
+func (d Duration) String() string {
+	return time.Duration(d).String()
+}
+
+func (d Duration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(d.String())
 }
 
 var _ genericclioptions.CmdOptions = &ConfigOptions{}
@@ -64,17 +77,17 @@ func (o *ConfigOptions) Complete() error {
 }
 
 func (o *ConfigOptions) resolve() error {
-	o.resolved.copyCmd = o.fileConfig.Clipboard.CopyCmd
-	o.resolved.pasteCmd = o.fileConfig.Clipboard.PasteCmd
-	o.resolved.vaultPath = cmp.Or(o.cliFlags.vaultPath, o.fileConfig.Vault.Path)
+	o.resolved.CopyCmd = o.fileConfig.Clipboard.CopyCmd
+	o.resolved.PasteCmd = o.fileConfig.Clipboard.PasteCmd
+	o.resolved.VaultPath = cmp.Or(o.cliFlags.vaultPath, o.fileConfig.Vault.Path)
 
-	if len(o.resolved.vaultPath) == 0 {
+	if len(o.resolved.VaultPath) == 0 {
 		vaultPath, err := defaultVaultPath()
 		if err != nil {
 			return err
 		}
 
-		o.resolved.vaultPath = vaultPath
+		o.resolved.VaultPath = vaultPath
 	}
 
 	sessionDuration := cmp.Or(o.fileConfig.Vault.SessionDuration, defaultSessionDuration)
@@ -84,7 +97,7 @@ func (o *ConfigOptions) resolve() error {
 		return fmt.Errorf("invalid session duration: %w", err)
 	}
 
-	o.resolved.sessionDuration = t
+	o.resolved.SessionDuration = Duration(t)
 
 	return nil
 }
@@ -121,7 +134,8 @@ If --file is not provided, the default config path (~/%s) is used.`, defaultConf
 				return
 			}
 
-			o.Infof("Resolved config at %q:\n\n%s\n", o.fileConfig.path, o.fileConfig)
+			o.Infof("Config loaded from: %q:\n\n%s\n\n", o.fileConfig.path, stringifyPretty(o.fileConfig))
+			o.Infof("Resolved runtime config:\n\n%+v\n", stringifyPretty(o.resolved))
 		},
 	}
 
@@ -134,6 +148,17 @@ If --file is not provided, the default config path (~/%s) is used.`, defaultConf
 	genericclioptions.MarkFlagsHidden(cmd, hiddenFlags...)
 
 	return cmd
+}
+
+// stringifyPretty returns the pretty-printed JSON representation of v.
+// If marshalling fails, it returns the error message instead.
+func stringifyPretty(v any) string {
+	s, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("stringify error: %v", err)
+	}
+
+	return string(s)
 }
 
 type generateConfigOptions struct {
