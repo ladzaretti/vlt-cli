@@ -238,7 +238,7 @@ func (s *VaultDB) FilterSecrets(ctx context.Context, m Filters) (map[int]SecretW
 			l.name AS label
 		FROM
 			secrets s
-			JOIN labels l ON s.id = l.secret_id
+			LEFT JOIN labels l ON s.id = l.secret_id
 	`
 
 	var (

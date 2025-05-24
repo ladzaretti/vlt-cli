@@ -77,10 +77,8 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 		return err
 	}
 
-	// TODO1: possible refactor the table render for easier fzf searching
 	// TODO2: consider printing the create/update timestamps
 	// FIXME: remote history table ? maybe restrict snapshot count
-	// FIXME2: remove highlight; its complex and to be fair redundant with fzf
 
 	o.Infof("Login successful")
 

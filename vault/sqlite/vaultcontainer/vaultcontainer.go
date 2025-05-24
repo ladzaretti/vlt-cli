@@ -61,6 +61,10 @@ func (vc *VaultContainer) InsertNewVault(ctx context.Context, auth string, kdf s
 		return err
 	}
 
+	defer func() {
+		_ = vc.pruneVaultHistory(ctx)
+	}()
+
 	return nil
 }
 
@@ -79,6 +83,10 @@ func (vc *VaultContainer) UpdateVault(ctx context.Context, ciphervault []byte) e
 	//nolint:gosec // in this context, SHA-1 is for change detection, not security.
 	checksum := sha1.Sum(ciphervault)
 	_, err := vc.db.ExecContext(ctx, updateVault, ciphervault, checksum[:])
+
+	defer func() {
+		_ = vc.pruneVaultHistory(ctx)
+	}()
 
 	return err
 }
@@ -108,4 +116,24 @@ func (vc *VaultContainer) SelectVault(ctx context.Context) (*CipherData, error) 
 	}
 
 	return &data, nil
+}
+
+const pruneHistory = `
+	DELETE FROM vault_history
+	WHERE
+		id NOT IN (
+			SELECT
+				id
+			FROM
+				vault_history
+			ORDER BY
+				created_at DESC
+			LIMIT
+				5
+		);
+`
+
+func (vc *VaultContainer) pruneVaultHistory(ctx context.Context) error {
+	_, err := vc.db.ExecContext(ctx, pruneHistory)
+	return err
 }
