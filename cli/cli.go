@@ -128,10 +128,6 @@ func (o *VaultOptions) validateExistingVault() error {
 	return nil
 }
 
-func (o *VaultOptions) Vault() *vault.Vault { return o.vault }
-
-func (o *VaultOptions) Path() string { return o.path }
-
 type DefaultVltOptions struct {
 	*genericclioptions.StdioOptions
 

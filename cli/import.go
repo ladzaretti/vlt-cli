@@ -13,7 +13,6 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/vault"
 
 	"github.com/spf13/cobra"
 )
@@ -159,8 +158,9 @@ func ptr[T any](v T) *T {
 
 type ImportOptions struct {
 	*genericclioptions.StdioOptions
-	vault   func() *vault.Vault
-	path    string
+	*VaultOptions
+
+	CSVPath string
 	indexes string
 
 	importConfig CustomImporter
@@ -169,10 +169,10 @@ type ImportOptions struct {
 var _ genericclioptions.CmdOptions = &ImportOptions{}
 
 // NewImportOptions initializes the options struct.
-func NewImportOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *ImportOptions {
+func NewImportOptions(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOptions) *ImportOptions {
 	return &ImportOptions{
 		StdioOptions: stdio,
-		vault:        vault,
+		VaultOptions: vaultOptions,
 	}
 }
 
@@ -187,7 +187,7 @@ func (o *ImportOptions) Complete() error {
 }
 
 func (o *ImportOptions) Validate() error {
-	if !o.NonInteractive && len(o.path) == 0 {
+	if !o.NonInteractive && len(o.CSVPath) == 0 {
 		return &ImportError{errors.New("no path provided; use --path to specify the input file")}
 	}
 
@@ -207,8 +207,8 @@ func (o *ImportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 		in = o.In
 	}
 
-	if len(o.path) > 0 {
-		f, err := os.Open(o.path)
+	if len(o.CSVPath) > 0 {
+		f, err := os.Open(o.CSVPath)
 		if err != nil {
 			return err
 		}
@@ -244,7 +244,7 @@ func (o *ImportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 
 		s := importer.convert(record)
 
-		if _, err := o.vault().InsertNewSecret(ctx, s.name, s.secret, s.labels); err != nil {
+		if _, err := o.vault.InsertNewSecret(ctx, s.name, s.secret, s.labels); err != nil {
 			return err
 		}
 
@@ -278,8 +278,11 @@ func (o *ImportOptions) importerForHeader(header string) Importer {
 }
 
 // NewCmdImport creates the import cobra command.
-func NewCmdImport(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewImportOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
+func NewCmdImport(defaults *DefaultVltOptions) *cobra.Command {
+	o := NewImportOptions(
+		defaults.StdioOptions,
+		defaults.vaultOptions,
+	)
 
 	cmd := &cobra.Command{
 		Use:   "import",
@@ -308,7 +311,7 @@ echo -e "password,username,label_1,label_2\npass,some_username,meta1,meta2" | \
 	}
 
 	cmd.Flags().StringVarP(&o.indexes, "indexes", "i", "", "json with column indexes (e.g., '{\"name\":0,\"secret\":1,\"labels\":[2]}')")
-	cmd.Flags().StringVarP(&o.path, "path", "p", "", "path to the input CSV file")
+	cmd.Flags().StringVarP(&o.CSVPath, "path", "p", "", "path to the input CSV file")
 
 	return cmd
 }

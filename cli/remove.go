@@ -10,7 +10,6 @@ import (
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
-	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
 
 	"github.com/spf13/cobra"
@@ -27,8 +26,8 @@ func (e *RemoveError) Unwrap() error { return e.Err }
 // RemoveOptions holds data required to run the command.
 type RemoveOptions struct {
 	*genericclioptions.StdioOptions
+	*VaultOptions
 
-	vault     func() *vault.Vault
 	search    *SearchableOptions
 	assumeYes bool
 	removeAll bool
@@ -37,10 +36,10 @@ type RemoveOptions struct {
 var _ genericclioptions.CmdOptions = &RemoveOptions{}
 
 // NewRemoveOptions initializes the options struct.
-func NewRemoveOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *RemoveOptions {
+func NewRemoveOptions(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOptions) *RemoveOptions {
 	return &RemoveOptions{
 		StdioOptions: stdio,
-		vault:        vault,
+		VaultOptions: vaultOptions,
 		search:       NewSearchableOptions(),
 	}
 }
@@ -56,7 +55,7 @@ func (o *RemoveOptions) Validate() error {
 func (o *RemoveOptions) Run(ctx context.Context, args ...string) error {
 	o.search.WildcardFrom(args)
 
-	matchingSecrets, err := o.search.search(ctx, o.vault())
+	matchingSecrets, err := o.search.search(ctx, o.vault)
 	if err != nil {
 		return err
 	}
@@ -96,7 +95,7 @@ func (o *RemoveOptions) Run(ctx context.Context, args ...string) error {
 
 	o.Debugf("Proceeding with deleting secrets.\n")
 
-	n, err := o.vault().DeleteSecretsByIDs(ctx, extractIDs(matchingSecrets)...)
+	n, err := o.vault.DeleteSecretsByIDs(ctx, extractIDs(matchingSecrets)...)
 	if err != nil {
 		return err
 	}
@@ -119,8 +118,11 @@ func confirm(out io.Writer, in io.Reader, prompt string, a ...any) (bool, error)
 }
 
 // NewCmdRemove creates the remove cobra command.
-func NewCmdRemove(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewRemoveOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
+func NewCmdRemove(defaults *DefaultVltOptions) *cobra.Command {
+	o := NewRemoveOptions(
+		defaults.StdioOptions,
+		defaults.vaultOptions,
+	)
 
 	cmd := &cobra.Command{
 		Use:     "remove [glob]",

@@ -11,7 +11,6 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/vault"
 
 	"github.com/spf13/cobra"
 )
@@ -27,9 +26,9 @@ func (e *FindError) Unwrap() error { return e.Err }
 // FindOptions holds data required to run the command.
 type FindOptions struct {
 	*genericclioptions.StdioOptions
+	*VaultOptions
 
-	vault  func() *vault.Vault
-	config func() *ResolvedConfig
+	config *ResolvedConfig
 	search *SearchableOptions
 
 	pipe       bool
@@ -40,10 +39,10 @@ type FindOptions struct {
 var _ genericclioptions.CmdOptions = &FindOptions{}
 
 // NewFindOptions initializes the options struct.
-func NewFindOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault, config func() *ResolvedConfig) *FindOptions {
+func NewFindOptions(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOptions, config *ResolvedConfig) *FindOptions {
 	return &FindOptions{
 		StdioOptions: stdio,
-		vault:        vault,
+		VaultOptions: vaultOptions,
 		config:       config,
 		search:       NewSearchableOptions(),
 	}
@@ -66,7 +65,7 @@ func (o *FindOptions) Validate() error {
 		o.pipe = true
 	}
 
-	if len(o.pipeCmd) == 0 && o.pipe && len(o.config().FindPipeCmd) == 0 {
+	if len(o.pipeCmd) == 0 && o.pipe && len(o.config.FindPipeCmd) == 0 {
 		return errors.New("cannot use --pipe: 'find_pipe_cmd' is not configured")
 	}
 
@@ -83,7 +82,7 @@ func (o *FindOptions) Run(ctx context.Context, args ...string) (retErr error) {
 
 	o.search.WildcardFrom(args)
 
-	matchingSecrets, err := o.search.search(ctx, o.vault())
+	matchingSecrets, err := o.search.search(ctx, o.vault)
 	if err != nil {
 		return err
 	}
@@ -93,7 +92,7 @@ func (o *FindOptions) Run(ctx context.Context, args ...string) (retErr error) {
 	printTable(&buf, matchingSecrets)
 
 	if o.pipe {
-		cmd := o.config().FindPipeCmd
+		cmd := o.config.FindPipeCmd
 		if len(o.pipeCmd) > 0 {
 			cmd = o.pipeCmd
 		}
@@ -122,11 +121,11 @@ func (o *FindOptions) runWithPipe(ctx context.Context, pipeCmd []string, input s
 }
 
 // NewCmdFind creates the find cobra command.
-func NewCmdFind(vltOpts *DefaultVltOptions) *cobra.Command {
+func NewCmdFind(defaults *DefaultVltOptions) *cobra.Command {
 	o := NewFindOptions(
-		vltOpts.StdioOptions,
-		vltOpts.vaultOptions.Vault,
-		vltOpts.configOptions.Resolved,
+		defaults.StdioOptions,
+		defaults.vaultOptions,
+		defaults.configOptions.resolved,
 	)
 
 	cmd := &cobra.Command{

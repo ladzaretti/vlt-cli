@@ -11,7 +11,6 @@ import (
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
 	"github.com/ladzaretti/vlt-cli/randstring"
-	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
 
 	"github.com/spf13/cobra"
@@ -32,8 +31,8 @@ func (e *UpdateError) Unwrap() error { return e.Err }
 
 type UpdateOptions struct {
 	*genericclioptions.StdioOptions
+	*VaultOptions
 
-	vault        func() *vault.Vault
 	search       *SearchableOptions
 	newName      string
 	addLabels    []string
@@ -43,10 +42,10 @@ type UpdateOptions struct {
 var _ genericclioptions.CmdOptions = &UpdateOptions{}
 
 // NewUpdateOptions initializes the options struct.
-func NewUpdateOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *UpdateOptions {
+func NewUpdateOptions(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOptions) *UpdateOptions {
 	return &UpdateOptions{
 		StdioOptions: stdio,
-		vault:        vault,
+		VaultOptions: vaultOptions,
 		search:       NewSearchableOptions(),
 	}
 }
@@ -86,7 +85,7 @@ func (o *UpdateOptions) validateUpdateArgs() error {
 func (o *UpdateOptions) Run(ctx context.Context, args ...string) error {
 	o.search.WildcardFrom(args)
 
-	matchingSecrets, err := o.search.search(ctx, o.vault())
+	matchingSecrets, err := o.search.search(ctx, o.vault)
 	if err != nil {
 		return err
 	}
@@ -106,12 +105,12 @@ func (o *UpdateOptions) Run(ctx context.Context, args ...string) error {
 		return &UpdateError{vaulterrors.ErrAmbiguousSecretMatch}
 	}
 
-	return o.vault().UpdateSecretMetadata(ctx, matchingSecrets[0].id, o.newName, o.removeLabels, o.addLabels)
+	return o.vault.UpdateSecretMetadata(ctx, matchingSecrets[0].id, o.newName, o.removeLabels, o.addLabels)
 }
 
 // NewCmdUpdate creates the update cobra command.
-func NewCmdUpdate(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewUpdateOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
+func NewCmdUpdate(defaults *DefaultVltOptions) *cobra.Command {
+	o := NewUpdateOptions(defaults.StdioOptions, defaults.vaultOptions)
 
 	cmd := &cobra.Command{
 		Use:   "update [glob]",
@@ -146,14 +145,14 @@ To update the secret value, use the 'vlt update secret' subcommand.`,
 	cmd.Flags().StringSliceVarP(&o.addLabels, "add-label", "", nil, "label to add to the secret")
 	cmd.Flags().StringSliceVarP(&o.removeLabels, "remove-label", "", nil, "label to remove from the secret")
 
-	cmd.AddCommand(NewCmdUpdateSecretValue(vltOpts))
+	cmd.AddCommand(NewCmdUpdateSecretValue(defaults))
 
 	return cmd
 }
 
 type UpdateSecretValueOptions struct {
 	*genericclioptions.StdioOptions
-	vault func() *vault.Vault
+	*VaultOptions
 
 	search *SearchableOptions
 
@@ -166,10 +165,10 @@ type UpdateSecretValueOptions struct {
 var _ genericclioptions.CmdOptions = &UpdateSecretValueOptions{}
 
 // NewUpdateSecretValueOptions initializes the options struct.
-func NewUpdateSecretValueOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *UpdateSecretValueOptions {
+func NewUpdateSecretValueOptions(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOptions) *UpdateSecretValueOptions {
 	return &UpdateSecretValueOptions{
 		StdioOptions: stdio,
-		vault:        vault,
+		VaultOptions: vaultOptions,
 		search:       NewSearchableOptions(),
 	}
 }
@@ -210,7 +209,7 @@ func (o *UpdateSecretValueOptions) validateUpdateSecretArgs() error {
 func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (retErr error) {
 	o.search.WildcardFrom(args)
 
-	matchingSecrets, err := o.search.search(ctx, o.vault())
+	matchingSecrets, err := o.search.search(ctx, o.vault)
 	if err != nil {
 		return err
 	}
@@ -308,7 +307,7 @@ func (o *UpdateSecretValueOptions) promptReadSecure(prompt string, a ...any) (st
 }
 
 func (o *UpdateSecretValueOptions) UpdateSecretValue(ctx context.Context, id int, secret string) error {
-	n, err := o.vault().UpdateSecret(ctx, id, secret)
+	n, err := o.vault.UpdateSecret(ctx, id, secret)
 	if err != nil {
 		return err
 	}
@@ -323,8 +322,11 @@ func (o *UpdateSecretValueOptions) UpdateSecretValue(ctx context.Context, id int
 }
 
 // NewCmdUpdateSecretValue creates the cobra command.
-func NewCmdUpdateSecretValue(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewUpdateSecretValueOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
+func NewCmdUpdateSecretValue(defaults *DefaultVltOptions) *cobra.Command {
+	o := NewUpdateSecretValueOptions(
+		defaults.StdioOptions,
+		defaults.vaultOptions,
+	)
 
 	cmd := &cobra.Command{
 		Use:   "secret [glob]",

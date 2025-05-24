@@ -18,19 +18,20 @@ import (
 // LoginOptions holds data required to run the command.
 type LoginOptions struct {
 	*genericclioptions.StdioOptions
-	path          func() string
-	config        func() *ResolvedConfig
+	*VaultOptions
+
+	config        *ResolvedConfig
 	sessionClient *vaultdaemon.SessionClient
 }
 
 var _ genericclioptions.CmdOptions = &LoginOptions{}
 
 // NewLoginOptions initializes the options struct.
-func NewLoginOptions(stdio *genericclioptions.StdioOptions, path func() string, config func() *ResolvedConfig) *LoginOptions {
+func NewLoginOptions(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOptions, config *ResolvedConfig) *LoginOptions {
 	return &LoginOptions{
 		StdioOptions: stdio,
+		VaultOptions: vaultOptions,
 		config:       config,
-		path:         path,
 	}
 }
 
@@ -60,7 +61,7 @@ func (o *LoginOptions) Close() error {
 func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 	defer func() { _ = o.Close() }()
 
-	path := o.path()
+	path := o.path
 
 	password, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "[vlt] Password for %q:", path)
 	if err != nil {
@@ -72,7 +73,7 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 		return err
 	}
 
-	sessionDuration := time.Duration(o.config().SessionDuration)
+	sessionDuration := time.Duration(o.config.SessionDuration)
 	if err := o.sessionClient.Login(ctx, path, key, nonce, sessionDuration); err != nil {
 		return err
 	}
@@ -85,8 +86,12 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 }
 
 // NewCmdLogin creates the login cobra command.
-func NewCmdLogin(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewLoginOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Path, vltOpts.configOptions.Resolved)
+func NewCmdLogin(defaults *DefaultVltOptions) *cobra.Command {
+	o := NewLoginOptions(
+		defaults.StdioOptions,
+		defaults.vaultOptions,
+		defaults.configOptions.resolved,
+	)
 
 	return &cobra.Command{
 		Use:   "login",

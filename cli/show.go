@@ -7,7 +7,6 @@ import (
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/clipboard"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
 
 	"github.com/spf13/cobra"
@@ -24,8 +23,8 @@ func (e *ShowError) Unwrap() error { return e.Err }
 // ShowOptions holds data required to run the command.
 type ShowOptions struct {
 	*genericclioptions.StdioOptions
+	*VaultOptions
 
-	vault  func() *vault.Vault
 	search *SearchableOptions
 	output bool // output controls whether to print the secret to stdout.
 	copy   bool // copy controls whether to copy the secret to the clipboard.
@@ -34,10 +33,10 @@ type ShowOptions struct {
 var _ genericclioptions.CmdOptions = &ShowOptions{}
 
 // NewShowOptions initializes the options struct.
-func NewShowOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *ShowOptions {
+func NewShowOptions(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOptions) *ShowOptions {
 	return &ShowOptions{
 		StdioOptions: stdio,
-		vault:        vault,
+		VaultOptions: vaultOptions,
 		search:       NewSearchableOptions(),
 	}
 }
@@ -80,7 +79,7 @@ func (o *ShowOptions) validateConfigOptions() error {
 func (o *ShowOptions) Run(ctx context.Context, args ...string) error {
 	o.search.WildcardFrom(args)
 
-	matchingSecrets, err := o.search.search(ctx, o.vault())
+	matchingSecrets, err := o.search.search(ctx, o.vault)
 	if err != nil {
 		return err
 	}
@@ -91,7 +90,7 @@ func (o *ShowOptions) Run(ctx context.Context, args ...string) error {
 	case 1:
 		o.Debugf("Found one match.\n")
 
-		s, err := o.vault().ShowSecret(ctx, matchingSecrets[0].id)
+		s, err := o.vault.ShowSecret(ctx, matchingSecrets[0].id)
 		if err != nil {
 			return err
 		}
@@ -123,8 +122,11 @@ func (o *ShowOptions) outputSecret(s string) error {
 }
 
 // NewCmdShow creates the Show cobra command.
-func NewCmdShow(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewShowOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
+func NewCmdShow(defaults *DefaultVltOptions) *cobra.Command {
+	o := NewShowOptions(
+		defaults.StdioOptions,
+		defaults.vaultOptions,
+	)
 
 	cmd := &cobra.Command{
 		Use:     "show [glob]",

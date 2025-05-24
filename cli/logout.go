@@ -12,17 +12,18 @@ import (
 
 type LogoutOptions struct {
 	*genericclioptions.StdioOptions
-	path          func() string
+	*VaultOptions
+
 	sessionClient *vaultdaemon.SessionClient
 }
 
 var _ genericclioptions.CmdOptions = &LogoutOptions{}
 
 // NewLogoutOptions initializes the options struct.
-func NewLogoutOptions(stdio *genericclioptions.StdioOptions, path func() string) *LogoutOptions {
+func NewLogoutOptions(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOptions) *LogoutOptions {
 	return &LogoutOptions{
 		StdioOptions: stdio,
-		path:         path,
+		VaultOptions: vaultOptions,
 	}
 }
 
@@ -42,9 +43,7 @@ func (*LogoutOptions) Validate() error { return nil }
 func (o *LogoutOptions) Run(ctx context.Context, _ ...string) error {
 	defer func() { _ = o.Close() }()
 
-	path := o.path()
-
-	if err := o.sessionClient.Logout(ctx, path); err != nil {
+	if err := o.sessionClient.Logout(ctx, o.path); err != nil {
 		return err
 	}
 
@@ -58,8 +57,11 @@ func (o *LogoutOptions) Close() error {
 }
 
 // NewCmdLogout creates the logout cobra command.
-func NewCmdLogout(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewLogoutOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Path)
+func NewCmdLogout(defaults *DefaultVltOptions) *cobra.Command {
+	o := NewLogoutOptions(
+		defaults.StdioOptions,
+		defaults.vaultOptions,
+	)
 
 	cmd := &cobra.Command{
 		Use:   "logout",

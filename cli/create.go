@@ -70,8 +70,8 @@ func (o *CreateOptions) Run(ctx context.Context, _ ...string) error {
 }
 
 // NewCmdCreate creates the create cobra command.
-func NewCmdCreate(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewCreateOptions(vltOpts.StdioOptions, vltOpts.vaultOptions)
+func NewCmdCreate(defaults *DefaultVltOptions) *cobra.Command {
+	o := NewCreateOptions(defaults.StdioOptions, defaults.vaultOptions)
 
 	return &cobra.Command{
 		Use:     "create",

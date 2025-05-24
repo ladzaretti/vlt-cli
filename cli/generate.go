@@ -56,8 +56,8 @@ func (o *GenerateOptions) Run(context.Context, ...string) error {
 }
 
 // NewCmdGenerate creates the Generate cobra command.
-func NewCmdGenerate(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewGenerateOptions(vltOpts.StdioOptions)
+func NewCmdGenerate(defaults *DefaultVltOptions) *cobra.Command {
+	o := NewGenerateOptions(defaults.StdioOptions)
 
 	cmd := &cobra.Command{
 		Use:     "generate",

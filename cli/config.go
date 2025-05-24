@@ -115,9 +115,9 @@ func (*ConfigOptions) Validate() error { return nil }
 func (*ConfigOptions) Run(context.Context, ...string) error { return nil }
 
 // NewCmdConfig creates the cobra config command tree.
-func NewCmdConfig(vltOpts *DefaultVltOptions) *cobra.Command {
+func NewCmdConfig(defaults *DefaultVltOptions) *cobra.Command {
 	hiddenFlags := []string{"config"}
-	o := NewConfigOptions(vltOpts.StdioOptions)
+	o := NewConfigOptions(defaults.StdioOptions)
 
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -142,8 +142,8 @@ If --file is not provided, the default config path (~/%s) is used.`, defaultConf
 	cmd.PersistentFlags().StringVarP(&o.cliFlags.configPath, "file", "f", "",
 		fmt.Sprintf("path to the configuration file (default: ~/%s)", defaultConfigName))
 
-	cmd.AddCommand(newGenerateConfigCmd(vltOpts))
-	cmd.AddCommand(newValidateConfigCmd(vltOpts))
+	cmd.AddCommand(newGenerateConfigCmd(defaults))
+	cmd.AddCommand(newValidateConfigCmd(defaults))
 
 	genericclioptions.MarkFlagsHidden(cmd, hiddenFlags...)
 
@@ -168,9 +168,9 @@ type generateConfigOptions struct {
 var _ genericclioptions.CmdOptions = &generateConfigOptions{}
 
 // newGenerateConfigOptions initializes the options struct.
-func newGenerateConfigOptions(vltOpts *DefaultVltOptions) *generateConfigOptions {
+func newGenerateConfigOptions(stdio *genericclioptions.StdioOptions) *generateConfigOptions {
 	return &generateConfigOptions{
-		StdioOptions: vltOpts.StdioOptions,
+		StdioOptions: stdio,
 	}
 }
 
@@ -190,9 +190,9 @@ func (o *generateConfigOptions) Run(context.Context, ...string) error {
 }
 
 // newGenerateConfigCmd creates the 'generate' subcommand for generating default config.
-func newGenerateConfigCmd(vltOpts *DefaultVltOptions) *cobra.Command {
+func newGenerateConfigCmd(defaults *DefaultVltOptions) *cobra.Command {
 	hiddenFlags := []string{"file", "config"}
-	o := newGenerateConfigOptions(vltOpts)
+	o := newGenerateConfigOptions(defaults.StdioOptions)
 
 	cmd := &cobra.Command{
 		Use:   "generate",
@@ -245,9 +245,9 @@ func (o *validateConfigOptions) Run(context.Context, ...string) error {
 }
 
 // newValidateConfigCmd creates the 'validate' subcommand for validating the config file.
-func newValidateConfigCmd(vltOpts *DefaultVltOptions) *cobra.Command {
+func newValidateConfigCmd(defaults *DefaultVltOptions) *cobra.Command {
 	hiddenFlags := []string{"config"}
-	o := newValidateConfigOptions(vltOpts.StdioOptions)
+	o := newValidateConfigOptions(defaults.StdioOptions)
 
 	cmd := &cobra.Command{
 		Use:   "validate",

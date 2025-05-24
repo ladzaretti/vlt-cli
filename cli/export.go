@@ -10,7 +10,6 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/vault"
 
 	"github.com/spf13/cobra"
 )
@@ -28,7 +27,7 @@ func (e *ExportError) Unwrap() error { return e.Err }
 
 type ExportOptions struct {
 	*genericclioptions.StdioOptions
-	vault func() *vault.Vault
+	*VaultOptions
 
 	output string
 	stdout bool
@@ -37,10 +36,10 @@ type ExportOptions struct {
 var _ genericclioptions.CmdOptions = &ExportOptions{}
 
 // NewExportOptions initializes the options struct.
-func NewExportOptions(stdio *genericclioptions.StdioOptions, vault func() *vault.Vault) *ExportOptions {
+func NewExportOptions(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOptions) *ExportOptions {
 	return &ExportOptions{
 		StdioOptions: stdio,
-		vault:        vault,
+		VaultOptions: vaultOptions,
 	}
 }
 
@@ -82,7 +81,7 @@ func (o *ExportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	w := csv.NewWriter(out)
 	defer w.Flush()
 
-	secrets, err := o.vault().ExportSecrets(ctx)
+	secrets, err := o.vault.ExportSecrets(ctx)
 	if err != nil {
 		return err
 	}
@@ -102,8 +101,11 @@ func (o *ExportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 }
 
 // NewCmdExport creates the export cobra command.
-func NewCmdExport(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewExportOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Vault)
+func NewCmdExport(defaults *DefaultVltOptions) *cobra.Command {
+	o := NewExportOptions(
+		defaults.StdioOptions,
+		defaults.vaultOptions,
+	)
 
 	cmd := &cobra.Command{
 		Use:   "export",
