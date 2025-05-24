@@ -31,10 +31,6 @@ const (
 
 	// defaultSessionDuration is the fallback when no session duration is set.
 	defaultSessionDuration = "1m"
-
-	// defaultShell is the fallback shell used to run pipeline commands
-	// when none is configured.
-	defaultShell = "/bin/sh"
 )
 
 var (

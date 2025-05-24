@@ -77,8 +77,7 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 		return err
 	}
 
-	// TODO2: consider printing the create/update timestamps
-	// FIXME: remote history table ? maybe restrict snapshot count
+	// TODO1: post login/update hooks
 
 	o.Infof("Login successful")
 

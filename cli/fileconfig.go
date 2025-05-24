@@ -17,7 +17,14 @@ const (
 	envConfigPathKey = "VLT_CONFIG_PATH"
 )
 
-var ErrPartialClipboardConfig = errors.New("invalid partial clipboard config")
+type ConfigError struct {
+	Opt string
+	Err error
+}
+
+func (e *ConfigError) Error() string { return "config: " + e.Opt + ": " + e.Err.Error() }
+
+func (e *ConfigError) Unwrap() error { return e.Err }
 
 // FileConfig represents the full structure of the configuration file,
 //
@@ -57,8 +64,7 @@ type ClipboardConfig struct {
 //
 //nolint:tagalign,tagliatelle
 type PipelineConfig struct {
-	Shell       string `toml:"shell,commented" comment:"Optional shell to execute 'pipe_find_cmd' (default: '/bin/sh')" json:"shell,omitempty"`
-	PipeFindCmd string `toml:"pipe_find_cmd,commented" comment:"Optional shell command that takes 'vlt ls' output as input. Example: 'fzf | awk '{print $1}' | xargs -r -n1 vlt show -c --id'" json:"pipe_find_cmd,omitempty"`
+	FindPipeCmd []string `toml:"find_pipe_cmd,commented" comment:"Optional command to pipe 'vlt find' output through (e.g. [\"sh\", \"-c\", \"fzf\"])" json:"find_pipe_cmd,omitempty"`
 }
 
 // LoadFileConfig loads the config from the given or default path.
@@ -119,7 +125,11 @@ func parseFileConfig(path string) (*FileConfig, error) {
 
 func (c *FileConfig) validate() error {
 	if c.hasPartialClipboard() {
-		return ErrPartialClipboardConfig
+		return &ConfigError{Opt: "clipboard", Err: errors.New("both 'copy_cmd' and 'paste_cmd' must be set or unset together")}
+	}
+
+	if c.Pipeline.FindPipeCmd != nil && len(c.Pipeline.FindPipeCmd) == 0 {
+		return &ConfigError{Opt: "find_pipe_cmd", Err: errors.New("defined but contains no values")}
 	}
 
 	return nil

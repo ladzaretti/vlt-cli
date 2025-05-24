@@ -41,8 +41,7 @@ type ResolvedConfig struct {
 	PasteCmd        string   `json:"paste_cmd,omitempty"`
 	SessionDuration Duration `json:"session_duration,omitempty"`
 	VaultPath       string   `json:"vault_path,omitempty"`
-	Shell           string   `json:"shell,omitempty"`
-	PipeFindCmd     string   `json:"pipe_find_cmd,omitempty"`
+	FindPipeCmd     []string `json:"find_pipe_cmd,omitempty"`
 }
 
 type Duration time.Duration
@@ -79,8 +78,7 @@ func (o *ConfigOptions) Complete() error {
 func (o *ConfigOptions) resolve() error {
 	o.resolved.CopyCmd = o.fileConfig.Clipboard.CopyCmd
 	o.resolved.PasteCmd = o.fileConfig.Clipboard.PasteCmd
-	o.resolved.PipeFindCmd = o.fileConfig.Pipeline.PipeFindCmd
-	o.resolved.Shell = cmp.Or(o.fileConfig.Pipeline.Shell, defaultShell)
+	o.resolved.FindPipeCmd = o.fileConfig.Pipeline.FindPipeCmd
 	o.resolved.VaultPath = cmp.Or(o.cliFlags.vaultPath, o.fileConfig.Vault.Path)
 
 	if len(o.resolved.VaultPath) == 0 {

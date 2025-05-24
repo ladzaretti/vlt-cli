@@ -2,9 +2,10 @@ package cli
 
 import (
 	"bytes"
-	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os/exec"
 	"strings"
 
@@ -31,8 +32,9 @@ type FindOptions struct {
 	config func() *ResolvedConfig
 	search *SearchableOptions
 
-	pipe    bool
-	pipeCmd string
+	pipe       bool
+	rawPipeCmd string
+	pipeCmd    []string
 }
 
 var _ genericclioptions.CmdOptions = &FindOptions{}
@@ -56,12 +58,16 @@ func (o *FindOptions) Validate() error {
 		return err
 	}
 
-	if len(o.pipeCmd) > 0 {
+	if len(o.rawPipeCmd) > 0 {
+		if err := json.Unmarshal([]byte(o.rawPipeCmd), &o.pipeCmd); err != nil {
+			return fmt.Errorf("invalid --pipe-cmd json array: %w", err)
+		}
+
 		o.pipe = true
 	}
 
-	if len(o.pipeCmd) == 0 && o.pipe && len(o.config().PipeFindCmd) == 0 {
-		return errors.New("cannot use --pipe: 'pipe_find_cmd' is not configured")
+	if len(o.pipeCmd) == 0 && o.pipe && len(o.config().FindPipeCmd) == 0 {
+		return errors.New("cannot use --pipe: 'find_pipe_cmd' is not configured")
 	}
 
 	return nil
@@ -87,7 +93,11 @@ func (o *FindOptions) Run(ctx context.Context, args ...string) (retErr error) {
 	printTable(&buf, matchingSecrets)
 
 	if o.pipe {
-		cmd := cmp.Or(o.pipeCmd, o.config().PipeFindCmd)
+		cmd := o.config().FindPipeCmd
+		if len(o.pipeCmd) > 0 {
+			cmd = o.pipeCmd
+		}
+
 		return o.runWithPipe(ctx, cmd, buf.String())
 	}
 
@@ -96,15 +106,13 @@ func (o *FindOptions) Run(ctx context.Context, args ...string) (retErr error) {
 	return err
 }
 
-func (o *FindOptions) runWithPipe(ctx context.Context, pipeCmd string, input string) error {
-	if strings.TrimSpace(pipeCmd) == "" {
-		return errors.New("no pipeline command provided")
+func (o *FindOptions) runWithPipe(ctx context.Context, pipeCmd []string, input string) error {
+	if len(pipeCmd) == 0 {
+		return errors.New("pipe command is empty or undefined")
 	}
 
-	shell := o.config().Shell
-
 	//nolint:gosec //G204 - intentional use of shell for user-configured pipeline
-	cmd := exec.CommandContext(ctx, shell, "-c", pipeCmd)
+	cmd := exec.CommandContext(ctx, pipeCmd[0], pipeCmd[1:]...)
 
 	cmd.Stdin = strings.NewReader(input)
 	cmd.Stdout = o.Out
@@ -134,6 +142,20 @@ Filters can be applied using --id, --name, or --label.
 Multiple --label flags can be applied and are logically ORed.
 
 Name and label values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
+		Example: `  # Find secrets with names or labels containing "dev"
+  vlt find "*dev*"
+
+  # Find secrets matching multiple labels (AND logic)
+  vlt find --label env=prod --label region=us
+
+  # List all secrets in the vault
+  vlt find
+
+  # Use a custom pipeline to process the results
+  vlt find --pipe-cmd '[ "sh", "-c", "fzf --header-line=1 | awk '{print $1}' | xargs -r vlt show -c --id" ]'
+  
+  # Use the config configured pipeline to process results
+  vlt find --pipe`,
 		Run: func(cmd *cobra.Command, args []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
@@ -142,12 +164,12 @@ Name and label values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
 	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, FilterByID.Help())
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", FilterByName.Help())
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByLabels.Help())
-	cmd.Flags().BoolVarP(&o.pipe, "pipe", "p", false, "pipe output using 'pipe_find_cmd' if configured")
+	cmd.Flags().BoolVarP(&o.pipe, "pipe", "p", false, "pipe output using 'find_pipe_cmd' if configured")
 	cmd.Flags().StringVarP(
-		&o.pipeCmd,
+		&o.rawPipeCmd,
 		"pipe-cmd", "P",
 		"",
-		"override 'pipe_find_cmd' with a custom pipeline command",
+		"json string array to override 'find_pipe_cmd'",
 	)
 
 	return cmd
