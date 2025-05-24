@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"os/exec"
@@ -14,6 +15,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type FindError struct {
+	Err error
+}
+
+func (e *FindError) Error() string { return "find: " + e.Err.Error() }
+
+func (e *FindError) Unwrap() error { return e.Err }
+
 // FindOptions holds data required to run the command.
 type FindOptions struct {
 	*genericclioptions.StdioOptions
@@ -22,7 +31,8 @@ type FindOptions struct {
 	config func() *ResolvedConfig
 	search *SearchableOptions
 
-	pipe bool
+	pipe    bool
+	pipeCmd string
 }
 
 var _ genericclioptions.CmdOptions = &FindOptions{}
@@ -46,14 +56,25 @@ func (o *FindOptions) Validate() error {
 		return err
 	}
 
-	if o.pipe && len(o.config().PipeFindCmd) == 0 {
+	if len(o.pipeCmd) > 0 {
+		o.pipe = true
+	}
+
+	if len(o.pipeCmd) == 0 && o.pipe && len(o.config().PipeFindCmd) == 0 {
 		return errors.New("cannot use --pipe: 'pipe_find_cmd' is not configured")
 	}
 
 	return nil
 }
 
-func (o *FindOptions) Run(ctx context.Context, args ...string) error {
+func (o *FindOptions) Run(ctx context.Context, args ...string) (retErr error) {
+	defer func() {
+		if retErr != nil {
+			retErr = &FindError{retErr}
+			return
+		}
+	}()
+
 	o.search.WildcardFrom(args)
 
 	matchingSecrets, err := o.search.search(ctx, o.vault())
@@ -66,7 +87,8 @@ func (o *FindOptions) Run(ctx context.Context, args ...string) error {
 	printTable(&buf, matchingSecrets)
 
 	if o.pipe {
-		return o.runWithPipe(ctx, buf.String())
+		cmd := cmp.Or(o.pipeCmd, o.config().PipeFindCmd)
+		return o.runWithPipe(ctx, cmd, buf.String())
 	}
 
 	_, err = buf.WriteTo(o.Out)
@@ -74,13 +96,17 @@ func (o *FindOptions) Run(ctx context.Context, args ...string) error {
 	return err
 }
 
-func (o *FindOptions) runWithPipe(ctx context.Context, output string) error {
-	shell, pipeCmd := o.config().Shell, o.config().PipeFindCmd
+func (o *FindOptions) runWithPipe(ctx context.Context, pipeCmd string, input string) error {
+	if strings.TrimSpace(pipeCmd) == "" {
+		return errors.New("no pipeline command provided")
+	}
+
+	shell := o.config().Shell
 
 	//nolint:gosec //G204 - intentional use of shell for user-configured pipeline
 	cmd := exec.CommandContext(ctx, shell, "-c", pipeCmd)
 
-	cmd.Stdin = strings.NewReader(output)
+	cmd.Stdin = strings.NewReader(input)
 	cmd.Stdout = o.Out
 	cmd.Stderr = o.ErrOut
 
@@ -117,6 +143,12 @@ Name and label values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", FilterByName.Help())
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByLabels.Help())
 	cmd.Flags().BoolVarP(&o.pipe, "pipe", "p", false, "pipe output using 'pipe_find_cmd' if configured")
+	cmd.Flags().StringVarP(
+		&o.pipeCmd,
+		"pipe-cmd", "P",
+		"",
+		"override 'pipe_find_cmd' with a custom pipeline command",
+	)
 
 	return cmd
 }
