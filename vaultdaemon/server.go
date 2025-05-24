@@ -119,17 +119,18 @@ func (s *sessionServer) stopAll() {
 
 func (s *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*emptypb.Empty, error) {
 	vaultPath := req.GetVaultPath()
-	durationStr := req.GetDuration()
+	sessionSeconds := req.GetDurationSeconds()
 
-	duration, err := time.ParseDuration(durationStr)
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid duration: %v", err)
+	if sessionSeconds < 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid duration: %v", sessionSeconds)
 	}
+
+	duration := time.Duration(sessionSeconds) * time.Second
 
 	session := newSession(duration, req.GetVaultKey())
 	s.sessions.store(req.GetVaultPath(), session)
 
-	log.Printf("session started for vault: %q: duration %s", vaultPath, durationStr)
+	log.Printf("session started for vault: %q: duration: %d[sec]", vaultPath, sessionSeconds)
 
 	go session.start(func() {
 		cur, ok := s.sessions.load(vaultPath)

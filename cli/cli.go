@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"slices"
+	"time"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/clipboard"
@@ -82,7 +83,7 @@ func (o *VaultOptions) Validate() error {
 }
 
 // Run initializes the Vault object from the specified existing file.
-func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.SessionClient, io *genericclioptions.StdioOptions) error {
+func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.SessionClient, io *genericclioptions.StdioOptions, sessionDuration time.Duration) error {
 	opts := []vault.Option{}
 
 	// nil-safe: sessionClient methods handle nil receivers safely.
@@ -101,7 +102,7 @@ func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.Sess
 		if err != nil {
 			io.Debugf("%v", err)
 		} else {
-			_ = sessionClient.Login(ctx, o.path, key, nonce, "1m")
+			_ = sessionClient.Login(ctx, o.path, key, nonce, sessionDuration)
 		}
 
 		opts = append(opts, vault.WithPassword(password))
@@ -228,8 +229,9 @@ func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 	}
 
 	o.sessionClient = c
+	sessionDuration := time.Duration(o.configOptions.resolved.SessionDuration)
 
-	return o.vaultOptions.Open(ctx, o.sessionClient, o.StdioOptions)
+	return o.vaultOptions.Open(ctx, o.sessionClient, o.StdioOptions, sessionDuration)
 }
 
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.

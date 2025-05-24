@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+	"time"
 
 	pb "github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpb"
 
@@ -50,7 +51,7 @@ func NewSessionClient() (*SessionClient, error) {
 }
 
 // Login starts a new session by storing cipher data for the given vault path.
-func (sc *SessionClient) Login(ctx context.Context, vaultPath string, key []byte, nonce []byte, duration string) error {
+func (sc *SessionClient) Login(ctx context.Context, vaultPath string, key []byte, nonce []byte, duration time.Duration) error {
 	if sc == nil {
 		return nil
 	}
@@ -60,8 +61,8 @@ func (sc *SessionClient) Login(ctx context.Context, vaultPath string, key []byte
 	}
 
 	in := &pb.LoginRequest{
-		VaultPath: vaultPath,
-		Duration:  duration,
+		VaultPath:       vaultPath,
+		DurationSeconds: int64(duration.Seconds()),
 		VaultKey: &pb.VaultKey{
 			Key:   key,
 			Nonce: nonce,

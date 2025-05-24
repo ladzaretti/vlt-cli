@@ -77,13 +77,12 @@ func (x *VaultKey) GetNonce() []byte {
 
 // LoginRequest is used to initiate a session.
 type LoginRequest struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	VaultPath string                 `protobuf:"bytes,1,opt,name=vault_path,json=vaultPath,proto3" json:"vault_path,omitempty"`
-	// Session duration (e.g. "30s", "10m").
-	Duration      string    `protobuf:"bytes,2,opt,name=duration,proto3" json:"duration,omitempty"`
-	VaultKey      *VaultKey `protobuf:"bytes,3,opt,name=vault_key,json=vaultKey,proto3" json:"vault_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	VaultPath       string                 `protobuf:"bytes,1,opt,name=vault_path,json=vaultPath,proto3" json:"vault_path,omitempty"`
+	DurationSeconds int64                  `protobuf:"varint,2,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	VaultKey        *VaultKey              `protobuf:"bytes,3,opt,name=vault_key,json=vaultKey,proto3" json:"vault_key,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *LoginRequest) Reset() {
@@ -123,11 +122,11 @@ func (x *LoginRequest) GetVaultPath() string {
 	return ""
 }
 
-func (x *LoginRequest) GetDuration() string {
+func (x *LoginRequest) GetDurationSeconds() int64 {
 	if x != nil {
-		return x.Duration
+		return x.DurationSeconds
 	}
-	return ""
+	return 0
 }
 
 func (x *LoginRequest) GetVaultKey() *VaultKey {
@@ -189,11 +188,11 @@ const file_sessionpb_session_proto_rawDesc = "" +
 	"\x17sessionpb/session.proto\x12\tsessionpb\x1a\x1bgoogle/protobuf/empty.proto\"2\n" +
 	"\bVaultKey\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\fR\x03key\x12\x14\n" +
-	"\x05nonce\x18\x02 \x01(\fR\x05nonce\"{\n" +
+	"\x05nonce\x18\x02 \x01(\fR\x05nonce\"\x8a\x01\n" +
 	"\fLoginRequest\x12\x1d\n" +
 	"\n" +
-	"vault_path\x18\x01 \x01(\tR\tvaultPath\x12\x1a\n" +
-	"\bduration\x18\x02 \x01(\tR\bduration\x120\n" +
+	"vault_path\x18\x01 \x01(\tR\tvaultPath\x12)\n" +
+	"\x10duration_seconds\x18\x02 \x01(\x03R\x0fdurationSeconds\x120\n" +
 	"\tvault_key\x18\x03 \x01(\v2\x13.sessionpb.VaultKeyR\bvaultKey\"/\n" +
 	"\x0eSessionRequest\x12\x1d\n" +
 	"\n" +

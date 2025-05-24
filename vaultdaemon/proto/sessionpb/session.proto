@@ -26,8 +26,7 @@ message VaultKey {
 // LoginRequest is used to initiate a session.
 message LoginRequest {
   string vault_path = 1;
-  // Session duration (e.g. "30s", "10m").
-  string duration = 2; 
+  int64 duration_seconds = 2; 
   VaultKey vault_key = 3;
 }
 

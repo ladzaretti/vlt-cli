@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
@@ -18,15 +19,17 @@ import (
 type LoginOptions struct {
 	*genericclioptions.StdioOptions
 	path          func() string
+	config        func() *ResolvedConfig
 	sessionClient *vaultdaemon.SessionClient
 }
 
 var _ genericclioptions.CmdOptions = &LoginOptions{}
 
 // NewLoginOptions initializes the options struct.
-func NewLoginOptions(stdio *genericclioptions.StdioOptions, path func() string) *LoginOptions {
+func NewLoginOptions(stdio *genericclioptions.StdioOptions, path func() string, config func() *ResolvedConfig) *LoginOptions {
 	return &LoginOptions{
 		StdioOptions: stdio,
+		config:       config,
 		path:         path,
 	}
 }
@@ -69,14 +72,16 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 		return err
 	}
 
-	if err := o.sessionClient.Login(ctx, path, key, nonce, "1m"); err != nil {
+	sessionDuration := time.Duration(o.config().SessionDuration)
+	if err := o.sessionClient.Login(ctx, path, key, nonce, sessionDuration); err != nil {
 		return err
 	}
 
 	// TODO1: possible refactor the table render for easier fzf searching
-	// 	  also, consider printing the create/update timestamps
-
-	// TODO2: consume the session duration
+	// TODO2: consider printing the create/update timestamps
+	// TODO4: pipe-cmd flag for find for easier testing
+	// FIXME: remote history table ? maybe restrict snapshot count
+	// FIXME2: remove highlight; its complex and to be fair redundant with fzf
 
 	o.Infof("Login successful")
 
@@ -85,7 +90,7 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 
 // NewCmdLogin creates the login cobra command.
 func NewCmdLogin(vltOpts *DefaultVltOptions) *cobra.Command {
-	o := NewLoginOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Path)
+	o := NewLoginOptions(vltOpts.StdioOptions, vltOpts.vaultOptions.Path, vltOpts.configOptions.Resolved)
 
 	return &cobra.Command{
 		Use:   "login",
