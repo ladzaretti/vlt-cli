@@ -131,6 +131,8 @@ func New(ctx context.Context, path string, password string, opts ...Option) (vlt
 		if retErr != nil {
 			_ = vaultContainerHandle.cleanup()
 			_ = vlt.cleanup()
+
+			return
 		}
 	}()
 
@@ -226,6 +228,7 @@ func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr 
 	defer func() { //nolint:wsl
 		if retErr != nil {
 			_ = vaultContainerHandle.cleanup()
+			return
 		}
 	}()
 
@@ -263,6 +266,7 @@ func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr 
 	defer func() { //nolint:wsl
 		if retErr != nil {
 			_ = vlt.cleanup()
+			return
 		}
 	}()
 
@@ -411,6 +415,7 @@ func newVaultContainerHandle(ctx context.Context, path string, snapshot []byte) 
 	defer func() { //nolint:wsl
 		if retErr != nil {
 			retErr = errors.Join(retErr, handle.cleanup())
+			return
 		}
 	}()
 
@@ -505,6 +510,7 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 	defer func() {
 		if retErr != nil {
 			retErr = errf("vault open: %w", retErr)
+			return
 		}
 	}()
 

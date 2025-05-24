@@ -198,6 +198,7 @@ func (o *ImportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	defer func() {
 		if retErr != nil {
 			retErr = &ImportError{retErr}
+			return
 		}
 	}()
 

@@ -57,6 +57,7 @@ func (o *ExportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	defer func() {
 		if retErr != nil {
 			retErr = &ExportError{retErr}
+			return
 		}
 	}()
 

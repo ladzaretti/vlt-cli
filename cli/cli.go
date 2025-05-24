@@ -50,6 +50,10 @@ var (
 type VaultOptions struct {
 	path  string
 	vault *vault.Vault
+
+	// TODO1: post update for import,remove,save & update [secret]
+	// TODO2: post login for login command and a general one for cli
+	// TODO3: hooks should probably be done via some kind of a struct
 }
 
 var _ genericclioptions.BaseOptions = &VaultOptions{}
@@ -70,7 +74,7 @@ func NewVaultOptions(opts ...VaultOptionsOpts) *VaultOptions {
 
 func (*VaultOptions) Complete() error { return nil }
 
-func (o *VaultOptions) Validate() error { return nil }
+func (*VaultOptions) Validate() error { return nil }
 
 // Run initializes the Vault object from the specified existing file.
 func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.SessionClient, io *genericclioptions.StdioOptions, sessionDuration time.Duration) error {

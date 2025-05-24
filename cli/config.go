@@ -42,6 +42,8 @@ type ResolvedConfig struct {
 	SessionDuration Duration `json:"session_duration,omitempty"`
 	VaultPath       string   `json:"vault_path,omitempty"`
 	FindPipeCmd     []string `json:"find_pipe_cmd,omitempty"`
+	PostLoginCmd    []string `json:"post_login_cmd,omitempty"`
+	PostWriteCmd    []string `json:"post_write_cmd,omitempty"`
 }
 
 type Duration time.Duration
@@ -56,7 +58,7 @@ var _ genericclioptions.CmdOptions = &ConfigOptions{}
 func NewConfigOptions(stdio *genericclioptions.StdioOptions) *ConfigOptions {
 	return &ConfigOptions{
 		StdioOptions: stdio,
-		fileConfig:   &FileConfig{},
+		fileConfig:   newFileConfig(),
 		cliFlags:     &Flags{},
 		resolved:     &ResolvedConfig{},
 	}
@@ -79,6 +81,8 @@ func (o *ConfigOptions) resolve() error {
 	o.resolved.CopyCmd = o.fileConfig.Clipboard.CopyCmd
 	o.resolved.PasteCmd = o.fileConfig.Clipboard.PasteCmd
 	o.resolved.FindPipeCmd = o.fileConfig.Pipeline.FindPipeCmd
+	o.resolved.PostLoginCmd = o.fileConfig.Hooks.PostLoginCmd
+	o.resolved.PostWriteCmd = o.fileConfig.Hooks.PostWriteCmd
 	o.resolved.VaultPath = cmp.Or(o.cliFlags.vaultPath, o.fileConfig.Vault.Path)
 
 	if len(o.resolved.VaultPath) == 0 {
@@ -179,9 +183,7 @@ func (*generateConfigOptions) Complete() error { return nil }
 func (*generateConfigOptions) Validate() error { return nil }
 
 func (o *generateConfigOptions) Run(context.Context, ...string) error {
-	c := newFileConfig()
-
-	out, err := toml.Marshal(&c)
+	out, err := toml.Marshal(newFileConfig())
 	clierror.Check(err)
 
 	o.Infof("%s", string(out))

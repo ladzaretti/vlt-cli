@@ -82,7 +82,14 @@ func (o *UpdateOptions) validateUpdateArgs() error {
 	return nil
 }
 
-func (o *UpdateOptions) Run(ctx context.Context, args ...string) error {
+func (o *UpdateOptions) Run(ctx context.Context, args ...string) (retErr error) {
+	defer func() {
+		if retErr != nil {
+			retErr = &UpdateError{retErr}
+			return
+		}
+	}()
+
 	o.search.WildcardFrom(args)
 
 	matchingSecrets, err := o.search.search(ctx, o.vault)
@@ -97,12 +104,12 @@ func (o *UpdateOptions) Run(ctx context.Context, args ...string) error {
 		o.Infof("Found one match.\n")
 	case 0:
 		o.Warnf("No match found.\n")
-		return &UpdateError{vaulterrors.ErrSearchNoMatch}
+		return vaulterrors.ErrSearchNoMatch
 	default:
 		o.Warnf("Expecting exactly one match, but found %d.\n\n", count)
 		printTable(o.ErrOut, matchingSecrets)
 
-		return &UpdateError{vaulterrors.ErrAmbiguousSecretMatch}
+		return vaulterrors.ErrAmbiguousSecretMatch
 	}
 
 	return o.vault.UpdateSecretMetadata(ctx, matchingSecrets[0].id, o.newName, o.removeLabels, o.addLabels)
@@ -211,7 +218,7 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (ret
 
 	matchingSecrets, err := o.search.search(ctx, o.vault)
 	if err != nil {
-		return err
+		return &UpdateError{err}
 	}
 
 	count := len(matchingSecrets)

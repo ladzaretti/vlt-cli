@@ -52,7 +52,14 @@ func (o *RemoveOptions) Validate() error {
 	return o.search.Validate()
 }
 
-func (o *RemoveOptions) Run(ctx context.Context, args ...string) error {
+func (o *RemoveOptions) Run(ctx context.Context, args ...string) (retErr error) {
+	defer func() {
+		if retErr != nil {
+			retErr = &RemoveError{retErr}
+			return
+		}
+	}()
+
 	o.search.WildcardFrom(args)
 
 	matchingSecrets, err := o.search.search(ctx, o.vault)
@@ -71,12 +78,12 @@ func (o *RemoveOptions) Run(ctx context.Context, args ...string) error {
 		o.Debugf("Found one match.\n")
 	case 0:
 		o.Warnf("No match found.\n")
-		return &RemoveError{vaulterrors.ErrSearchNoMatch}
+		return vaulterrors.ErrSearchNoMatch
 	default:
 		o.Warnf("Found %d matching secrets.\n", count)
 
 		if !o.removeAll {
-			return &RemoveError{fmt.Errorf("%d matching secrets found, use --all to delete all", count)}
+			return fmt.Errorf("%d matching secrets found, use --all to delete all", count)
 		}
 	}
 

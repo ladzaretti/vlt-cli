@@ -78,8 +78,6 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 		return err
 	}
 
-	// TODO1: post login/update hooks
-
 	o.Infof("Login successful")
 
 	return nil
