@@ -5,7 +5,7 @@ import "errors"
 var (
 	ErrVaultFileExists = errors.New("vault file already exists")
 
-	ErrVaultFileNotFound = errors.New("vault file not found")
+	ErrVaultFileNotFound = errors.New("vault file does not exist")
 
 	ErrWrongPassword = errors.New("incorrect vault password")
 

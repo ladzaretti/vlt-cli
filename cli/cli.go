@@ -36,11 +36,11 @@ const (
 var (
 	// preRunSkipCommands lists command names that should
 	// bypass the persistent pre-run logic.
-	preRunSkipCommands = []string{"config", "generate", "validate", "create"}
+	preRunSkipCommands = []string{"config", "generate", "validate"}
 
 	// preRunPartialCommands lists commands that require partial
 	// preRunPartialCommands run setup like path resolution, but skip vault opening.
-	preRunPartialCommands = []string{"login", "logout"}
+	preRunPartialCommands = []string{"create", "login", "logout"}
 
 	// postRunSkipCommands lists command names that should
 	// bypass the persistent post-run logic.
@@ -68,18 +68,21 @@ func NewVaultOptions(opts ...VaultOptionsOpts) *VaultOptions {
 	return o
 }
 
-// Complete sets the default vault file path if not provided.
-func (*VaultOptions) Complete() error {
-	return nil
-}
+func (*VaultOptions) Complete() error { return nil }
 
-// Validate validates the vault options based on whether it's a new or existing vault.
-func (o *VaultOptions) Validate() error {
-	return o.validateExistingVault()
-}
+func (o *VaultOptions) Validate() error { return nil }
 
 // Run initializes the Vault object from the specified existing file.
 func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.SessionClient, io *genericclioptions.StdioOptions, sessionDuration time.Duration) error {
+	exists, err := o.vaultExists()
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return fmt.Errorf("%w: %s", vaulterrors.ErrVaultFileNotFound, o.path)
+	}
+
 	opts := []vault.Option{}
 
 	// nil-safe: sessionClient methods handle nil receivers safely.
@@ -116,16 +119,17 @@ func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.Sess
 	return nil
 }
 
-func (o *VaultOptions) validateExistingVault() error {
-	if _, err := os.Stat(o.path); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("%w: %s", vaulterrors.ErrVaultFileNotFound, o.path)
-		}
-
-		return fmt.Errorf("stat vault file: %w", err)
+func (o *VaultOptions) vaultExists() (bool, error) {
+	_, err := os.Stat(o.path)
+	if err == nil {
+		return true, nil
 	}
 
-	return nil
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+
+	return false, fmt.Errorf("stat vault file: %w", err)
 }
 
 type DefaultVltOptions struct {
