@@ -53,12 +53,23 @@ func RunCommand(ctx context.Context, io *StdioOptions, name string, args ...stri
 	return cmd.Run()
 }
 
-func RunHook(ctx context.Context, io *StdioOptions, hook []string) error {
+func RunHook(ctx context.Context, io *StdioOptions, hook []string) (retErr error) {
 	if len(hook) == 0 {
 		return nil
 	}
 
 	cmd, args := hook[0], hook[1:]
+
+	io.Infof("\nRunning hook: %q...\n\n", hook)
+
+	defer func() {
+		if retErr != nil {
+			io.Warnf("\nHook failed. \n\n")
+			return
+		}
+
+		io.Infof("\nHook completed successfully.\n\n")
+	}()
 
 	return RunCommand(ctx, io, cmd, args...)
 }
