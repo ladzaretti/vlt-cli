@@ -21,30 +21,28 @@ import (
 )
 
 const (
-	// defaultDatabaseFilename is the default name for the vault file,
-	// created under the user's home directory.
+	// defaultDatabaseFilename is the default vault file name.
 	defaultDatabaseFilename = ".vlt"
 
-	// defaultConfigName is the default name of the configuration file
-	// expected under the user's home directory.
+	// defaultConfigName is the default configuration file name.
 	defaultConfigName = ".vlt.toml"
 
-	// defaultSessionDuration is the fallback when no session duration is set.
+	// defaultSessionDuration is the fallback for session duration.
 	defaultSessionDuration = "1m"
 )
 
 var (
-	// preRunSkipCommands lists command names that should
-	// bypass the persistent pre-run logic.
+	// preRunSkipCommands are commands that skips the persistent pre-run logic.
 	preRunSkipCommands = []string{"config", "generate", "validate"}
 
-	// preRunPartialCommands lists commands that require partial
-	// preRunPartialCommands run setup like path resolution, but skip vault opening.
+	// preRunPartialCommands are commands that require partial without vault opening.
 	preRunPartialCommands = []string{"create", "login", "logout"}
 
-	// postRunSkipCommands lists command names that should
-	// bypass the persistent post-run logic.
+	// postRunSkipCommands are commands that should skip the post-run logic.
 	postRunSkipCommands = []string{"config", "generate", "validate", "create", "login", "logout"}
+
+	// postWriteHookCommands lists commands that trigger post-write hooks.
+	postWriteHookCommands = []string{"import", "remove", "save", "update"}
 )
 
 type vaultHooks struct {
@@ -131,7 +129,7 @@ func (o *VaultOptions) login(ctx context.Context, io *genericclioptions.StdioOpt
 		_ = sessionClient.Login(ctx, o.path, key, nonce, sessionDuration)
 	}
 
-	if err := genericclioptions.RunHook(ctx, io, o.hooks.postLogin); err != nil {
+	if err := genericclioptions.RunHook(ctx, io, "post-login", o.hooks.postLogin); err != nil {
 		return "", fmt.Errorf("post login hook: %w", err)
 	}
 
@@ -254,6 +252,24 @@ func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 	return o.vaultOptions.Open(ctx, o.StdioOptions, o.sessionClient, sessionDuration)
 }
 
+func (o *DefaultVltOptions) postRun(ctx context.Context, cmd string) error {
+	if err := o.vaultOptions.vault.Close(ctx); err != nil {
+		return fmt.Errorf("post-run: %w", err)
+	}
+
+	_ = o.sessionClient.Close()
+
+	if !slices.Contains(postWriteHookCommands, cmd) {
+		return nil
+	}
+
+	if err := genericclioptions.RunHook(ctx, o.StdioOptions, "post-write", o.vaultOptions.hooks.postWrite); err != nil {
+		o.Warnf("post-write hook failed: %v", err)
+	}
+
+	return nil
+}
+
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.
 func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string) *cobra.Command {
 	o, err := NewDefaultVltOptions(iostreams, NewVaultOptions())
@@ -279,10 +295,7 @@ Environment Variables:
 				return
 			}
 
-			clierror.Check(errors.Join(
-				o.vaultOptions.vault.Close(cmd.Context()),
-				o.sessionClient.Close(),
-			))
+			clierror.Check(o.postRun(cmd.Context(), cmd.Name()))
 		},
 	}
 

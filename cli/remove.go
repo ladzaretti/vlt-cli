@@ -77,10 +77,10 @@ func (o *RemoveOptions) Run(ctx context.Context, args ...string) (retErr error) 
 	case 1:
 		o.Debugf("found one match.\n")
 	case 0:
-		o.Warnf("No match found.\n")
+		o.Warnf("no match found.\n")
 		return vaulterrors.ErrSearchNoMatch
 	default:
-		o.Warnf("Found %d matching secrets.\n", count)
+		o.Warnf("found %d matching secrets.\n", count)
 
 		if !o.removeAll {
 			return fmt.Errorf("%d matching secrets found, use --all to delete all", count)
@@ -109,10 +109,6 @@ func (o *RemoveOptions) Run(ctx context.Context, args ...string) (retErr error) 
 
 	o.Debugf("successfully deleted %d secrets.\n", n)
 	o.Infof("OK\n")
-
-	if err := genericclioptions.RunHook(ctx, o.StdioOptions, o.hooks.postWrite); err != nil {
-		o.Warnf("Post-write hook failed: %v", err)
-	}
 
 	return nil
 }
@@ -162,7 +158,7 @@ Multiple --label flags can be applied and are logically ORed.
 		},
 	}
 
-	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, FilterByID.Help())
+	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, FilterByID.Help())
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", FilterByName.Help())
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByName.Help())
 	cmd.Flags().BoolVarP(&o.assumeYes, "yes", "y", false, "skip confirmation prompts")

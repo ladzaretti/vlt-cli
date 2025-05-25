@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"encoding/json"
@@ -157,12 +158,18 @@ If --file is not provided, the default config path (~/%s) is used.`, defaultConf
 // stringifyPretty returns the pretty-printed JSON representation of v.
 // If marshalling fails, it returns the error message instead.
 func stringifyPretty(v any) string {
-	s, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
+	var buf bytes.Buffer
+
+	enc := json.NewEncoder(&buf)
+
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+
+	if err := enc.Encode(v); err != nil {
 		return fmt.Sprintf("stringify error: %v", err)
 	}
 
-	return string(s)
+	return buf.String()
 }
 
 type generateConfigOptions struct {

@@ -102,19 +102,11 @@ func (o *SaveOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	}
 
 	if len(o.labels) == 0 && !interactive {
-		o.Warnf(`No labels were provided for the secret in non-interactive mode. 
-You may want to add labels using the '--label' flag or interactively.\n`)
+		o.Warnf(`no labels were provided for the secret in non-interactive mode. 
+you may want to add labels using the '--label' flag or interactively.\n`)
 	}
 
-	if err := o.insertNewSecret(ctx, secret); err != nil {
-		return err
-	}
-
-	if err := genericclioptions.RunHook(ctx, o.StdioOptions, o.hooks.postWrite); err != nil {
-		o.Warnf("Post-write hook failed: %v", err)
-	}
-
-	return nil
+	return o.insertNewSecret(ctx, secret)
 }
 
 func (o *SaveOptions) readSecretNonInteractive() (string, error) {

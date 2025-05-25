@@ -103,10 +103,10 @@ func (o *UpdateOptions) Run(ctx context.Context, args ...string) (retErr error) 
 	case 1:
 		o.Infof("found one match.\n")
 	case 0:
-		o.Warnf("No match found.\n")
+		o.Warnf("no match found.\n")
 		return vaulterrors.ErrSearchNoMatch
 	default:
-		o.Warnf("Expecting exactly one match, but found %d.\n\n", count)
+		o.Warnf("expecting exactly one match, but found %d.\n\n", count)
 		printTable(o.ErrOut, matchingSecrets)
 
 		return vaulterrors.ErrAmbiguousSecretMatch
@@ -227,10 +227,10 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (ret
 	case 1:
 		o.Debugf("found one match.\n")
 	case 0:
-		o.Warnf("No match found.\n")
+		o.Warnf("no match found.\n")
 		return &UpdateError{vaulterrors.ErrSearchNoMatch}
 	default:
-		o.Warnf("Expecting exactly one match, but found %d.\n\n", count)
+		o.Warnf("expecting exactly one match, but found %d.\n\n", count)
 		printTable(o.ErrOut, matchingSecrets)
 
 		return &UpdateError{vaulterrors.ErrAmbiguousSecretMatch}
@@ -274,15 +274,7 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (ret
 		return vaulterrors.ErrEmptySecret
 	}
 
-	if err := o.UpdateSecretValue(ctx, id, secret); err != nil {
-		return err
-	}
-
-	if err := genericclioptions.RunHook(ctx, o.StdioOptions, o.hooks.postWrite); err != nil {
-		o.Warnf("Post-write hook failed: %v", err)
-	}
-
-	return nil
+	return o.UpdateSecretValue(ctx, id, secret)
 }
 
 func (o *UpdateSecretValueOptions) readSecretNonInteractive() (string, error) {
