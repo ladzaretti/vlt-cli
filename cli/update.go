@@ -274,7 +274,15 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (ret
 		return vaulterrors.ErrEmptySecret
 	}
 
-	return o.UpdateSecretValue(ctx, id, secret)
+	if err := o.UpdateSecretValue(ctx, id, secret); err != nil {
+		return err
+	}
+
+	if err := genericclioptions.RunHook(ctx, o.StdioOptions, o.hooks.postWrite); err != nil {
+		o.Warnf("Post-write hook failed: %v", err)
+	}
+
+	return nil
 }
 
 func (o *UpdateSecretValueOptions) readSecretNonInteractive() (string, error) {

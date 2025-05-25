@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os/exec"
-	"strings"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
@@ -97,27 +95,12 @@ func (o *FindOptions) Run(ctx context.Context, args ...string) (retErr error) {
 			cmd = o.pipeCmd
 		}
 
-		return o.runWithPipe(ctx, cmd, buf.String())
+		return genericclioptions.RunCommandWithInput(ctx, o.StdioOptions, &buf, cmd[0], cmd[1:]...)
 	}
 
 	_, err = buf.WriteTo(o.Out)
 
 	return err
-}
-
-func (o *FindOptions) runWithPipe(ctx context.Context, pipeCmd []string, input string) error {
-	if len(pipeCmd) == 0 {
-		return errors.New("pipe command is empty or undefined")
-	}
-
-	//nolint:gosec //G204 - intentional use of shell for user-configured pipeline
-	cmd := exec.CommandContext(ctx, pipeCmd[0], pipeCmd[1:]...)
-
-	cmd.Stdin = strings.NewReader(input)
-	cmd.Stdout = o.Out
-	cmd.Stderr = o.ErrOut
-
-	return cmd.Run()
 }
 
 // NewCmdFind creates the find cobra command.

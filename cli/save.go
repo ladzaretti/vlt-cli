@@ -106,7 +106,15 @@ func (o *SaveOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 You may want to add labels using the '--label' flag or interactively.\n`)
 	}
 
-	return o.insertNewSecret(ctx, secret)
+	if err := o.insertNewSecret(ctx, secret); err != nil {
+		return err
+	}
+
+	if err := genericclioptions.RunHook(ctx, o.StdioOptions, o.hooks.postWrite); err != nil {
+		o.Warnf("Post-write hook failed: %v", err)
+	}
+
+	return nil
 }
 
 func (o *SaveOptions) readSecretNonInteractive() (string, error) {

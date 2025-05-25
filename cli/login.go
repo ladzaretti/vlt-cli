@@ -78,6 +78,10 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 		return err
 	}
 
+	if err := genericclioptions.RunHook(ctx, o.StdioOptions, o.hooks.postLogin); err != nil {
+		return fmt.Errorf("post login hook: %w", err)
+	}
+
 	o.Infof("Login successful")
 
 	return nil

@@ -184,7 +184,7 @@ func Login(ctx context.Context, path string, password string, opts ...Option) (k
 
 	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.snapshot)
 	if err != nil {
-		return nil, nil, errf("open: %w", err)
+		return nil, nil, errf("login: %w", err)
 	}
 	defer func() { //nolint:wsl
 		_ = vaultContainerHandle.cleanup()
@@ -192,7 +192,7 @@ func Login(ctx context.Context, path string, password string, opts ...Option) (k
 
 	cipherdata, err := vaultContainerHandle.db.SelectVault(ctx)
 	if err != nil {
-		return nil, nil, errf("open: %w", err)
+		return nil, nil, errf("login: %w", err)
 	}
 
 	if err := verifyPassword([]byte(password), cipherdata.AuthPHC); err != nil {

@@ -1,7 +1,10 @@
 package genericclioptions
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"os/exec"
 
 	"github.com/spf13/cobra"
 )
@@ -28,4 +31,34 @@ func RejectDisallowedFlags(cmd *cobra.Command, disallowed ...string) error {
 	}
 
 	return nil
+}
+
+func RunCommandWithInput(ctx context.Context, io *StdioOptions, r io.Reader, name string, args ...string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
+
+	cmd.Stdin = r
+	cmd.Stdout = io.Out
+	cmd.Stderr = io.ErrOut
+
+	return cmd.Run()
+}
+
+func RunCommand(ctx context.Context, io *StdioOptions, name string, args ...string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
+
+	cmd.Stdin = io.In
+	cmd.Stdout = io.Out
+	cmd.Stderr = io.ErrOut
+
+	return cmd.Run()
+}
+
+func RunHook(ctx context.Context, io *StdioOptions, hook []string) error {
+	if len(hook) == 0 {
+		return nil
+	}
+
+	cmd, args := hook[0], hook[1:]
+
+	return RunCommand(ctx, io, cmd, args...)
 }

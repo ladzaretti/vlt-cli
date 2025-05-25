@@ -47,13 +47,15 @@ var (
 	postRunSkipCommands = []string{"config", "generate", "validate", "create", "login", "logout"}
 )
 
+type vaultHooks struct {
+	postLogin []string
+	postWrite []string
+}
+
 type VaultOptions struct {
 	path  string
 	vault *vault.Vault
-
-	// TODO1: post update for import,remove,save & update [secret]
-	// TODO2: post login for login command and a general one for cli
-	// TODO3: hooks should probably be done via some kind of a struct
+	hooks vaultHooks
 }
 
 var _ genericclioptions.BaseOptions = &VaultOptions{}
@@ -77,7 +79,7 @@ func (*VaultOptions) Complete() error { return nil }
 func (*VaultOptions) Validate() error { return nil }
 
 // Run initializes the Vault object from the specified existing file.
-func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.SessionClient, io *genericclioptions.StdioOptions, sessionDuration time.Duration) error {
+func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOptions, sessionClient *vaultdaemon.SessionClient, sessionDuration time.Duration) error {
 	exists, err := o.vaultExists()
 	if err != nil {
 		return err
@@ -96,16 +98,9 @@ func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.Sess
 	}
 
 	if key == nil || nonce == nil {
-		password, err := input.PromptReadSecure(io.Out, int(io.In.Fd()), "[vlt] Password for %q:", o.path)
+		password, err := o.login(ctx, io, sessionClient, sessionDuration)
 		if err != nil {
-			return fmt.Errorf("prompt password: %v", err)
-		}
-
-		key, nonce, err := vault.Login(ctx, o.path, password)
-		if err != nil {
-			io.Debugf("%v", err)
-		} else {
-			_ = sessionClient.Login(ctx, o.path, key, nonce, sessionDuration)
+			return err
 		}
 
 		opts = append(opts, vault.WithPassword(password))
@@ -121,6 +116,26 @@ func (o *VaultOptions) Open(ctx context.Context, sessionClient *vaultdaemon.Sess
 	o.vault = v
 
 	return nil
+}
+
+func (o *VaultOptions) login(ctx context.Context, io *genericclioptions.StdioOptions, sessionClient *vaultdaemon.SessionClient, sessionDuration time.Duration) (string, error) {
+	password, err := input.PromptReadSecure(io.Out, int(io.In.Fd()), "[vlt] Password for %q:", o.path)
+	if err != nil {
+		return "", fmt.Errorf("prompt password: %v", err)
+	}
+
+	key, nonce, err := vault.Login(ctx, o.path, password)
+	if err != nil {
+		io.Debugf("%v", err)
+	} else {
+		_ = sessionClient.Login(ctx, o.path, key, nonce, sessionDuration)
+	}
+
+	if err := genericclioptions.RunHook(ctx, io, o.hooks.postLogin); err != nil {
+		return "", fmt.Errorf("post login hook: %w", err)
+	}
+
+	return password, nil
 }
 
 func (o *VaultOptions) vaultExists() (bool, error) {
@@ -194,6 +209,11 @@ func (o *DefaultVltOptions) complete() error {
 
 	o.vaultOptions.path = o.configOptions.resolved.VaultPath
 
+	o.vaultOptions.hooks = vaultHooks{
+		postLogin: o.configOptions.resolved.PostLoginCmd,
+		postWrite: o.configOptions.resolved.PostWriteCmd,
+	}
+
 	return nil
 }
 
@@ -231,7 +251,7 @@ func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 	o.sessionClient = c
 	sessionDuration := time.Duration(o.configOptions.resolved.SessionDuration)
 
-	return o.vaultOptions.Open(ctx, o.sessionClient, o.StdioOptions, sessionDuration)
+	return o.vaultOptions.Open(ctx, o.StdioOptions, o.sessionClient, sessionDuration)
 }
 
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.

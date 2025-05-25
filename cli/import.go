@@ -254,6 +254,10 @@ func (o *ImportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 
 	o.Infof("Successfully imported %d records.\n", i)
 
+	if err := genericclioptions.RunHook(ctx, o.StdioOptions, o.hooks.postWrite); err != nil {
+		o.Warnf("Post-write hook failed: %v", err)
+	}
+
 	return nil
 }
 

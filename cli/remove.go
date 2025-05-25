@@ -110,6 +110,10 @@ func (o *RemoveOptions) Run(ctx context.Context, args ...string) (retErr error) 
 	o.Debugf("Successfully deleted %d secrets.\n", n)
 	o.Infof("OK\n")
 
+	if err := genericclioptions.RunHook(ctx, o.StdioOptions, o.hooks.postWrite); err != nil {
+		o.Warnf("Post-write hook failed: %v", err)
+	}
+
 	return nil
 }
 
