@@ -34,8 +34,12 @@ import (
 	"github.com/ladzaretti/vlt-cli/vaultdaemon"
 )
 
+var Version = "v0.0.0"
+
 func main() {
 	help := flag.Bool("help", false, "Show usage information")
+	version := flag.Bool("version", false, "Show version")
+
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), `vltd - background daemon for the 'vlt' cli.
 		
@@ -52,6 +56,11 @@ Options:
 
 	if *help {
 		flag.Usage()
+		return
+	}
+
+	if *version {
+		fmt.Printf("%v", Version)
 		return
 	}
 

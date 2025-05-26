@@ -20,6 +20,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var Version = "v0.0.0"
+
 const (
 	// defaultDatabaseFilename is the default vault file name.
 	defaultDatabaseFilename = ".vlt"
@@ -32,14 +34,22 @@ const (
 )
 
 var (
+	cobraCompletionCommands = []string{"completion", "bash", "fish", "powershell", "zsh"}
+
 	// preRunSkipCommands are commands that skips the persistent pre-run logic.
-	preRunSkipCommands = []string{"config", "generate", "validate"}
+	preRunSkipCommands = append(
+		[]string{"config", "generate", "validate", "version"},
+		cobraCompletionCommands...,
+	)
 
 	// preRunPartialCommands are commands that require partial without vault opening.
 	preRunPartialCommands = []string{"create", "login", "logout"}
 
 	// postRunSkipCommands are commands that should skip the post-run logic.
-	postRunSkipCommands = []string{"config", "generate", "validate", "create", "login", "logout"}
+	postRunSkipCommands = append(
+		[]string{"create", "login", "logout"},
+		preRunSkipCommands...,
+	)
 
 	// postWriteHookCommands lists commands that trigger post-write hooks.
 	postWriteHookCommands = []string{"import", "remove", "save", "update"}
@@ -270,6 +280,16 @@ func (o *DefaultVltOptions) postRun(ctx context.Context, cmd string) error {
 	return nil
 }
 
+func newVersionCommand(defaults *DefaultVltOptions) *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "show version",
+		Run: func(_ *cobra.Command, _ []string) {
+			defaults.Infof("%s", Version)
+		},
+	}
+}
+
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.
 func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string) *cobra.Command {
 	o, err := NewDefaultVltOptions(iostreams, NewVaultOptions())
@@ -312,6 +332,7 @@ Environment Variables:
 		fmt.Sprintf("configuration file path (default: ~/%s)", defaultConfigName),
 	)
 
+	cmd.AddCommand(newVersionCommand(o))
 	cmd.AddCommand(NewCmdGenerate(o))
 	cmd.AddCommand(NewCmdConfig(o))
 	cmd.AddCommand(NewCmdLogout(o))

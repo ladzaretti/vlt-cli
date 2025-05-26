@@ -1,8 +1,14 @@
 .DEFAULT_GOAL = check
 
+# vlt version
+VERSION?=v0.0.0
+
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_VERSION ?= v2.1.6
 TEST_ARGS=-v -timeout 40s
+
+VLT_LDFLAGS= -X 'github.com/ladzaretti/vlt-cli/cli.Version=$(VERSION)'
+VLTD_LDFLAGS= -X 'main.Version=$(VERSION)'
 
 bin/golangci-lint-${GOLANGCI_VERSION}:
 	@mkdir -p bin
@@ -23,10 +29,10 @@ patch-vendor: go-mod-vendor
 	./scripts/patch_vendor.sh
 
 bin/vlt: patch-vendor go-mod-tidy
-	go build -o "bin/vlt" ./cmd/vlt
+	go build -ldflags "$(VLT_LDFLAGS)" -o "bin/vlt" ./cmd/vlt
 
 bin/vltd: go-mod-tidy
-	go build -o "bin/vltd" ./cmd/vltd
+	go build -ldflags "$(VLTD_LDFLAGS)" -o "bin/vltd" ./cmd/vltd
 
 .PHONY: build
 build: bin/vlt bin/vltd

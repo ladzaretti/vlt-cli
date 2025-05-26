@@ -2,6 +2,9 @@ builds:
   - main: ./cmd/vlt
     id: "vlt"
     binary: vlt
+  - main: ./cmd/vltd
+    id: "vltd"
+    binary: vltd
 
 archives:
   - id: "vlt"
