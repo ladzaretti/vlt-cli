@@ -3,3 +3,4 @@ go.mod
 go.sum
 .github/**/*.yml
 Makefile
+vendor/**
