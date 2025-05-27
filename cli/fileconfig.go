@@ -32,7 +32,6 @@ func (e *ConfigError) Unwrap() error { return e.Err }
 type FileConfig struct {
 	Vault     VaultConfig      `toml:"vault" json:"vault"`
 	Clipboard *ClipboardConfig `toml:"clipboard,commented" comment:"Clipboard configuration: Both copy and paste commands must be either both set or both unset." json:"clipboard"`
-	Pipeline  *PipelineConfig  `toml:"pipeline,commented" comment:"Pipeline configuration for vault search commands (e.g., 'vlt find')"`
 	Hooks     *HooksConfig     `toml:"hooks,commented" comment:"Optional lifecycle hooks for vault events" json:"hooks"`
 
 	path string // path to the loaded config file. Empty if no config file was used.
@@ -41,7 +40,6 @@ type FileConfig struct {
 func newFileConfig() *FileConfig {
 	return &FileConfig{
 		Clipboard: &ClipboardConfig{},
-		Pipeline:  &PipelineConfig{},
 		Hooks:     &HooksConfig{},
 	}
 }
@@ -60,13 +58,6 @@ type VaultConfig struct {
 type ClipboardConfig struct {
 	CopyCmd  string `toml:"copy_cmd,commented"  comment:"The command used for copying to the clipboard (default: 'xsel -ib' if not set)" json:"copy_cmd,omitempty"`
 	PasteCmd string `toml:"paste_cmd,commented" comment:"The command used for pasting from the clipboard (default: 'xsel -ob' if not set)" json:"paste_cmd,omitempty"`
-}
-
-// Pipeline configuration for vault search commands.
-//
-//nolint:tagalign,tagliatelle
-type PipelineConfig struct {
-	FindPipeCmd []string `toml:"find_pipe_cmd,commented" comment:"Optional command to pipe 'vlt find' output through (e.g. [\"sh\", \"-c\", \"fzf\"])" json:"find_pipe_cmd,omitempty"`
 }
 
 // HooksConfig defines optional lifecycle hooks triggered by vault events.
@@ -136,10 +127,6 @@ func parseFileConfig(path string) (*FileConfig, error) {
 func (c *FileConfig) validate() error {
 	if c.hasPartialClipboard() {
 		return &ConfigError{Opt: "clipboard", Err: errors.New("both 'copy_cmd' and 'paste_cmd' must be set or unset together")}
-	}
-
-	if c.Pipeline.FindPipeCmd != nil && len(c.Pipeline.FindPipeCmd) == 0 {
-		return &ConfigError{Opt: "pipeline.find_pipe_cmd", Err: errors.New("defined but contains no values")}
 	}
 
 	if c.Hooks.PostLoginCmd != nil && len(c.Hooks.PostLoginCmd) == 0 {

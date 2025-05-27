@@ -61,9 +61,10 @@ type vaultHooks struct {
 }
 
 type VaultOptions struct {
-	path  string
-	vault *vault.Vault
-	hooks vaultHooks
+	path     string
+	vault    *vault.Vault
+	hooks    vaultHooks
+	noPrompt bool
 }
 
 var _ genericclioptions.BaseOptions = &VaultOptions{}
@@ -106,6 +107,10 @@ func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOpti
 	}
 
 	if key == nil || nonce == nil {
+		if o.noPrompt {
+			return vaulterrors.ErrLoginPromptDisabled
+		}
+
 		password, err := o.login(ctx, io, sessionClient, sessionDuration)
 		if err != nil {
 			return err
@@ -280,16 +285,6 @@ func (o *DefaultVltOptions) postRun(ctx context.Context, cmd string) error {
 	return nil
 }
 
-func newVersionCommand(defaults *DefaultVltOptions) *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "show version",
-		Run: func(_ *cobra.Command, _ []string) {
-			defaults.Infof("%s", Version)
-		},
-	}
-}
-
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.
 func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string) *cobra.Command {
 	o, err := NewDefaultVltOptions(iostreams, NewVaultOptions())
@@ -322,6 +317,13 @@ Environment Variables:
 	cmd.SetArgs(args)
 
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
+	cmd.PersistentFlags().BoolVarP(
+		&o.vaultOptions.noPrompt,
+		"no-login-prompt",
+		"P",
+		false,
+		"do not prompt for login; use existing session or fail",
+	)
 	cmd.PersistentFlags().StringVarP(&o.configOptions.cliFlags.vaultPath, "file", "f", "",
 		fmt.Sprintf("database file path (default: ~/%s)", defaultDatabaseFilename))
 	cmd.PersistentFlags().StringVarP(

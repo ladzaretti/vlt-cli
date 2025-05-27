@@ -105,6 +105,8 @@ func check(err error, handleErr func(string, int)) {
 		handleErr("vlt: incorrect password\nPlease check your password and try again.", DefaultErrorExitCode)
 	case errors.Is(err, vaulterrors.ErrNonInteractiveUnsupported):
 		handleErr("vlt: this command supports interactive input only.", DefaultErrorExitCode)
+	case errors.Is(err, vaulterrors.ErrLoginPromptDisabled):
+		handleErr("vlt: no login session available and interactive login is disabled\nuse 'vlt login' or remove --no-login-prompt to continue", DefaultErrorExitCode)
 	case errors.Is(err, vaultdaemon.ErrSocketUnavailable):
 		handleErr("vlt: vault daemon is not running\nStart `vltd` to enable session support", DefaultErrorExitCode)
 	default:

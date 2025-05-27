@@ -3,9 +3,6 @@ package cli
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
@@ -28,10 +25,6 @@ type FindOptions struct {
 
 	config *ResolvedConfig
 	search *SearchableOptions
-
-	pipe       bool
-	rawPipeCmd string
-	pipeCmd    []string
 }
 
 var _ genericclioptions.CmdOptions = &FindOptions{}
@@ -46,29 +39,9 @@ func NewFindOptions(stdio *genericclioptions.StdioOptions, vaultOptions *VaultOp
 	}
 }
 
-func (o *FindOptions) Complete() error {
-	return o.search.Complete()
-}
+func (o *FindOptions) Complete() error { return o.search.Complete() }
 
-func (o *FindOptions) Validate() error {
-	if err := o.search.Validate(); err != nil {
-		return err
-	}
-
-	if len(o.rawPipeCmd) > 0 {
-		if err := json.Unmarshal([]byte(o.rawPipeCmd), &o.pipeCmd); err != nil {
-			return fmt.Errorf("invalid --pipe-cmd json array: %w", err)
-		}
-
-		o.pipe = true
-	}
-
-	if len(o.pipeCmd) == 0 && o.pipe && len(o.config.FindPipeCmd) == 0 {
-		return errors.New("cannot use --pipe: 'find_pipe_cmd' is not configured")
-	}
-
-	return nil
-}
+func (o *FindOptions) Validate() error { return o.search.Validate() }
 
 func (o *FindOptions) Run(ctx context.Context, args ...string) (retErr error) {
 	defer func() {
@@ -88,15 +61,6 @@ func (o *FindOptions) Run(ctx context.Context, args ...string) (retErr error) {
 	var buf bytes.Buffer
 
 	printTable(&buf, matchingSecrets)
-
-	if o.pipe {
-		cmd := o.config.FindPipeCmd
-		if len(o.pipeCmd) > 0 {
-			cmd = o.pipeCmd
-		}
-
-		return genericclioptions.RunCommandWithInput(ctx, o.StdioOptions, &buf, cmd[0], cmd[1:]...)
-	}
 
 	_, err = buf.WriteTo(o.Out)
 
@@ -146,13 +110,6 @@ Name and label values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
 	cmd.Flags().IntSliceVarP(&o.search.IDs, "id", "", nil, FilterByID.Help())
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", FilterByName.Help())
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByLabels.Help())
-	cmd.Flags().BoolVarP(&o.pipe, "pipe", "p", false, "pipe output using 'find_pipe_cmd' if configured")
-	cmd.Flags().StringVarP(
-		&o.rawPipeCmd,
-		"pipe-cmd", "P",
-		"",
-		"json string array to override 'find_pipe_cmd'",
-	)
 
 	return cmd
 }

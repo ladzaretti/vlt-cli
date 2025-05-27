@@ -42,7 +42,6 @@ type ResolvedConfig struct {
 	PasteCmd        string   `json:"paste_cmd,omitempty"`
 	SessionDuration Duration `json:"session_duration,omitempty"`
 	VaultPath       string   `json:"vault_path,omitempty"`
-	FindPipeCmd     []string `json:"find_pipe_cmd,omitempty"`
 	PostLoginCmd    []string `json:"post_login_cmd,omitempty"`
 	PostWriteCmd    []string `json:"post_write_cmd,omitempty"`
 }
@@ -81,7 +80,6 @@ func (o *ConfigOptions) Complete() error {
 func (o *ConfigOptions) resolve() error {
 	o.resolved.CopyCmd = o.fileConfig.Clipboard.CopyCmd
 	o.resolved.PasteCmd = o.fileConfig.Clipboard.PasteCmd
-	o.resolved.FindPipeCmd = o.fileConfig.Pipeline.FindPipeCmd
 	o.resolved.PostLoginCmd = o.fileConfig.Hooks.PostLoginCmd
 	o.resolved.PostWriteCmd = o.fileConfig.Hooks.PostWriteCmd
 	o.resolved.VaultPath = cmp.Or(o.cliFlags.vaultPath, o.fileConfig.Vault.Path)
@@ -121,7 +119,7 @@ func (*ConfigOptions) Run(context.Context, ...string) error { return nil }
 
 // NewCmdConfig creates the cobra config command tree.
 func NewCmdConfig(defaults *DefaultVltOptions) *cobra.Command {
-	hiddenFlags := []string{"config"}
+	hiddenFlags := []string{"config", "no-login-prompt"}
 	o := NewConfigOptions(defaults.StdioOptions)
 
 	cmd := &cobra.Command{
@@ -200,15 +198,13 @@ func (o *generateConfigOptions) Run(context.Context, ...string) error {
 
 // newGenerateConfigCmd creates the 'generate' subcommand for generating default config.
 func newGenerateConfigCmd(defaults *DefaultVltOptions) *cobra.Command {
-	hiddenFlags := []string{"file", "config"}
+	hiddenFlags := []string{"config", "file", "no-login-prompt", "verbose"}
 	o := newGenerateConfigOptions(defaults.StdioOptions)
 
 	cmd := &cobra.Command{
 		Use:   "generate",
 		Short: "Print a default config file",
-		Long: `Outputs the default configuration in TOML format to stdout.
-
-This command does not accept any arguments.`,
+		Long:  `Outputs the default configuration in TOML format to stdout.`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.RejectDisallowedFlags(cmd, hiddenFlags...))
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
@@ -255,7 +251,7 @@ func (o *validateConfigOptions) Run(context.Context, ...string) error {
 
 // newValidateConfigCmd creates the 'validate' subcommand for validating the config file.
 func newValidateConfigCmd(defaults *DefaultVltOptions) *cobra.Command {
-	hiddenFlags := []string{"config"}
+	hiddenFlags := []string{"config", "no-login-prompt"}
 	o := newValidateConfigOptions(defaults.StdioOptions)
 
 	cmd := &cobra.Command{
