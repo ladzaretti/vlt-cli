@@ -1,0 +1,11 @@
+[Unit]
+Description=vltd - daemon for the vlt secret manager
+After=default.target
+
+[Service]
+ExecStart=/usr/local/bin/vltd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -64,5 +64,5 @@ Options:
 		return
 	}
 
-	log.Fatal(vaultdaemon.Run())
+	log.Println(vaultdaemon.Run())
 }
