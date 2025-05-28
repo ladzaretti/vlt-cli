@@ -1,10 +1,13 @@
 package genericclioptions
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -72,4 +75,59 @@ func RunHook(ctx context.Context, io *StdioOptions, alias string, hook []string)
 	}()
 
 	return RunCommand(ctx, io, cmd, args...)
+}
+
+func StringContains(str string, substrings ...string) bool {
+	for _, substr := range substrings {
+		if strings.Contains(str, substr) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// SetHelpOutput overrides the help output for a Cobra command.
+// It captures the default help text and passes it to the given filter f.
+func SetHelpOutput(cmd *cobra.Command, f func(*cobra.Command, io.Reader)) {
+	helpFunc := cmd.HelpFunc()
+
+	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		var buf bytes.Buffer
+
+		w := cmd.OutOrStdout()
+
+		cmd.SetOut(&buf)
+		helpFunc(cmd, args)
+
+		cmd.SetOut(w)
+
+		f(cmd, &buf)
+	})
+}
+
+// HelpFilterFunc returns a Cobra-compatible help output filter function.
+//
+// This is intended to be used with [SetHelpOutput] to customize or reduce
+// help output without affecting flag behavior.
+//
+// Example:
+//
+//	SetHelpOutput(cmd, HelpFilterFunc(os.Stdout, []string{"--verbose", "--config"}))
+func HelpFilterFunc(out io.Writer, substrings []string) func(*cobra.Command, io.Reader) {
+	return func(_ *cobra.Command, r io.Reader) {
+		var sb strings.Builder
+
+		s := bufio.NewScanner(r)
+		for s.Scan() {
+			line := s.Text()
+			if StringContains(line, substrings...) {
+				continue
+			}
+
+			sb.WriteString(line + "\n")
+		}
+
+		_, _ = fmt.Fprint(out, sb.String())
+	}
 }
