@@ -335,7 +335,7 @@ Environment Variables:
 	)
 
 	hiddenFlags := []string{"config", "verbose", "file", "no-login-prompt"}
-	genericclioptions.SetHelpOutput(cmd, genericclioptions.HelpFilterFunc(o.Out, withDoubleDash(hiddenFlags)))
+	genericclioptions.MarkFlagsHidden(cmd, hiddenFlags...)
 
 	cmd.AddCommand(newVersionCommand(o))
 	cmd.AddCommand(NewCmdGenerate(o))
@@ -352,13 +352,4 @@ Environment Variables:
 	cmd.AddCommand(NewCmdShow(o))
 
 	return cmd
-}
-
-func withDoubleDash(flags []string) []string {
-	result := make([]string, len(flags))
-	for i, f := range flags {
-		result[i] = "--" + f
-	}
-
-	return result
 }

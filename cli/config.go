@@ -148,7 +148,7 @@ If --file is not provided, the default config path (~/%s) is used.`, defaultConf
 	cmd.AddCommand(newGenerateConfigCmd(defaults))
 	cmd.AddCommand(newValidateConfigCmd(defaults))
 
-	genericclioptions.SetHelpOutput(cmd, genericclioptions.HelpFilterFunc(o.Out, withDoubleDash(hiddenFlags)))
+	genericclioptions.MarkFlagsHidden(cmd, hiddenFlags...)
 
 	return cmd
 }
@@ -211,7 +211,7 @@ func newGenerateConfigCmd(defaults *DefaultVltOptions) *cobra.Command {
 		},
 	}
 
-	genericclioptions.SetHelpOutput(cmd, genericclioptions.HelpFilterFunc(o.Out, withDoubleDash(hiddenFlags)))
+	genericclioptions.MarkFlagsHidden(cmd, hiddenFlags...)
 
 	return cmd
 }
@@ -268,7 +268,7 @@ If --file is not provided, the default config path (~/%s) is used.`, defaultConf
 		},
 	}
 
-	genericclioptions.SetHelpOutput(cmd, genericclioptions.HelpFilterFunc(o.Out, withDoubleDash(hiddenFlags)))
+	genericclioptions.MarkFlagsHidden(cmd, hiddenFlags...)
 
 	return cmd
 }
