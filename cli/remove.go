@@ -133,7 +133,7 @@ func NewCmdRemove(defaults *DefaultVltOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "remove [glob]",
 		Aliases: []string{"rm", "delete"},
-		Short:   "Remove secrets from the vault",
+		Short:   "Remove secrets",
 		Long: `Remove one or more secrets from the vault.
 
 You may optionally provide a glob pattern to match against secret names or labels.

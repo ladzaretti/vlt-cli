@@ -101,7 +101,7 @@ func NewCmdLogin(defaults *DefaultVltOptions) *cobra.Command {
 
 	return &cobra.Command{
 		Use:   "login",
-		Short: "Authenticate the user with the vault",
+		Short: "Authenticate the user",
 		Long:  "Authenticate the user and grant access to the vault for subsequent operations.",
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))

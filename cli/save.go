@@ -221,7 +221,7 @@ func NewCmdSave(defaults *DefaultVltOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "save",
 		Aliases: []string{"put"},
-		Short:   "Save a new secret to the vault",
+		Short:   "Save a new secret",
 		Long: `Save a new key-value pair to the vault.
 
 The secret value can be piped, redirected, or prompted.

@@ -131,7 +131,7 @@ func NewCmdShow(defaults *DefaultVltOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "show [glob]",
 		Aliases: []string{"get"},
-		Short:   "Retrieve a secret value from the vault",
+		Short:   "Retrieve a secret value",
 		Long: `Retrieve and display a secret value from the vault.
 
 The secret value will be displayed only if there is exactly one match for the given search criteria.

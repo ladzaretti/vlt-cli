@@ -366,6 +366,7 @@ Environment Variables:
 	cmd.AddCommand(NewCmdConfig(o))
 	cmd.AddCommand(NewCmdLogout(o))
 	cmd.AddCommand(NewCmdCreate(o))
+	cmd.AddCommand(NewCmdRotate(o))
 	cmd.AddCommand(NewCmdRemove(o))
 	cmd.AddCommand(NewCmdUpdate(o))
 	cmd.AddCommand(NewCmdImport(o))

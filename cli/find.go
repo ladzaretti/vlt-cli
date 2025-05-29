@@ -79,7 +79,7 @@ func NewCmdFind(defaults *DefaultVltOptions) *cobra.Command {
 		Use:     "find [glob]",
 		Args:    cobra.ArbitraryArgs,
 		Aliases: []string{"list", "ls"},
-		Short:   "Search for secrets in the vault",
+		Short:   "Search for secrets",
 		Long: `Search for secrets stored in the vault using various filters.
 
 You may optionally provide a glob pattern to match against secret names or labels.
