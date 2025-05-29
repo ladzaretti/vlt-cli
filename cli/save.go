@@ -38,7 +38,7 @@ type SaveOptions struct {
 	output         bool     // output controls whether to print the saved secret to stdout.
 	copy           bool     // copy controls whether to copy the saved secret to the clipboard.
 	paste          bool     // paste controls whether to read the secret to save from the clipboard.
-	nonInteractive bool     // nonInteractibe disables all interactive prompts.
+	nonInteractive bool     // nonInteractive disables all interactive prompts.
 }
 
 var _ genericclioptions.CmdOptions = &SaveOptions{}

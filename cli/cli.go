@@ -143,10 +143,10 @@ func (o *VaultOptions) login(ctx context.Context, io *genericclioptions.StdioOpt
 
 	key, nonce, err := vault.Login(ctx, o.path, password)
 	if err != nil {
-		io.Debugf("%v\n", err)
-	} else {
-		_ = sessionClient.Login(ctx, o.path, key, nonce, sessionDuration)
+		return "", err
 	}
+
+	_ = sessionClient.Login(ctx, o.path, key, nonce, sessionDuration)
 
 	if err := genericclioptions.RunHook(ctx, io, "post-login", o.hooks.postLogin); err != nil {
 		return "", fmt.Errorf("post login hook: %w", err)

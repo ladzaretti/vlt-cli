@@ -107,8 +107,7 @@ func (o *RemoveOptions) Run(ctx context.Context, args ...string) (retErr error) 
 		return err
 	}
 
-	o.Debugf("successfully deleted %d secrets.\n", n)
-	o.Infof("OK\n")
+	o.Infof("successfully deleted %d secrets.\n", n)
 
 	return nil
 }
