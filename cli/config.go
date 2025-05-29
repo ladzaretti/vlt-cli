@@ -119,7 +119,7 @@ func (*ConfigOptions) Run(context.Context, ...string) error { return nil }
 
 // NewCmdConfig creates the cobra config command tree.
 func NewCmdConfig(defaults *DefaultVltOptions) *cobra.Command {
-	hiddenFlags := []string{"config", "no-login-prompt"}
+	hiddenFlags := []string{"config", "no-hooks", "no-login-prompt"}
 	o := NewConfigOptions(defaults.StdioOptions)
 
 	cmd := &cobra.Command{
@@ -198,7 +198,7 @@ func (o *generateConfigOptions) Run(context.Context, ...string) error {
 
 // newGenerateConfigCmd creates the 'generate' subcommand for generating default config.
 func newGenerateConfigCmd(defaults *DefaultVltOptions) *cobra.Command {
-	hiddenFlags := []string{"config", "file", "no-login-prompt", "verbose"}
+	hiddenFlags := []string{"config", "file", "no-hooks", "no-login-prompt", "verbose"}
 	o := newGenerateConfigOptions(defaults.StdioOptions)
 
 	cmd := &cobra.Command{
@@ -251,7 +251,7 @@ func (o *validateConfigOptions) Run(context.Context, ...string) error {
 
 // newValidateConfigCmd creates the 'validate' subcommand for validating the config file.
 func newValidateConfigCmd(defaults *DefaultVltOptions) *cobra.Command {
-	hiddenFlags := []string{"config", "no-login-prompt"}
+	hiddenFlags := []string{"config", "no-hooks", "no-login-prompt"}
 	o := newValidateConfigOptions(defaults.StdioOptions)
 
 	cmd := &cobra.Command{

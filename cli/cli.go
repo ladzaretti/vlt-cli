@@ -61,10 +61,11 @@ type vaultHooks struct {
 }
 
 type VaultOptions struct {
-	path     string
-	vault    *vault.Vault
-	hooks    vaultHooks
-	noPrompt bool
+	path           string
+	vault          *vault.Vault
+	hooks          vaultHooks
+	disableHooks   bool
+	nonInteractive bool
 }
 
 var _ genericclioptions.BaseOptions = &VaultOptions{}
@@ -107,8 +108,8 @@ func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOpti
 	}
 
 	if key == nil || nonce == nil {
-		if o.noPrompt {
-			return vaulterrors.ErrLoginPromptDisabled
+		if o.nonInteractive {
+			return vaulterrors.ErrInteractiveLoginDisabled
 		}
 
 		password, err := o.login(ctx, io, sessionClient, sessionDuration)
@@ -148,8 +149,8 @@ func (o *VaultOptions) login(ctx context.Context, io *genericclioptions.StdioOpt
 
 	_ = sessionClient.Login(ctx, o.path, key, nonce, sessionDuration)
 
-	if err := genericclioptions.RunHook(ctx, io, "post-login", o.hooks.postLogin); err != nil {
-		return "", fmt.Errorf("post login hook: %w", err)
+	if err := o.postLoginHook(ctx, io); err != nil {
+		return "", fmt.Errorf("post-login hook: %w", err)
 	}
 
 	return password, nil
@@ -166,6 +167,24 @@ func (o *VaultOptions) vaultExists() (bool, error) {
 	}
 
 	return false, fmt.Errorf("stat vault file: %w", err)
+}
+
+func (o *VaultOptions) postLoginHook(ctx context.Context, io *genericclioptions.StdioOptions) error {
+	if o.disableHooks {
+		io.Debugf("post-login hook skipped\n")
+		return nil
+	}
+
+	return genericclioptions.RunHook(ctx, io, "post-login", o.hooks.postLogin)
+}
+
+func (o *VaultOptions) postWriteHook(ctx context.Context, io *genericclioptions.StdioOptions) error {
+	if o.disableHooks {
+		io.Debugf("post-write hook skipped\n")
+		return nil
+	}
+
+	return genericclioptions.RunHook(ctx, io, "post-write", o.hooks.postWrite)
 }
 
 type DefaultVltOptions struct {
@@ -282,7 +301,7 @@ func (o *DefaultVltOptions) postRun(ctx context.Context, cmd string) error {
 		return nil
 	}
 
-	if err := genericclioptions.RunHook(ctx, o.StdioOptions, "post-write", o.vaultOptions.hooks.postWrite); err != nil {
+	if err := o.vaultOptions.postWriteHook(ctx, o.StdioOptions); err != nil {
 		o.Warnf("post-write hook failed: %v", err)
 	}
 
@@ -321,8 +340,9 @@ Environment Variables:
 	cmd.SetArgs(args)
 
 	cmd.PersistentFlags().BoolVarP(&o.Verbose, "verbose", "v", false, "enable verbose output")
+	cmd.PersistentFlags().BoolVarP(&o.vaultOptions.disableHooks, "no-hooks", "H", false, "disable hook execution")
 	cmd.PersistentFlags().BoolVarP(
-		&o.vaultOptions.noPrompt,
+		&o.vaultOptions.nonInteractive,
 		"no-login-prompt",
 		"P",
 		false,
@@ -338,7 +358,7 @@ Environment Variables:
 		fmt.Sprintf("configuration file path (default: ~/%s)", defaultConfigName),
 	)
 
-	hiddenFlags := []string{"config", "verbose", "file", "no-login-prompt"}
+	hiddenFlags := []string{"config", "verbose", "file", "no-hooks", "no-login-prompt"}
 	genericclioptions.MarkFlagsHidden(cmd, hiddenFlags...)
 
 	cmd.AddCommand(newVersionCommand(o))

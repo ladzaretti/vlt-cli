@@ -8,7 +8,7 @@ var (
 	ErrWrongPassword             = errors.New("incorrect vault password")
 	ErrEmptyPassword             = errors.New("empty vault password")
 	ErrNonInteractiveUnsupported = errors.New("non-interactive input not supported")
-	ErrLoginPromptDisabled       = errors.New("interactive login is disabled; no session available")
+	ErrInteractiveLoginDisabled  = errors.New("interactive login is disabled; no session available")
 	ErrEmptySecret               = errors.New("secret cannot be empty")
 	ErrSearchNoMatch             = errors.New("no match found")
 	ErrAmbiguousSecretMatch      = errors.New("ambiguous secret match: multiple secrets match the search criteria")
