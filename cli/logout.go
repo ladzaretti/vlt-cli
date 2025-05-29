@@ -43,11 +43,13 @@ func (*LogoutOptions) Validate() error { return nil }
 func (o *LogoutOptions) Run(ctx context.Context, _ ...string) error {
 	defer func() { _ = o.Close() }()
 
+	o.Infof("logging out of %q\n", o.path)
+
 	if err := o.sessionClient.Logout(ctx, o.path); err != nil {
 		return err
 	}
 
-	o.Infof("logout successful")
+	o.Infof("success\n")
 
 	return nil
 }

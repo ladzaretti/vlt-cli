@@ -34,7 +34,7 @@ import (
 	"github.com/ladzaretti/vlt-cli/vaultdaemon"
 )
 
-var Version = "v0.0.0"
+var Version = "0.0.0"
 
 func main() {
 	help := flag.Bool("help", false, "Show usage information")

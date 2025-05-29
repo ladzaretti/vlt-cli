@@ -146,22 +146,26 @@ func (s *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*emptypb
 }
 
 func (s *sessionServer) Logout(_ context.Context, req *pb.SessionRequest) (*emptypb.Empty, error) {
-	session, ok := s.sessions.load(req.GetVaultPath())
+	path := req.GetVaultPath()
+
+	session, ok := s.sessions.load(path)
 	if !ok {
-		return nil, status.Error(codes.NotFound, "no session found for the given path")
+		return nil, status.Errorf(codes.NotFound, "no session found for the given path: %q", path)
 	}
 
 	session.stop()
 
-	s.sessions.delete(req.GetVaultPath())
+	s.sessions.delete(path)
 
 	return &emptypb.Empty{}, nil
 }
 
 func (s *sessionServer) GetSessionKey(_ context.Context, req *pb.SessionRequest) (*pb.VaultKey, error) {
-	session, ok := s.sessions.load(req.GetVaultPath())
+	path := req.GetVaultPath()
+
+	session, ok := s.sessions.load(path)
 	if !ok {
-		return nil, status.Error(codes.NotFound, "no session found for the given path")
+		return nil, status.Errorf(codes.NotFound, "no session found for the given path: %q", path)
 	}
 
 	return session.key, nil

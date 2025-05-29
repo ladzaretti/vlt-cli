@@ -1,7 +1,7 @@
 .DEFAULT_GOAL = check
 
 # vlt version
-VERSION?=v0.0.0
+VERSION?=0.0.0
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_VERSION ?= v2.1.6

@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Version = "v0.0.0"
+var Version = "0.0.0"
 
 const (
 	// defaultDatabaseFilename is the default vault file name.
