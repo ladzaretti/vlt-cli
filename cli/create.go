@@ -46,7 +46,7 @@ func (o *CreateOptions) Validate() error {
 		return vaulterrors.ErrVaultFileExists
 	}
 
-	if o.NonInteractive {
+	if o.StdinIsPiped {
 		return vaulterrors.ErrNonInteractiveUnsupported
 	}
 

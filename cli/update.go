@@ -194,7 +194,7 @@ func (o *UpdateSecretValueOptions) Validate() error {
 
 func (o *UpdateSecretValueOptions) validateUpdateSecretArgs() error {
 	used := 0
-	if o.NonInteractive {
+	if o.StdinIsPiped {
 		used++
 	}
 
@@ -287,7 +287,7 @@ func (o *UpdateSecretValueOptions) readSecretNonInteractive() (string, error) {
 		return clipboard.Paste()
 	}
 
-	if o.NonInteractive {
+	if o.StdinIsPiped {
 		o.Debugf("reading non-interactive secret")
 		return input.ReadTrim(o.In)
 	}

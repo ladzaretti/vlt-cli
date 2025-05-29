@@ -187,7 +187,7 @@ func (o *ImportOptions) Complete() error {
 }
 
 func (o *ImportOptions) Validate() error {
-	if !o.NonInteractive && len(o.CSVPath) == 0 {
+	if !o.StdinIsPiped && len(o.CSVPath) == 0 {
 		return &ImportError{errors.New("no path provided; use --path to specify the input file")}
 	}
 
@@ -204,7 +204,7 @@ func (o *ImportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 
 	var in io.Reader
 
-	if o.NonInteractive {
+	if o.StdinIsPiped {
 		in = o.In
 	}
 

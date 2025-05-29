@@ -47,7 +47,7 @@ func (o *LoginOptions) Complete() error {
 }
 
 func (o *LoginOptions) Validate() error {
-	if o.NonInteractive {
+	if o.StdinIsPiped {
 		return vaulterrors.ErrNonInteractiveUnsupported
 	}
 
@@ -66,6 +66,10 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 	password, err := input.PromptReadSecure(o.Out, int(o.In.Fd()), "[vlt] Password for %q:", path)
 	if err != nil {
 		return fmt.Errorf("prompt password: %v", err)
+	}
+
+	if len(password) == 0 {
+		return vaulterrors.ErrEmptyPassword
 	}
 
 	key, nonce, err := vault.Login(ctx, path, password)

@@ -137,9 +137,13 @@ func (o *VaultOptions) login(ctx context.Context, io *genericclioptions.StdioOpt
 		return "", fmt.Errorf("prompt password: %v", err)
 	}
 
+	if len(password) == 0 {
+		return "", vaulterrors.ErrEmptyPassword
+	}
+
 	key, nonce, err := vault.Login(ctx, o.path, password)
 	if err != nil {
-		io.Debugf("%v", err)
+		io.Debugf("%v\n", err)
 	} else {
 		_ = sessionClient.Login(ctx, o.path, key, nonce, sessionDuration)
 	}

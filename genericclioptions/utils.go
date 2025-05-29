@@ -65,15 +65,15 @@ func RunHook(ctx context.Context, io *StdioOptions, alias string, hook []string)
 
 	cmd, args := hook[0], hook[1:]
 
-	io.Infof("\nrunning %s hook: %q...\n\n", alias, hook)
+	io.Infof("running %s hook: %q...\n\n", alias, hook)
 
 	defer func() {
 		if retErr != nil {
-			io.Warnf("\n%s hook failed.\n\n", alias)
+			io.Warnf("%s hook failed.\n\n", alias)
 			return
 		}
 
-		io.Infof("\n%s hook completed successfully.\n\n", alias)
+		io.Infof("%s hook completed successfully.\n\n", alias)
 	}()
 
 	return RunCommand(ctx, io, cmd, args...)

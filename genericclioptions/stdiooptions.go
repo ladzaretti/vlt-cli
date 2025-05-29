@@ -11,7 +11,7 @@ import (
 // StdioOptions provides stdin-related CLI helpers,
 // intended to be embedded in option structs.
 type StdioOptions struct {
-	NonInteractive bool
+	StdinIsPiped bool
 
 	*IOStreams
 }
@@ -20,7 +20,7 @@ var _ BaseOptions = &StdioOptions{}
 
 // Complete sets default values, e.g., enabling Stdin if piped input is detected.
 func (o *StdioOptions) Complete() error {
-	if !o.NonInteractive {
+	if !o.StdinIsPiped {
 		fi, err := o.In.Stat()
 		if err != nil {
 			return fmt.Errorf("stat input: %v", err)
@@ -28,7 +28,7 @@ func (o *StdioOptions) Complete() error {
 
 		if input.IsPipedOrRedirected(fi) {
 			o.Debugf("input is piped or redirected; Enabling non-interactive mode.\n")
-			o.NonInteractive = true
+			o.StdinIsPiped = true
 		}
 	}
 
@@ -44,7 +44,7 @@ func (o *StdioOptions) Validate() error {
 		return fmt.Errorf("stat input: %v", err)
 	}
 
-	if o.NonInteractive && !input.IsPipedOrRedirected(fi) {
+	if o.StdinIsPiped && !input.IsPipedOrRedirected(fi) {
 		return errors.New("non-interactive mode requires piped or redirected input")
 	}
 

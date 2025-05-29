@@ -32,12 +32,13 @@ type SaveOptions struct {
 	*genericclioptions.StdioOptions
 	*VaultOptions
 
-	name     string   // name is the name of the secret to save in the vault.
-	labels   []string // labels to associate with the a given secret.
-	generate bool     // generate indicates whether to auto-generate a random secret.
-	output   bool     // output controls whether to print the saved secret to stdout.
-	copy     bool     // copy controls whether to copy the saved secret to the clipboard.
-	paste    bool     // paste controls whether to read the secret to save from the clipboard.
+	name           string   // name is the name of the secret to save in the vault.
+	labels         []string // labels to associate with the a given secret.
+	generate       bool     // generate indicates whether to auto-generate a random secret.
+	output         bool     // output controls whether to print the saved secret to stdout.
+	copy           bool     // copy controls whether to copy the saved secret to the clipboard.
+	paste          bool     // paste controls whether to read the secret to save from the clipboard.
+	nonInteractive bool     // nonInteractibe disables all interactive prompts.
 }
 
 var _ genericclioptions.CmdOptions = &SaveOptions{}
@@ -83,27 +84,19 @@ func (o *SaveOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 		return fmt.Errorf("read secret non-interactive: %w", err)
 	}
 
-	interactive := len(s) == 0
 	secret = strings.TrimSpace(s)
 
-	if interactive {
-		err := o.readInteractive(&secret)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(o.name) == 0 {
-		return vaulterrors.ErrEmptyName
+	err = o.readInteractive(&secret)
+	if err != nil {
+		return err
 	}
 
 	if len(secret) == 0 {
 		return vaulterrors.ErrEmptySecret
 	}
 
-	if len(o.labels) == 0 && !interactive {
-		o.Warnf(`no labels were provided for the secret in non-interactive mode. 
-you may want to add labels using the '--label' flag or interactively.\n`)
+	if len(o.name) == 0 && len(o.labels) == 0 {
+		o.Warnf("no name or labels provided; use `vlt update` to add metadata later\n")
 	}
 
 	return o.insertNewSecret(ctx, secret)
@@ -119,7 +112,7 @@ func (o *SaveOptions) readSecretNonInteractive() (string, error) {
 		return clipboard.Paste()
 	}
 
-	if o.NonInteractive {
+	if o.StdinIsPiped {
 		o.Debugf("reading non-interactive secret")
 		return input.ReadTrim(o.In)
 	}
@@ -128,6 +121,10 @@ func (o *SaveOptions) readSecretNonInteractive() (string, error) {
 }
 
 func (o *SaveOptions) readInteractive(secret *string) error {
+	if o.StdinIsPiped || o.nonInteractive {
+		return nil
+	}
+
 	if len(o.name) == 0 {
 		k, err := o.promptRead("Enter name: ")
 		if err != nil {
@@ -195,7 +192,7 @@ func (o *SaveOptions) outputSecret(s string) error {
 
 func (o *SaveOptions) validateInputSource() error {
 	used := 0
-	if o.NonInteractive {
+	if o.StdinIsPiped {
 		used++
 	}
 
@@ -245,6 +242,7 @@ Note 2:
 	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the saved secret to stdout (unsafe)")
 	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the saved secret to the clipboard")
 	cmd.Flags().BoolVarP(&o.paste, "paste-clipboard", "p", false, "read the secret from the clipboard")
+	cmd.Flags().BoolVarP(&o.nonInteractive, "no-interactive", "N", false, "disable interactive prompts")
 
 	cmd.Flags().StringVarP(&o.name, "name", "", "", "the secret name (e.g., username)")
 	cmd.Flags().StringSliceVarP(&o.labels, "label", "", nil, "optional label to associate with the secret (comma-separated or repeated)")
