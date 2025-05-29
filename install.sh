@@ -21,7 +21,7 @@ if systemctl --user is-active --quiet vltd; then
 fi
 
 echo "installing binaries to $INSTALL_DIR"
-sudo cp "${SCRIPT_DIR}"/bin/* "$INSTALL_DIR"
+sudo cp "${SCRIPT_DIR}"/{vlt,vltd} "$INSTALL_DIR"
 
 echo "installing systemd unit to $SYSTEMD_DIR"
 mkdir -p "$SYSTEMD_DIR"
