@@ -1,15 +1,10 @@
-name: goreleaser
+name: build-snapshot
 
 on:
-  push:
-    tags:
-      - "*"
+  workflow_dispatch:
 
 env:
   GO_VERSION: 1.24
-
-permissions:
-  contents: write
 
 jobs:
   lint-and-test:
@@ -24,7 +19,7 @@ jobs:
         with:
           go-version: ${{env.GO_VERSION}}
 
-  release:
+  build-snapshot:
     needs: lint-and-test
     runs-on: ubuntu-24.04
     steps:
@@ -41,11 +36,35 @@ jobs:
       - name: patch vendor
         run: make patch-vendor
 
-      - name: Run GoReleaser
+      - name: Build snapshot
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --clean
+          args: release --snapshot --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload linux_amd64
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux_amd64
+          path: dist/*linux_amd64*.tar.gz
+
+      - name: Upload linux_arm64
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux_arm64
+          path: dist/*linux_arm64*.tar.gz
+
+      - name: Upload linux_386
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux_386
+          path: dist/*linux_386*.tar.gz
+      
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: dist/*_checksums.txt

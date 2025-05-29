@@ -10,8 +10,6 @@ TEST_ARGS=-v -timeout 40s
 VLT_LDFLAGS= -X 'github.com/ladzaretti/vlt-cli/cli.Version=$(VERSION)'
 VLTD_LDFLAGS= -X 'main.Version=$(VERSION)'
 
-DIST_DIR=dist/bin
-
 bin/golangci-lint-${GOLANGCI_VERSION}:
 	@mkdir -p bin
 	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
@@ -31,10 +29,10 @@ patch-vendor: go-mod-vendor
 	./scripts/patch_vendor.sh
 
 bin/vlt: patch-vendor go-mod-tidy
-	go build -ldflags "$(VLT_LDFLAGS)" -o "${DIST_DIR}/vlt" ./cmd/vlt
+	go build -ldflags "$(VLT_LDFLAGS)" -o bin/vlt ./cmd/vlt
 
 bin/vltd: go-mod-tidy
-	go build -ldflags "$(VLTD_LDFLAGS)" -o "${DIST_DIR}/vltd" ./cmd/vltd
+	go build -ldflags "$(VLTD_LDFLAGS)" -o bin/vltd ./cmd/vltd
 
 .PHONY: build
 build: bin/vlt bin/vltd
@@ -57,7 +55,7 @@ go-mod-tidy:
 .PHONY: clean
 clean:
 	go clean -testcache
-	rm -rf bin/ coverage/ ${DIST_DIR}/*
+	rm -rf coverage/ bin/
 
 .PHONY: test
 test: patch-vendor

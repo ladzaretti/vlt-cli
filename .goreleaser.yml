@@ -1,12 +1,33 @@
+version: 2
+
 builds:
-  - main: ./cmd/vlt
-    id: "vlt"
+  - id: "vlt"
+    main: ./cmd/vlt
     binary: vlt
-  - main: ./cmd/vltd
-    id: "vltd"
+    goos:
+      - linux
+    ldflags:
+      - -X github.com/ladzaretti/vlt-cli/cli.Version={{ .Version }}
+
+  - id: "vltd"
+    main: ./cmd/vltd
     binary: vltd
+    goos:
+      - linux
+    ldflags:
+      - -X main.Version={{ if .IsSnapshot }}{{ .Version }}{{ else }}{{ .Tag }}{{ end }}
+
+snapshot:
+  version_template: "{{ .Version }}-devel+{{ .ShortCommit }}"
 
 archives:
   - id: "vlt"
-    format: tar.gz
     name_template: "vlt_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+    files:
+      - UNLICENSE
+      - install.sh
+      - systemd/vltd.service
+
+    ids: [vlt, vltd]
+    formats: [tar.gz]
