@@ -13,6 +13,7 @@ import (
 	"github.com/ladzaretti/vlt-cli/clipboard"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
+	"github.com/ladzaretti/vlt-cli/util"
 	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaultdaemon"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
@@ -36,23 +37,23 @@ const (
 var (
 	cobraCompletionCommands = []string{"completion", "bash", "fish", "powershell", "zsh"}
 
-	// preRunSkipCommands are commands that skips the persistent pre-run logic.
+	// preRunSkipCommands are commands that skips the pre-run execution.
 	preRunSkipCommands = append(
 		[]string{"config", "generate", "validate", "version"},
 		cobraCompletionCommands...,
 	)
 
-	// preRunPartialCommands are commands that require partial without vault opening.
-	preRunPartialCommands = []string{"create", "login", "logout"}
+	// preRunPartialCommands are commands that require partial pre-run execution without vault opening.
+	preRunPartialCommands = []string{"create", "login", "logout", "rotate"}
 
-	// postRunSkipCommands are commands that should skip the post-run logic.
+	// postRunSkipCommands are commands that skips the post-run execution.
 	postRunSkipCommands = append(
-		[]string{"create", "login", "logout"},
+		util.SliceWithout(preRunPartialCommands, "rotate"),
 		preRunSkipCommands...,
 	)
 
 	// postWriteHookCommands lists commands that trigger post-write hooks.
-	postWriteHookCommands = []string{"import", "remove", "save", "update"}
+	postWriteHookCommands = []string{"import", "remove", "save", "update", "rotate"}
 )
 
 type vaultHooks struct {
@@ -291,6 +292,10 @@ func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 }
 
 func (o *DefaultVltOptions) postRun(ctx context.Context, cmd string) error {
+	if slices.Contains(postRunSkipCommands, cmd) {
+		return nil
+	}
+
 	if err := o.vaultOptions.vault.Close(ctx); err != nil {
 		return fmt.Errorf("post-run: %w", err)
 	}
@@ -329,10 +334,6 @@ Environment Variables:
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, cmd.Name()))
 		},
 		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
-			if slices.Contains(postRunSkipCommands, cmd.Name()) {
-				return
-			}
-
 			clierror.Check(o.postRun(cmd.Context(), cmd.Name()))
 		},
 	}

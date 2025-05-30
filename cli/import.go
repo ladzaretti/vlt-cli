@@ -287,7 +287,7 @@ func NewCmdImport(defaults *DefaultVltOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "import",
-		Short: "Import secrets from a CSV file",
+		Short: "Import secrets from file",
 		Long: `Import secrets into the vault from a CSV file.
 
 The input must be a CSV file with at least two columns: one for the secret's name and one for its value (e.g., password). 

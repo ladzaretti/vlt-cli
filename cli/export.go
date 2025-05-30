@@ -110,7 +110,7 @@ func NewCmdExport(defaults *DefaultVltOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "export",
-		Short: "Export secrets to a CSV file or stdout",
+		Short: "Export secrets to a file or stdout",
 		Long: `Export secrets in CSV format.
 	
 Use --output to specify a file path or --stdout to print to standard output (unsafe).`,

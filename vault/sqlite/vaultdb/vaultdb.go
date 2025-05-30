@@ -61,6 +61,28 @@ func (s *VaultDB) InsertNewSecret(ctx context.Context, name string, nonce []byte
 	return int(id), nil
 }
 
+//nolint:gosec
+const insertSecretWithID = `
+	INSERT INTO
+		secrets (id, name, nonce, ciphertext)
+	VALUES
+		(?, ?, ?, ?)
+`
+
+func (s *VaultDB) InsertNewSecretWithID(ctx context.Context, id int, name string, nonce []byte, ciphertext []byte) (int, error) {
+	res, err := s.db.ExecContext(ctx, insertSecretWithID, id, name, nonce, ciphertext)
+	if err != nil {
+		return 0, err
+	}
+
+	insertID, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(insertID), nil
+}
+
 const updateSecret = `
 	UPDATE secrets
 	SET

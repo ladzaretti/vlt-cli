@@ -7,6 +7,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultcontainer"
 	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultdb"
@@ -57,6 +58,7 @@ type Vault struct {
 	buf                  []byte                // buf holds the backing in-memory SQLite database. retained to prevent GC while the DB is active, released in [Vault.Close].
 	vaultContainerHandle *vaultContainerHandle // vaultContainerHandle connects to the vault container database.
 	cleanupFuncs         []cleanupFunc         // cleanupFuncs contains deferred cleanup functions.
+	closeOnce            sync.Once             // closeOnce protects [Vault.Close].
 }
 
 type session struct {
@@ -298,9 +300,24 @@ func deriveAESFromPassword(cipherdata *vaultcontainer.CipherData, password strin
 // Close serializes the in-memory SQLite database, encrypts it, and stores the
 // resulting ciphertext in the vault container database.
 //
+// It is safe to call Close multiple times; only the first call has an effect.
+//
 // After calling Close, the in-memory database buffer [Vault.buf] is eligible for gc
 // and should not be used again unless reinitialized.
-func (vlt *Vault) Close(ctx context.Context) error {
+func (vlt *Vault) Close(ctx context.Context) (retErr error) {
+	if vlt == nil {
+		return nil
+	}
+
+	vlt.closeOnce.Do(func() {
+		retErr = vlt.close(ctx)
+	})
+
+	return retErr
+}
+
+//nolint:revive
+func (vlt *Vault) close(ctx context.Context) error {
 	if err := vlt.seal(ctx); err != nil {
 		return err
 	}
@@ -593,11 +610,34 @@ func errf(format string, a ...any) error {
 	return fmt.Errorf(format, a...)
 }
 
+type insertConfig struct {
+	id *int
+}
+
+type InsertOpt func(*insertConfig)
+
+func InsertWithID(id int) InsertOpt {
+	return func(c *insertConfig) {
+		c.id = &id
+	}
+}
+
+func newInsertConfig(opts ...InsertOpt) *insertConfig {
+	c := &insertConfig{}
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
+}
+
 // InsertNewSecret inserts a new secret with its labels
 // into the vault using a transaction.
 //
 // Returns the ID of the inserted secret or an error if the operation fails.
-func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret string, labels []string) (id int, retErr error) {
+func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret string, labels []string, opts ...InsertOpt) (id int, retErr error) {
+	insertConfig := newInsertConfig(opts...)
+
 	tx, err := vlt.conn.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return 0, err
@@ -623,7 +663,14 @@ func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret strin
 		return 0, errf("insert new secret: %w", err)
 	}
 
-	secretID, err := storeTx.InsertNewSecret(ctx, name, nonce, ciphertext)
+	var secretID int
+
+	if insertConfig.id != nil {
+		secretID, err = storeTx.InsertNewSecretWithID(ctx, *insertConfig.id, name, nonce, ciphertext)
+	} else {
+		secretID, err = storeTx.InsertNewSecret(ctx, name, nonce, ciphertext)
+	}
+
 	if err != nil {
 		if err2 := tx.Rollback(); err2 != nil {
 			return 0, errf("insert new secret: rollback: %w", errors.Join(err2, err))

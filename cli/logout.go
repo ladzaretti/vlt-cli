@@ -67,8 +67,8 @@ func NewCmdLogout(defaults *DefaultVltOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "logout",
-		Short: "Logs the user out of the current session",
-		Long:  "Logs the user out of the current session.",
+		Short: "Log out of the current session",
+		Long:  "Log out of the current session.",
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
