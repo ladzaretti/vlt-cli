@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	defaultCopy  = []string{"xsel -ib"}
-	defaultPaste = []string{"xsel -ob"}
+	defaultCopy  = []string{"xsel", "-ib"}
+	defaultPaste = []string{"xsel", "-ob"}
 )
 
 // ConfigurationError indicates that a clipboard command is not available

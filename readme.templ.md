@@ -1,9 +1,7 @@
-# vlt
+# vlt — an encrypted in-memory secret manager for the terminal
 [![Go Report Card](https://goreportcard.com/badge/github.com/ladzaretti/vlt-cli)](https://goreportcard.com/report/github.com/ladzaretti/vlt-cli)
 
-**vlt** is an encrypted in-memory command-line secret manager.
-
-It provides a fast and secure way to store, retrieve, and manage secrets entirely from your terminal.
+`vlt` is a fast and secure command-line tool for storing and managing secrets in an encrypted, in-memory vault.
 
 ## Supported Platforms
 
