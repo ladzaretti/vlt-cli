@@ -23,6 +23,7 @@ snapshot:
 archives:
   - id: "vlt"
     name_template: "vlt_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    wrap_in_directory: true
 
     files:
       - UNLICENSE

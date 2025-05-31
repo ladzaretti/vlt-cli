@@ -31,8 +31,8 @@ func (e *ConfigError) Unwrap() error { return e.Err }
 //nolint:tagalign
 type FileConfig struct {
 	Vault     VaultConfig      `toml:"vault" json:"vault"`
-	Clipboard *ClipboardConfig `toml:"clipboard,commented" comment:"Clipboard configuration: Both copy and paste commands must be either both set or both unset." json:"clipboard"`
-	Hooks     *HooksConfig     `toml:"hooks,commented" comment:"Optional lifecycle hooks for vault events" json:"hooks"`
+	Clipboard *ClipboardConfig `toml:"clipboard" comment:"Clipboard configuration: Both copy and paste commands must be either both set or both unset." json:"clipboard"`
+	Hooks     *HooksConfig     `toml:"hooks" comment:"Optional lifecycle hooks for vault events" json:"hooks"`
 
 	path string // path to the loaded config file. Empty if no config file was used.
 }
@@ -56,8 +56,8 @@ type VaultConfig struct {
 //
 //nolint:tagalign,tagliatelle
 type ClipboardConfig struct {
-	CopyCmd  string `toml:"copy_cmd,commented"  comment:"The command used for copying to the clipboard (default: 'xsel -ib' if not set)" json:"copy_cmd,omitempty"`
-	PasteCmd string `toml:"paste_cmd,commented" comment:"The command used for pasting from the clipboard (default: 'xsel -ob' if not set)" json:"paste_cmd,omitempty"`
+	CopyCmd  []string `toml:"copy_cmd,commented"  comment:"The command used for copying to the clipboard (default: ['xsel', '-ib'] if not set)" json:"copy_cmd,omitempty"`
+	PasteCmd []string `toml:"paste_cmd,commented" comment:"The command used for pasting from the clipboard (default: ['xsel', '-ob'] if not set)" json:"paste_cmd,omitempty"`
 }
 
 // HooksConfig defines optional lifecycle hooks triggered by vault events.
@@ -142,5 +142,5 @@ func (c *FileConfig) validate() error {
 
 // hasPartialClipboard checks if only one of the clipboard commands is set.
 func (c *FileConfig) hasPartialClipboard() bool {
-	return (c.Clipboard.CopyCmd == "") != (c.Clipboard.PasteCmd == "")
+	return (len(c.Clipboard.CopyCmd) == 0) != (len(c.Clipboard.PasteCmd) == 0)
 }

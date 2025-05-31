@@ -37,6 +37,12 @@ bin/vltd: go-mod-tidy
 .PHONY: build
 build: bin/vlt bin/vltd
 
+.PHONE: build-dist
+build-dist: build
+	mkdir -p dist
+	cp ./bin/{vlt,vltd} UNLICENSE install.sh ./dist/
+	cp -r ./systemd ./dist/
+
 .PHONY: protoc
 protoc:
 	protoc \
@@ -55,7 +61,7 @@ go-mod-tidy:
 .PHONY: clean
 clean:
 	go clean -testcache
-	rm -rf coverage/ bin/
+	rm -rf coverage/ bin/ dist/
 
 .PHONY: test
 test: patch-vendor
@@ -80,3 +86,8 @@ fix: bin/golangci-lint patch-vendor
 
 .PHONY: check
 check: lint test
+
+.PHONY: readme.md
+readme.md: readme.templ.md assets/default-config.toml assets/usage.txt
+	./scripts/readme_gen.sh readme.templ.md readme.md
+	

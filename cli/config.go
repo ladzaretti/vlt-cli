@@ -38,10 +38,10 @@ type Flags struct {
 //
 //nolint:tagliatelle
 type ResolvedConfig struct {
-	CopyCmd         string   `json:"copy_cmd,omitempty"`
-	PasteCmd        string   `json:"paste_cmd,omitempty"`
 	SessionDuration Duration `json:"session_duration,omitempty"`
 	VaultPath       string   `json:"vault_path,omitempty"`
+	CopyCmd         []string `json:"copy_cmd,omitempty"`
+	PasteCmd        []string `json:"paste_cmd,omitempty"`
 	PostLoginCmd    []string `json:"post_login_cmd,omitempty"`
 	PostWriteCmd    []string `json:"post_write_cmd,omitempty"`
 }
@@ -191,7 +191,7 @@ func (o *generateConfigOptions) Run(context.Context, ...string) error {
 	out, err := toml.Marshal(newFileConfig())
 	clierror.Check(err)
 
-	o.Infof("%s", string(out))
+	o.Printf("%s", string(out))
 
 	return nil
 }

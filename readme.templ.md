@@ -68,36 +68,7 @@ graph LR
 ## Usage
 ```console
 $ vlt --help
-vlt is an encrypted in-memory command-line secret manager.
-
-Environment Variables:
-    VLT_CONFIG_PATH: overrides the default config path: "~/.vlt.toml".
-
-Usage:
-  vlt [command]
-
-Available Commands:
-  completion  Generate the autocompletion script for the specified shell
-  config      Resolve and inspect the active vlt configuration (subcommands available)
-  create      Initialize a new vault
-  export      Export secrets to a file or stdout
-  find        Search for secrets
-  generate    Generate a random password
-  help        Help about any command
-  import      Import secrets from file
-  login       Authenticate the user
-  logout      Log out of the current session
-  remove      Remove secrets
-  rotate      Rotate the master password
-  save        Save a new secret
-  show        Retrieve a secret value
-  update      Update secret data or metadata (subcommands available)
-  version     Show version
-
-Flags:
-  -h, --help   help for vlt
-
-Use "vlt [command] --help" for more information about a command.
+{{USAGE}}
 ```
 
 ## Configuration file
@@ -105,25 +76,7 @@ Use "vlt [command] --help" for more information about a command.
 The optional configuration file can be generated using `vlt config generate` command:
 
 ```toml
-[vault]
-# Vlt database path (default: '~/.vlt' if not set)
-# path = ''
-# How long a session lasts before requiring login again (default: '1m')
-# session_duration = ''
-
-# Clipboard configuration: Both copy and paste commands must be either both set or both unset.
-[clipboard]
-# The command used for copying to the clipboard (default: ['xsel', '-ib'] if not set)
-# copy_cmd = []
-# The command used for pasting from the clipboard (default: ['xsel', '-ob'] if not set)
-# paste_cmd = []
-
-# Optional lifecycle hooks for vault events
-[hooks]
-# Command to run after a successful login
-# post_login_cmd = []
-# Command to run after any vault write (e.g., create, update, delete)
-# post_write_cmd = []
+{{CONFIG}}
 ```
 
 ## Examples

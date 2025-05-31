@@ -1,0 +1,30 @@
+vlt is an encrypted in-memory command-line secret manager.
+
+Environment Variables:
+    VLT_CONFIG_PATH: overrides the default config path: "~/.vlt.toml".
+
+Usage:
+  vlt [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  config      Resolve and inspect the active vlt configuration (subcommands available)
+  create      Initialize a new vault
+  export      Export secrets to a file or stdout
+  find        Search for secrets
+  generate    Generate a random password
+  help        Help about any command
+  import      Import secrets from file
+  login       Authenticate the user
+  logout      Log out of the current session
+  remove      Remove secrets
+  rotate      Rotate the master password
+  save        Save a new secret
+  show        Retrieve a secret value
+  update      Update secret data or metadata (subcommands available)
+  version     Show version
+
+Flags:
+  -h, --help   help for vlt
+
+Use "vlt [command] --help" for more information about a command.
