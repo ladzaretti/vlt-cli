@@ -7,12 +7,11 @@ package clipboard
 
 import (
 	"os/exec"
-	"strings"
 )
 
-const (
-	defaultCopy  = "xsel -ib"
-	defaultPaste = "xsel -ob"
+var (
+	defaultCopy  = []string{"xsel", "-ib"}
+	defaultPaste = []string{"xsel", "-ob"}
 )
 
 // ConfigurationError indicates that a clipboard command is not available
@@ -59,9 +58,7 @@ type cmd struct {
 	args []string
 }
 
-func newCmd(str string) cmd {
-	s := strings.Fields(str)
-
+func newCmd(s []string) cmd {
 	if len(s) == 0 {
 		return cmd{}
 	}
@@ -95,14 +92,14 @@ func New(opts ...Opt) *Clipboard {
 }
 
 // WithCopyCmd sets a custom copy command.
-func WithCopyCmd(copyCmd string) Opt {
+func WithCopyCmd(copyCmd []string) Opt {
 	return func(c *Clipboard) {
 		c.copy = newCmd(copyCmd)
 	}
 }
 
 // WithPasteCmd sets a custom paste command.
-func WithPasteCmd(pasteCmd string) Opt {
+func WithPasteCmd(pasteCmd []string) Opt {
 	return func(c *Clipboard) {
 		c.paste = newCmd(pasteCmd)
 	}

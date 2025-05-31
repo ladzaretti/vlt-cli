@@ -1,0 +1,19 @@
+[vault]
+# Vlt database path (default: '~/.vlt' if not set)
+# path = ''
+# How long a session lasts before requiring login again (default: '1m')
+# session_duration = ''
+
+# Clipboard configuration: Both copy and paste commands must be either both set or both unset.
+[clipboard]
+# The command used for copying to the clipboard (default: ['xsel', '-ib'] if not set)
+# copy_cmd = []
+# The command used for pasting from the clipboard (default: ['xsel', '-ob'] if not set)
+# paste_cmd = []
+
+# Optional lifecycle hooks for vault events
+[hooks]
+# Command to run after a successful login
+# post_login_cmd = []
+# Command to run after any vault write (e.g., create, update, delete)
+# post_write_cmd = []
