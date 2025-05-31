@@ -14,7 +14,7 @@ Available Commands:
   find        Search for secrets
   generate    Generate a random password
   help        Help about any command
-  import      Import secrets from file
+  import      Import secrets from file (supports Firefox, Chromium, and custom formats)
   login       Authenticate the user
   logout      Log out of the current session
   remove      Remove secrets

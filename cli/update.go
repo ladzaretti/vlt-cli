@@ -129,16 +129,16 @@ The update will proceed only if exactly one secret matches the given search crit
 
 To update the secret value, use the 'vlt update secret' subcommand.`,
 		Example: `  # Rename a secret by ID
-  vlt update --id 123 --set-name new-name
+  vlt update --id 42 --set-name foo
 
   # Add a label to a secret whose name or label matches the given glob pattern
   vlt update "*foo*" --add-label bar
 
   # Add a label to a secret by name
-  vlt update --name github --add-label dev
+  vlt update --name foo --add-label bar
 
   # Remove a label from a secret
-  vlt update --id 456 --remove-label old-label`,
+  vlt update --id 42 --remove-label bar`,
 		Run: func(cmd *cobra.Command, args []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
@@ -208,7 +208,7 @@ func (o *UpdateSecretValueOptions) validateUpdateSecretArgs() error {
 	}
 
 	if used > 1 {
-		return &UpdateError{errors.New("only one of non-interactive input, --generate, or --paste can be used at a time")}
+		return &UpdateError{errors.New("only one of non-interactive input, --generate, or --paste-clipboard can be used at a time")}
 	}
 
 	return nil
@@ -344,16 +344,16 @@ The update is performed only if exactly one secret matches the provided criteria
 
 You can provide the new value via prompt, clipboard, or by generating a random value.`,
 		Example: ` # Update value using prompt (interactive)
-  vlt update secret --id 123
+  vlt update secret --id 42
 
   # Update value that matches a wildcard with a generated secret
-  vlt update secret "*suffix" --generate
+  vlt update secret "*foo*" --generate
 
   # Update value with a generated secret
-  vlt update secret --name api-key --generate
+  vlt update secret --name foo --generate
 
   # Update value using the clipboard as input
-  vlt update secret --label env=prod --paste`,
+  vlt update secret --label foo --paste-clipboard`,
 		Run: func(cmd *cobra.Command, args []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},

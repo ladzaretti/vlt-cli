@@ -87,7 +87,12 @@ fix: bin/golangci-lint patch-vendor
 .PHONY: check
 check: lint test
 
+.PHONY: assets
+assets: build
+	./bin/vlt config generate > assets/default-config.toml
+	./bin/vlt > assets/usage.txt
+
 .PHONY: readme.md
-readme.md: readme.templ.md assets/default-config.toml assets/usage.txt
+readme.md: assets readme.templ.md assets/default-config.toml assets/usage.txt
 	./scripts/readme_gen.sh readme.templ.md readme.md
 	

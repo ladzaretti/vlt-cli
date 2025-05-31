@@ -140,15 +140,17 @@ You may optionally provide a glob pattern to match against secret names or label
 
 Use --id, --name, or --label to select which secrets to remove.
 Multiple --label flags can be applied and are logically ORed.
+
+Search values support UNIX glob patterns (e.g., "foo*", "*bar*").
 `,
 		Example: `  # Remove a secret by ID
-  vlt remove --id 123
+  vlt remove --id 42
 
   # Remove all secrets whose name or label matches the given glob pattern
   vlt remove "*foo*" --all
 
   # Remove all secrets matching any of the given labels
-  vlt remove --label project=legacy --label dev --all
+  vlt remove --label foo --label bar --all
 
   # Remove a secret by name without confirmation
   vlt remove --name api-key --yes`,

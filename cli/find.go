@@ -87,21 +87,15 @@ You may optionally provide a glob pattern to match against secret names or label
 Filters can be applied using --id, --name, or --label.
 Multiple --label flags can be applied and are logically ORed.
 
-Name and label values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
-		Example: `  # Find secrets with names or labels containing "dev"
-  vlt find "*dev*"
+Search values support UNIX glob patterns (e.g., "foo*", "*bar*").`,
+		Example: `  # Find secrets with names or labels containing "foo"
+  vlt find "*foo*"
 
   # Find secrets matching multiple labels (AND logic)
-  vlt find --label env=prod --label region=us
+  vlt find --label foo --label bar
 
   # List all secrets in the vault
-  vlt find
-
-  # Use a custom pipeline to process the results
-  vlt find --pipe-cmd '[ "sh", "-c", "fzf --header-line=1 | awk '{print $1}' | xargs -r vlt show -c --id" ]'
-  
-  # Use the config configured pipeline to process results
-  vlt find --pipe`,
+  vlt find`,
 		Run: func(cmd *cobra.Command, args []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},

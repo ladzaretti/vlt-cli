@@ -6,7 +6,7 @@
 # vlt — an encrypted in-memory secret manager for the terminal
 [![Go Report Card](https://goreportcard.com/badge/github.com/ladzaretti/vlt-cli)](https://goreportcard.com/report/github.com/ladzaretti/vlt-cli)
 
-`vlt` is a fast and secure command-line tool for storing and managing secrets in an encrypted, in-memory vault.
+`vlt` is a secure command-line tool for storing and managing secrets in an encrypted, in-memory vault.
 
 ## Supported Platforms
 
@@ -50,17 +50,19 @@ The `vlt` cli manages secrets stored in a vault system composed of two layers:
 - `vault.sqlite` is a serialized and encrypted inner SQLite database that contains the actual user data.
   - The decrypted `vault.sqlite` is held in the `vlt` process memory only and is never written to disk.
 
-### vltd - daemon
+### vltd - session manager daemon
 The `vltd` daemon manages derived encryption keys and exposes a Unix socket that `vlt` uses to obtain them. Only `vlt` accesses the database files directly.
 
 ```mermaid
 graph LR
-	subgraph VaultContainer["vault_container.sqlite (SQLite)"]
-        EncryptedVault["vault.sqlite (encrypted serialized SQLite blob)"]
+    subgraph VltFile[".vlt file"]
+      subgraph VaultContainer["vault_container.sqlite database"]
+          EncryptedVault["vault.sqlite (encrypted serialized database blob)"]
+        end
     end
 
     vlt["vlt (client)"]
-    vltd["vltd (session manager daemon)"]
+    vltd["vltd (daemon)"]
     socket["Unix socket"]
 
     vlt -->|read/write| VaultContainer
@@ -87,7 +89,7 @@ Available Commands:
   find        Search for secrets
   generate    Generate a random password
   help        Help about any command
-  import      Import secrets from file
+  import      Import secrets from file (supports Firefox, Chromium, and custom formats)
   login       Authenticate the user
   logout      Log out of the current session
   remove      Remove secrets

@@ -69,7 +69,7 @@ func (o *ShowOptions) validateConfigOptions() error {
 	}
 
 	if c != 1 {
-		return &ShowError{errors.New("either --output or --copy must be set (but not both)")}
+		return &ShowError{errors.New("either --output or --copy-clipboard must be set (but not both)")}
 	}
 
 	return nil
@@ -109,7 +109,7 @@ func (o *ShowOptions) Run(ctx context.Context, args ...string) error {
 
 func (o *ShowOptions) outputSecret(s string) error {
 	if o.output {
-		o.Infof("%s", s)
+		o.Printf("%s", s)
 		return nil
 	}
 
@@ -136,7 +136,23 @@ func NewCmdShow(defaults *DefaultVltOptions) *cobra.Command {
 
 The secret value will be displayed only if there is exactly one match for the given search criteria.
 
-Use --output to print to stdout (unsafe) or --copy to copy the value to the clipboard.`,
+Search values support UNIX glob patterns (e.g., "foo*", "*bar*").
+
+Use --output to print to stdout (unsafe), or --copy-clipboard to copy the value to the clipboard.`,
+		Example: `  # Show a secret by matching its name or label
+  vlt show foo
+
+  # Show a secret by ID
+  vlt show --id 42
+
+  # Copy a secret to the clipboard
+  vlt show bar --copy-clipboard
+
+  # Output a secret to stdout (unsafe)
+  vlt show baz --output
+
+  # Use glob pattern and label filter
+  vlt show "*foo*" --label "*bar*" --output`,
 		Run: func(cmd *cobra.Command, args []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},

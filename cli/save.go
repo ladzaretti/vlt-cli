@@ -233,6 +233,20 @@ Note 1:
 Note 2:
 	If data is piped or redirected into the command (i.e., stdin is not a TTY),
 	metadata must be provided as command-line arguments. Interactive prompts will be skipped in this case.`,
+		Example: `  # Save a secret interactively (prompts for name and value)
+  vlt save
+
+  # Save a named secret, prompting for the value
+  vlt save --name foo
+
+  # Pipe a secret value from stdin (requires --name)
+  echo "bar" | vlt save --name foo
+
+  # Generate a random secret and copy to clipboard
+  vlt save --name foo --generate --copy-clipboard
+
+  # Read a secret from clipboard
+  vlt save --name foo --paste-clipboard`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
