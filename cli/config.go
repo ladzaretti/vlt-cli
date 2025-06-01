@@ -137,8 +137,17 @@ If --file is not provided, the default config path (~/%s) is used.`, defaultConf
 				return
 			}
 
-			o.Infof("config loaded from: %q:\n\n%s\n\n", o.fileConfig.path, stringifyPretty(o.fileConfig))
-			o.Infof("resolved runtime config:\n\n%+v\n", stringifyPretty(o.resolved))
+			c := struct {
+				Path     string `json:"path"`
+				Parsed   any    `json:"parsed_config"`
+				Resolved any    `json:"resolved_config"`
+			}{
+				Path:     o.fileConfig.path,
+				Parsed:   o.fileConfig,
+				Resolved: o.resolved,
+			}
+
+			o.Printf("%s", stringifyPretty(c))
 		},
 	}
 
