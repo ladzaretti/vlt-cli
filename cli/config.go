@@ -139,8 +139,8 @@ If --file is not provided, the default config path (~/%s) is used.`, defaultConf
 
 			c := struct {
 				Path     string `json:"path"`
-				Parsed   any    `json:"parsed_config"`
-				Resolved any    `json:"resolved_config"`
+				Parsed   any    `json:"parsed_config"`   //nolint:tagliatelle
+				Resolved any    `json:"resolved_config"` //nolint:tagliatelle
 			}{
 				Path:     o.fileConfig.path,
 				Parsed:   o.fileConfig,

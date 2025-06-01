@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -160,7 +161,6 @@ type ImportOptions struct {
 	*genericclioptions.StdioOptions
 	*VaultOptions
 
-	CSVPath string
 	indexes string
 
 	importConfig CustomImporter
@@ -186,15 +186,9 @@ func (o *ImportOptions) Complete() error {
 	return nil
 }
 
-func (o *ImportOptions) Validate() error {
-	if !o.StdinIsPiped && len(o.CSVPath) == 0 {
-		return &ImportError{errors.New("no path provided; use --path to specify the input file")}
-	}
+func (*ImportOptions) Validate() error { return nil }
 
-	return nil
-}
-
-func (o *ImportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
+func (o *ImportOptions) Run(ctx context.Context, files ...string) (retErr error) {
 	defer func() {
 		if retErr != nil {
 			retErr = &ImportError{retErr}
@@ -202,24 +196,26 @@ func (o *ImportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 		}
 	}()
 
-	var in io.Reader
+	switch {
+	case o.StdinIsPiped && len(files) > 0:
+		return errors.New("cannot import from both stdin and file")
 
-	if o.StdinIsPiped {
-		in = o.In
+	case o.StdinIsPiped:
+		o.Infof("importing secrets from stdin")
+		return o.importSecrets(ctx, o.In)
+
+	case len(files) == 1:
+		return o.importFromFile(ctx, files[0])
+
+	case len(files) > 1:
+		return errors.New("only one input file can be imported at a time")
+
+	default:
+		return errors.New("no input source provided (stdin or file)")
 	}
+}
 
-	if len(o.CSVPath) > 0 {
-		f, err := os.Open(o.CSVPath)
-		if err != nil {
-			return err
-		}
-		defer func() { //nolint:wsl
-			_ = f.Close()
-		}()
-
-		in = f
-	}
-
+func (o *ImportOptions) importSecrets(ctx context.Context, in io.Reader) error {
 	r := csv.NewReader(in)
 
 	header, err := r.Read()
@@ -257,6 +253,20 @@ func (o *ImportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	return nil
 }
 
+func (o *ImportOptions) importFromFile(ctx context.Context, name string) error {
+	f, err := os.Open(filepath.Clean(name))
+	if err != nil {
+		return err
+	}
+	defer func() { //nolint:wsl
+		_ = f.Close()
+	}()
+
+	o.Infof("importing secrets from: %q", name)
+
+	return o.importSecrets(ctx, f)
+}
+
 //nolint:ireturn
 func (o *ImportOptions) importerForHeader(header string) Importer {
 	switch header {
@@ -286,8 +296,9 @@ func NewCmdImport(defaults *DefaultVltOptions) *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "import",
+		Use:   "import [file]",
 		Short: "Import secrets from file (supports Firefox, Chromium, and custom formats)",
+		Args:  cobra.ArbitraryArgs,
 		Long: `Import secrets into the vault from a CSV file.
 
 The input must be a CSV file with at least two columns: one for the secret's name and one for its value (e.g., password). 
@@ -298,21 +309,19 @@ Indexes are zero-based and refer to column positions in the header row.
 
 Firefox and Chromium-based CSV files are auto-detected for import and do not require manual index specification.
 `,
-		Example: `
-# Import using Firefox-compatible format (auto-detected)
-vlt import --path passwords.csv
-
-# Import from custom CSV data using a column mapping
-echo -e "password,username,label_1,label_2\npass,some_username,meta1,meta2" | \
-  vlt import \
-      --indexes '{"name":1,"secret":0,"labels":[2,3]}'`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		Example: `  # Import secrets from a file (format is auto-detected if compatible)
+  vlt import passwords.csv
+  
+  # Import from custom CSV data using a column mapping
+  echo -e "password,username,label_1,label_2\npass,some_username,meta1,meta2" | \
+    vlt import \
+        --indexes '{"name":1,"secret":0,"labels":[2,3]}'`,
+		Run: func(cmd *cobra.Command, args []string) {
+			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
 	}
 
 	cmd.Flags().StringVarP(&o.indexes, "indexes", "i", "", "json with column indexes (e.g., '{\"name\":0,\"secret\":1,\"labels\":[2]}')")
-	cmd.Flags().StringVarP(&o.CSVPath, "path", "p", "", "path to the input CSV file")
 
 	return cmd
 }
