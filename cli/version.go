@@ -7,7 +7,7 @@ func newVersionCommand(defaults *DefaultVltOptions) *cobra.Command {
 		Use:   "version",
 		Short: "Show version",
 		Run: func(_ *cobra.Command, _ []string) {
-			defaults.Infof("%s", Version)
+			defaults.Printf("%s", Version)
 		},
 	}
 }
