@@ -47,6 +47,15 @@ func (o *LoginOptions) Complete() error {
 }
 
 func (o *LoginOptions) Validate() error {
+	exists, err := o.vaultExists()
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return fmt.Errorf("%w: %s", vaulterrors.ErrVaultFileNotFound, o.path)
+	}
+
 	if o.StdinIsPiped {
 		return vaulterrors.ErrNonInteractiveUnsupported
 	}
