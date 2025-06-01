@@ -331,7 +331,7 @@ func (s *VaultDB) ExportSecrets(ctx context.Context) (map[int]SecretWithLabels, 
 		l.name AS label
 	FROM
 		secrets s
-		JOIN labels l ON s.id = l.secret_id;
+		LEFT JOIN labels l ON s.id = l.secret_id;
 	`
 
 	rows, err := s.db.QueryContext(ctx, query)
