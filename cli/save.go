@@ -224,7 +224,7 @@ func NewCmdSave(defaults *DefaultVltOptions) *cobra.Command {
 		Short:   "Save a new secret",
 		Long: `Save a new key-value pair to the vault.
 
-The secret value can be piped, redirected, or prompted.
+The secret value can be provided via prompt, clipboard, random generation, or piped input.
 Metadata (e.g., name and labels) can be provided via command-line arguments or prompted.
 
 Note 1:
@@ -246,7 +246,10 @@ Note 2:
   vlt save --name foo --generate --copy-clipboard
 
   # Read a secret from clipboard
-  vlt save --name foo --paste-clipboard`,
+  vlt save --name foo --paste-clipboard
+ 
+  # Save a named secret with a piped value (non-interactive)
+  vlt generate -u3 -l3 -d3 -s3 | vlt save --name foo -N`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},

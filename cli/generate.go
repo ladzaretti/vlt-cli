@@ -50,7 +50,7 @@ func (o *GenerateOptions) Run(context.Context, ...string) error {
 		return clipboard.Copy(s)
 	}
 
-	o.Infof("%s", s)
+	o.Printf("%s", s)
 
 	return nil
 }
@@ -74,7 +74,7 @@ If no flags are provided, the default policy is:
 
 If a specific requirement is provided (e.g., '--digits 4'), the generated password will 
 contain at least that many characters of the specified type. Any remaining characters will 
-be randomly chosen to meet the minimum total length.
+be randomly chosen to meet the minimum total length (if provided).
 `,
 			randstring.DefaultPasswordPolicy.MinUppercase,
 			randstring.DefaultPasswordPolicy.MinLowercase,
@@ -82,6 +82,20 @@ be randomly chosen to meet the minimum total length.
 			randstring.DefaultPasswordPolicy.MinSpecial,
 			randstring.DefaultPasswordPolicy.MinLength,
 		),
+		Example: `  # Generate a password using the default policy
+  vlt generate
+  
+  # Generate a password and copy it to the clipboard
+  vlt generate --copy-clipboard
+  
+  # Generate a password with at least 4 digits and 16 total characters
+  vlt generate --numeric 4 --min-length 16
+  
+  # Generate a password with 3 uppercase, 3 lowercase, 3 digits, and 3 special characters
+  vlt generate -u3 -l3 -d3 -s3
+  
+  # Generate a password with no special characters
+  vlt generate --special 0`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},

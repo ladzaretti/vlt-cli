@@ -101,7 +101,7 @@ func (o *UpdateOptions) Run(ctx context.Context, args ...string) (retErr error) 
 
 	switch count {
 	case 1:
-		o.Infof("found one match.\n")
+		o.Debugf("found one match.\n")
 	case 0:
 		o.Warnf("no match found.\n")
 		return vaulterrors.ErrSearchNoMatch
@@ -323,7 +323,7 @@ func (o *UpdateSecretValueOptions) UpdateSecretValue(ctx context.Context, id int
 		return ErrNoSecretInserted
 	}
 
-	o.Infof("OK\n")
+	o.Debugf("OK\n")
 
 	return nil
 }
@@ -342,7 +342,7 @@ func NewCmdUpdateSecretValue(defaults *DefaultVltOptions) *cobra.Command {
 
 The update is performed only if exactly one secret matches the provided criteria.
 
-You can provide the new value via prompt, clipboard, or by generating a random value.`,
+Accepts new value via prompt, clipboard, random generation, or piped input.`,
 		Example: ` # Update value using prompt (interactive)
   vlt update secret --id 42
 
@@ -353,7 +353,10 @@ You can provide the new value via prompt, clipboard, or by generating a random v
   vlt update secret --name foo --generate
 
   # Update value using the clipboard as input
-  vlt update secret --label foo --paste-clipboard`,
+  vlt update secret --label foo --paste-clipboard
+  
+  # Update value using a piped secret
+  vlt generate -u3 -l3 -d3 -s3 | vlt update secret foo`,
 		Run: func(cmd *cobra.Command, args []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},

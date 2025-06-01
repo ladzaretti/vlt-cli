@@ -26,7 +26,7 @@ type ShowOptions struct {
 	*VaultOptions
 
 	search *SearchableOptions
-	output bool // output controls whether to print the secret to stdout.
+	stdout bool // stdout controls whether to print the secret to stdout.
 	copy   bool // copy controls whether to copy the secret to the clipboard.
 }
 
@@ -64,12 +64,12 @@ func (o *ShowOptions) validateConfigOptions() error {
 		c++
 	}
 
-	if o.output {
+	if o.stdout {
 		c++
 	}
 
 	if c != 1 {
-		return &ShowError{errors.New("either --output or --copy-clipboard must be set (but not both)")}
+		return &ShowError{errors.New("either --stdout or --copy-clipboard must be set (but not both)")}
 	}
 
 	return nil
@@ -108,7 +108,7 @@ func (o *ShowOptions) Run(ctx context.Context, args ...string) error {
 }
 
 func (o *ShowOptions) outputSecret(s string) error {
-	if o.output {
+	if o.stdout {
 		o.Printf("%s", s)
 		return nil
 	}
@@ -138,21 +138,15 @@ The secret value will be displayed only if there is exactly one match for the gi
 
 Search values support UNIX glob patterns (e.g., "foo*", "*bar*").
 
-Use --output to print to stdout (unsafe), or --copy-clipboard to copy the value to the clipboard.`,
-		Example: `  # Show a secret by matching its name or label
-  vlt show foo
+Use --stdout to print to stdout (unsafe), or --copy-clipboard to copy the value to the clipboard.`,
+		Example: `  # Show a secret by matching its name or label, output to stdout (unsafe)
+  vlt show foo --stdout
 
-  # Show a secret by ID
-  vlt show --id 42
-
-  # Copy a secret to the clipboard
-  vlt show bar --copy-clipboard
-
-  # Output a secret to stdout (unsafe)
-  vlt show baz --output
+  # Show a secret by matching its ID, copy the value to the clipboard
+  vlt show --id 42 --copy-clipboard
 
   # Use glob pattern and label filter
-  vlt show "*foo*" --label "*bar*" --output`,
+  vlt show "*foo*" --label "*bar*" --stdout`,
 		Run: func(cmd *cobra.Command, args []string) {
 			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
@@ -161,7 +155,7 @@ Use --output to print to stdout (unsafe), or --copy-clipboard to copy the value 
 	cmd.Flags().IntVarP(&o.search.ID, "id", "", 0, FilterByID.Help())
 	cmd.Flags().StringVarP(&o.search.Name, "name", "", "", FilterByName.Help())
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByLabels.Help())
-	cmd.Flags().BoolVarP(&o.output, "output", "o", false, "output the secret to stdout (unsafe)")
+	cmd.Flags().BoolVarP(&o.stdout, "stdout", "", false, "output the secret to stdout (unsafe)")
 	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the secret to the clipboard")
 
 	return cmd
