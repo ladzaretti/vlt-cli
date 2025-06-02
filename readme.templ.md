@@ -1,7 +1,25 @@
+<!-- omit in toc -->
 # vlt — an encrypted in-memory secret manager for the terminal
+![Static Badge](https://img.shields.io/badge/status-in--development-orange)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ladzaretti/vlt-cli)](https://goreportcard.com/report/github.com/ladzaretti/vlt-cli)
 
 `vlt` is a secure command-line tool for storing and managing secrets in an encrypted, in-memory vault.
+
+<!-- omit in toc -->
+## Table of Content
+
+- [Supported Platforms](#supported-platforms)
+- [Installation](#installation)
+  - [Option 1: Download a release](#option-1-download-a-release)
+    - [Optional install script](#optional-install-script)
+  - [Option 2: Build from source (requires Go 1.24)](#option-2-build-from-source-requires-go-124)
+- [Design Overview](#design-overview)
+  - [vlt - cli client](#vlt---cli-client)
+  - [vltd - session manager daemon](#vltd---session-manager-daemon)
+- [Crypto/Security](#cryptosecurity)
+- [Usage](#usage)
+- [Configuration file](#configuration-file)
+- [Examples](#examples)
 
 ## Supported Platforms
 
@@ -23,14 +41,15 @@ After downloading and extracting an archive, the `install.sh` script can be used
 - Copy the `vlt` and `vltd` binaries to `/usr/local/bin`
 - Install and enable the `vltd` systemd user service for managing vault sessions
 
-### Option 2: Build from source
+### Option 2: Build from source (requires Go 1.24)
 
 ```bash
+# Clone and build
 git clone https://github.com/ladzaretti/vlt-cli.git
 cd vlt-cli
 make build-dist
 
-# Optional, install via script.
+# Optional: run the install script
 ./dist/install.sh
 ```
 This packs the `vlt` and `vltd` binaries in `./dist/`.
@@ -65,6 +84,15 @@ graph LR
     vlt -->|request/store session keys| socket --> vltd
 ```
 
+## Crypto/Security
+- **Key Derivation & Auth**: Uses `argon2id` to derive keys from the master password and verify authentication.
+
+- **Encryption**:  
+  - Secrets are encrypted with `AES-256-GCM`, using unique nonces for each entry.  
+  - The backing `SQLite` database is encrypted at rest and only decrypted into memory after authentication.
+
+- **Memory-Safety**: Secrets are stored in memory only.
+
 ## Usage
 ```console
 $ vlt --help
@@ -80,4 +108,5 @@ The optional configuration file can be generated using `vlt config generate` com
 ```
 
 ## Examples
-TODO
+TODO1: complete examples
+TODO2: validate all usage examples

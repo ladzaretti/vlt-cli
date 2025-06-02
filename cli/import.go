@@ -248,7 +248,7 @@ func (o *ImportOptions) importSecrets(ctx context.Context, in io.Reader) error {
 		i++
 	}
 
-	o.Infof("successfully imported %d records.\n", i)
+	o.Infof("successfully imported %d records\n", i)
 
 	return nil
 }
@@ -262,7 +262,7 @@ func (o *ImportOptions) importFromFile(ctx context.Context, name string) error {
 		_ = f.Close()
 	}()
 
-	o.Infof("importing secrets from: %q", name)
+	o.Infof("importing secrets from: %q\n", name)
 
 	return o.importSecrets(ctx, f)
 }
@@ -271,15 +271,15 @@ func (o *ImportOptions) importFromFile(ctx context.Context, name string) error {
 func (o *ImportOptions) importerForHeader(header string) Importer {
 	switch header {
 	case firefoxHeader:
-		o.Infof("firefox export file detected.\n")
+		o.Infof("firefox export file detected\n")
 		return firefoxImporter
 
 	case chromiumHeader:
-		o.Infof("chromium export file detected.\n")
+		o.Infof("chromium export file detected\n")
 		return chromiumImporter
 
 	case vltExportHeader:
-		o.Infof("vlt export file detected.\n")
+		o.Infof("vlt export file detected\n")
 		return vltImporter
 
 	default:
