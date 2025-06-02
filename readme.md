@@ -93,7 +93,7 @@ graph LR
 - **Key Derivation & Auth**: Uses `argon2id` to derive keys from the master password and verify authentication.
 
 - **Encryption**:  
-  - Secrets are encrypted with `AES-256-GCM`, using unique nonces for each entry.  
+  - Secrets are encrypted with `AES-256-GCM`, using unique nonces for each encrypted value.  
   - The backing `SQLite` database is encrypted at rest and only decrypted into memory after authentication.
 
 - **Memory-Safety**: Secrets are stored in memory only.
@@ -160,5 +160,4 @@ The optional configuration file can be generated using `vlt config generate` com
 ```
 
 ## Examples
-TODO1: complete examples
-TODO2: validate all usage examples
+TODO
