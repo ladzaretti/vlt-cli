@@ -11,8 +11,6 @@ import (
 	"golang.org/x/term"
 )
 
-// IsPipedOrRedirected reports whether the given file is from a pipe
-// or file redirect (i.e. not a terminal or interactive input).
 func IsPipedOrRedirected(fi os.FileInfo) bool {
 	return (fi.Mode() & os.ModeCharDevice) == 0
 }
@@ -42,7 +40,7 @@ func PromptRead(w io.Writer, r io.Reader, prompt string, a ...any) (string, erro
 }
 
 // PromptReadSecure prompts the user via w for input and securely reads it
-// (hiding the input) from the given file descriptor.
+// from the given file descriptor.
 func PromptReadSecure(w io.Writer, fd int, prompt string, a ...any) (string, error) {
 	fmt.Fprintf(w, prompt, a...)
 	defer fmt.Println()

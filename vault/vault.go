@@ -127,7 +127,7 @@ func New(ctx context.Context, path string, password string, opts ...Option) (vlt
 
 	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.snapshot)
 	if err != nil {
-		return nil, errf("new: %w", err)
+		return nil, fmt.Errorf("vault.new: failed to initialize vault container handle: %w", err)
 	}
 	defer func() { //nolint:wsl
 		if retErr != nil {
@@ -140,37 +140,37 @@ func New(ctx context.Context, path string, password string, opts ...Option) (vlt
 
 	cipherdata, err := vaultCipherData([]byte(password))
 	if err != nil {
-		return nil, errf("new: %w", err)
+		return nil, fmt.Errorf("vault.new: failed to create vault cipher data: %w", err)
 	}
 
 	phc, err := vaultcrypto.DecodeAragon2idPHC(cipherdata.KDFPHC)
 	if err != nil {
-		return nil, errf("new: %w", err)
+		return nil, fmt.Errorf("vault.new: failed to decode KDF PHC: %w", err)
 	}
 
 	aes, err := deriveAESGCM(phc, []byte(password))
 	if err != nil {
-		return nil, errf("new: %w", err)
+		return nil, fmt.Errorf("vault.new: failed to derive AES-GCM key: %w", err)
 	}
 
 	vlt = newVault(path, cipherdata.Nonce, aes, vaultContainerHandle)
 
 	if err := vlt.open(ctx, nil); err != nil {
-		return vlt, errf("new: %w", err)
+		return vlt, fmt.Errorf("vault.new: failed to open vault: %w", err)
 	}
 
 	serialized, err := Serialize(vlt.conn)
 	if err != nil {
-		return vlt, errf("new: %w", err)
+		return vlt, fmt.Errorf("vault.new: failed to serialize vault connection: %w", err)
 	}
 
 	ciphervault, err := aes.Seal(cipherdata.Nonce, serialized)
 	if err != nil {
-		return vlt, errf("new: %w", err)
+		return vlt, fmt.Errorf("vault.new: failed to seal serialized vault: %w", err)
 	}
 
 	if err := vaultContainerHandle.db.InsertNewVault(ctx, cipherdata.AuthPHC, cipherdata.KDFPHC, cipherdata.Nonce, ciphervault); err != nil {
-		return vlt, errf("new: %w", err)
+		return vlt, fmt.Errorf("vault.new: failed to insert new vault into vault container database: %w", err)
 	}
 
 	return vlt, nil
@@ -186,7 +186,7 @@ func Login(ctx context.Context, path string, password string, opts ...Option) (k
 
 	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.snapshot)
 	if err != nil {
-		return nil, nil, errf("login: %w", err)
+		return nil, nil, errf("vault.login: failed to initialize vault container handle: %w", err)
 	}
 	defer func() { //nolint:wsl
 		_ = vaultContainerHandle.cleanup()
@@ -194,16 +194,16 @@ func Login(ctx context.Context, path string, password string, opts ...Option) (k
 
 	cipherdata, err := vaultContainerHandle.db.SelectVault(ctx)
 	if err != nil {
-		return nil, nil, errf("login: %w", err)
+		return nil, nil, fmt.Errorf("vault.login: failed to select vault from container database: %w", err)
 	}
 
 	if err := verifyPassword([]byte(password), cipherdata.AuthPHC); err != nil {
-		return nil, nil, errf("login: %w", err)
+		return nil, nil, errf("vault.login: password verification failed: %w", err)
 	}
 
 	phc, err := vaultcrypto.DecodeAragon2idPHC(cipherdata.KDFPHC)
 	if err != nil {
-		return nil, nil, errf("login: %w", err)
+		return nil, nil, errf("vault.login: failed to decode KDF PHC: %w", err)
 	}
 
 	kdf := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithPHC(phc))
@@ -225,7 +225,7 @@ func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr 
 
 	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.snapshot)
 	if err != nil {
-		return nil, errf("open: %w", err)
+		return nil, errf("vault.open: failed to initialize vault container handle: %w", err)
 	}
 	defer func() { //nolint:wsl
 		if retErr != nil {
@@ -236,7 +236,7 @@ func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr 
 
 	cipherdata, err := vaultContainerHandle.db.SelectVault(ctx)
 	if err != nil {
-		return nil, errf("open: %w", err)
+		return nil, errf("vault.open: failed to select vault from container database: %w", err)
 	}
 
 	var (
@@ -249,19 +249,19 @@ func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr 
 	case len(config.password) > 0:
 		a, err := deriveAESFromPassword(cipherdata, config.password)
 		if err != nil {
-			return nil, errf("open: %w", err)
+			return nil, errf("vault.open: failed to derive AES key from password: %w", err)
 		}
 
 		aes, nonce = a, cipherdata.Nonce
 	case config.key != nil && config.nonce != nil:
 		a, err := vaultcrypto.NewAESGCM(config.key)
 		if err != nil {
-			return nil, errf("open: %w", err)
+			return nil, errf("vault.open: failed to initialize AES-GCM cipher: %w", err)
 		}
 
 		aes, nonce = a, config.nonce
 	default:
-		return nil, errf("open: no password or session key provided")
+		return nil, errf("vault.open: no password or session key provided")
 	}
 
 	vlt = newVault(path, nonce, aes, vaultContainerHandle)
@@ -273,7 +273,7 @@ func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr 
 	}()
 
 	if err := vlt.open(ctx, cipherdata.Vault); err != nil {
-		return vlt, errf("open: %w", err)
+		return vlt, errf("vault.open: failed to open vault: %w", err)
 	}
 
 	return vlt, nil
@@ -281,17 +281,17 @@ func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr 
 
 func deriveAESFromPassword(cipherdata *vaultcontainer.CipherData, password string) (*vaultcrypto.AESGCM, error) {
 	if err := verifyPassword([]byte(password), cipherdata.AuthPHC); err != nil {
-		return nil, errf("login: %w", err)
+		return nil, errf("derive AES from password: password verification failed: %w", err)
 	}
 
 	phc, err := vaultcrypto.DecodeAragon2idPHC(cipherdata.KDFPHC)
 	if err != nil {
-		return nil, errf("login: %w", err)
+		return nil, errf("derive AES from password: failed to decode KDF PHC: %w", err)
 	}
 
 	aes, err := deriveAESGCM(phc, []byte(password))
 	if err != nil {
-		return nil, errf("login: %w", err)
+		return nil, errf("derive AES from password: failed to derive AES-GCM key: %w", err)
 	}
 
 	return aes, nil
@@ -332,16 +332,16 @@ func (vlt *Vault) close(ctx context.Context) error {
 func (vlt *Vault) seal(ctx context.Context) error {
 	serialized, err := Serialize(vlt.conn)
 	if err != nil {
-		return errf("vault seal: %w", err)
+		return errf("seal: failed to serialize vault connection: %w", err)
 	}
 
 	ciphervault, err := vlt.aesgcm.Seal(vlt.nonce, serialized)
 	if err != nil {
-		return errf("vault seal: %w", err)
+		return errf("seal: failed to seal data with AES-GCM: %w", err)
 	}
 
 	if err := vlt.vaultContainerHandle.db.UpdateVault(ctx, ciphervault); err != nil {
-		return errf("vault seal: %w", err)
+		return errf("seal: failed to update vault in the vault container database: %w", err)
 	}
 
 	return nil
@@ -356,7 +356,7 @@ func (vlt *Vault) seal(ctx context.Context) error {
 // for testing.
 func (vlt *Vault) Serialize(ctx context.Context) ([]byte, error) {
 	if err := vlt.seal(ctx); err != nil {
-		return nil, errf("vault serialize: %w", err)
+		return nil, errf("serialize: sealing vault failed: %w", err)
 	}
 
 	return Serialize(vlt.vaultContainerHandle.conn)
@@ -368,7 +368,7 @@ func (vlt *Vault) cleanup() error {
 	}
 
 	if err := executeCleanup(vlt.cleanupFuncs); err != nil {
-		return errf("vault cleanup: %w", err)
+		return errf("cleanup: cleanup failed: %w", err)
 	}
 
 	return nil
@@ -378,7 +378,7 @@ func (vlt *Vault) cleanup() error {
 func verifyPassword(password []byte, phc string) error {
 	authPHC, err := vaultcrypto.DecodeAragon2idPHC(phc)
 	if err != nil {
-		return errf("verify password: %w", err)
+		return errf("verify password: failed to decode auth PHC: %w", err)
 	}
 
 	kdf := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithPHC(authPHC))
@@ -457,17 +457,17 @@ func newVaultContainerHandle(ctx context.Context, path string, snapshot []byte) 
 
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		return nil, errf("open vault container: %w", err)
+		return nil, errf("new vault container handle: failed to open database: %w", err)
 	}
 
 	conn, err = db.Conn(ctx)
 	if err != nil {
-		return nil, errf("open vault container: %w", err)
+		return nil, errf("new vault container handle: failed to get database connection: %w", err)
 	}
 
 	if snapshot != nil {
 		if err := Deserialize(conn, snapshot); err != nil {
-			return nil, errf("open vault container: %w", err)
+			return nil, errf("new vault container handle: failed to deserialize snapshot: %w", err)
 		}
 	}
 
@@ -475,7 +475,7 @@ func newVaultContainerHandle(ctx context.Context, path string, snapshot []byte) 
 
 	_, err = m.Apply(vaultContainerMigrations)
 	if err != nil {
-		return nil, errf("open vault container: %w", err)
+		return nil, errf("new vault container handle: failed to apply migrations: %w", err)
 	}
 
 	handle.conn = conn
@@ -489,7 +489,7 @@ func newVaultContainerHandle(ctx context.Context, path string, snapshot []byte) 
 func vaultCipherData(password []byte) (*vaultcontainer.CipherData, error) {
 	authSalt, err := vaultcrypto.RandBytes(16)
 	if err != nil {
-		return nil, errf("cipher data: %w", err)
+		return nil, errf("vault cipher data: failed to generate auth salt: %w", err)
 	}
 
 	authKDF := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithSalt(authSalt))
@@ -498,14 +498,14 @@ func vaultCipherData(password []byte) (*vaultcontainer.CipherData, error) {
 
 	vaultSalt, err := vaultcrypto.RandBytes(16)
 	if err != nil {
-		return nil, errf("cipher data: %w", err)
+		return nil, errf("vault cipher data: failed to generate vault salt: %w", err)
 	}
 
 	vaultKDF := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithSalt(vaultSalt))
 
 	vaultNonce, err := vaultcrypto.RandBytes(12)
 	if err != nil {
-		return nil, errf("cipher data: %w", err)
+		return nil, errf("vault cipher data: failed to generate vault nonce: %w", err)
 	}
 
 	return &vaultcontainer.CipherData{
@@ -526,7 +526,7 @@ func vaultCipherData(password []byte) (*vaultcontainer.CipherData, error) {
 func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 	defer func() {
 		if retErr != nil {
-			retErr = errf("vault open: %w", retErr)
+			retErr = errf("open: %w", retErr)
 			return
 		}
 	}()
@@ -600,7 +600,7 @@ func deriveAESGCM(phc vaultcrypto.Argon2idPHC, password []byte) (*vaultcrypto.AE
 
 	aes, err := vaultcrypto.NewAESGCM(key)
 	if err != nil {
-		return nil, errf("derive aesgsm: %w", err)
+		return nil, errf("derive AES-GCM: %w", err)
 	}
 
 	return aes, nil
@@ -802,12 +802,12 @@ func (vlt *Vault) SecretsByIDs(ctx context.Context, ids ...int) (map[int]vaultdb
 func (vlt *Vault) ShowSecret(ctx context.Context, id int) (string, error) {
 	nonce, ciphertext, err := vlt.db.ShowSecret(ctx, id)
 	if err != nil {
-		return "", errf("secret: %w", err)
+		return "", errf("show secret: %w", err)
 	}
 
 	secret, err := vlt.aesgcm.Open(nonce, ciphertext)
 	if err != nil {
-		return "", errf("secret: %w", err)
+		return "", errf("show secret: %w", err)
 	}
 
 	return string(secret), nil
