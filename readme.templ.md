@@ -54,7 +54,7 @@ make build-dist
 ```
 This packs the `vlt` and `vltd` binaries in `./dist/`.
 
->[!NOTE]
+>[!WARNING]
 > Installation via `go install` is not supported due to a patched vendored dependency.
 
 ## Design Overview
