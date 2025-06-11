@@ -97,10 +97,10 @@ func (o *ShowOptions) Run(ctx context.Context, args ...string) error {
 
 		return o.outputSecret(s)
 	case 0:
-		o.Warnf("no match found.\n")
+		o.Errorf("no match found.\n")
 		return &ShowError{vaulterrors.ErrSearchNoMatch}
 	default:
-		o.Warnf("expecting exactly one match, but found %d.\n\n", count)
+		o.Errorf("expecting exactly one match, but found %d.\n\n", count)
 		printTable(o.ErrOut, matchingSecrets)
 
 		return &ShowError{vaulterrors.ErrAmbiguousSecretMatch}

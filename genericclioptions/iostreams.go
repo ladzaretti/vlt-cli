@@ -67,7 +67,7 @@ func (s IOStreams) Infof(format string, args ...any) {
 	fmt.Fprintf(s.Out, "info: "+format, args...)
 }
 
-// Warnf writes a formatted message to the error stream.
-func (s IOStreams) Warnf(format string, args ...any) {
+// Errorf writes a formatted message to the error stream.
+func (s IOStreams) Errorf(format string, args ...any) {
 	fmt.Fprintf(s.ErrOut, "warn: "+format, args...)
 }

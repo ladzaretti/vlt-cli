@@ -87,7 +87,7 @@ func (o *RotateOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 		o.Debugf("removing temporary directory: %s", dir)
 
 		if err := os.RemoveAll(dir); err != nil {
-			o.Warnf("failure removing dir: %v", err)
+			o.Errorf("failure removing dir: %v", err)
 		}
 	}()
 

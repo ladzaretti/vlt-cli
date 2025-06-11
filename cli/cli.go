@@ -307,7 +307,7 @@ func (o *DefaultVltOptions) postRun(ctx context.Context, cmd string) error {
 	}
 
 	if err := o.vaultOptions.postWriteHook(ctx, o.StdioOptions); err != nil {
-		o.Warnf("post-write hook failed: %v", err)
+		o.Errorf("post-write hook failed: %v", err)
 	}
 
 	return nil

@@ -96,7 +96,7 @@ func (o *SaveOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	}
 
 	if len(o.name) == 0 && len(o.labels) == 0 {
-		o.Warnf("no name or labels provided; use `vlt update` to add metadata later\n")
+		o.Errorf("no name or labels provided; use `vlt update` to add metadata later\n")
 	}
 
 	return o.insertNewSecret(ctx, secret)

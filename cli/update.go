@@ -103,10 +103,10 @@ func (o *UpdateOptions) Run(ctx context.Context, args ...string) (retErr error) 
 	case 1:
 		o.Debugf("found one match.\n")
 	case 0:
-		o.Warnf("no match found.\n")
+		o.Errorf("no match found.\n")
 		return vaulterrors.ErrSearchNoMatch
 	default:
-		o.Warnf("expecting exactly one match, but found %d.\n\n", count)
+		o.Errorf("expecting exactly one match, but found %d.\n\n", count)
 		printTable(o.ErrOut, matchingSecrets)
 
 		return vaulterrors.ErrAmbiguousSecretMatch
@@ -228,10 +228,10 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (ret
 	case 1:
 		o.Debugf("found one match.\n")
 	case 0:
-		o.Warnf("no match found.\n")
+		o.Errorf("no match found.\n")
 		return &UpdateError{vaulterrors.ErrSearchNoMatch}
 	default:
-		o.Warnf("expecting exactly one match, but found %d.\n\n", count)
+		o.Errorf("expecting exactly one match, but found %d.\n\n", count)
 		printTable(o.ErrOut, matchingSecrets)
 
 		return &UpdateError{vaulterrors.ErrAmbiguousSecretMatch}

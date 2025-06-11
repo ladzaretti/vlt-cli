@@ -69,7 +69,7 @@ func RunHook(ctx context.Context, io *StdioOptions, alias string, hook []string)
 
 	defer func() {
 		if retErr != nil {
-			io.Warnf("%s hook failed.\n\n", alias)
+			io.Errorf("%s hook failed.\n\n", alias)
 			return
 		}
 
