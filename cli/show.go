@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/clipboard"
@@ -26,8 +27,9 @@ type ShowOptions struct {
 	*VaultOptions
 
 	search *SearchableOptions
-	stdout bool // stdout controls whether to print the secret to stdout.
-	copy   bool // copy controls whether to copy the secret to the clipboard.
+	stdout bool   // stdout controls whether to print the secret to stdout.
+	copy   bool   // copy controls whether to copy the secret to the clipboard.
+	output string // output controls whether to write secret to a given file.
 }
 
 var _ genericclioptions.CmdOptions = &ShowOptions{}
@@ -68,8 +70,12 @@ func (o *ShowOptions) validateConfigOptions() error {
 		c++
 	}
 
+	if len(o.output) > 0 {
+		c++
+	}
+
 	if c != 1 {
-		return &ShowError{errors.New("either --stdout or --copy-clipboard must be set (but not both)")}
+		return &ShowError{errors.New("exactly one of --stdout, --output, or --copy-clipboard must be set")}
 	}
 
 	return nil
@@ -107,7 +113,7 @@ func (o *ShowOptions) Run(ctx context.Context, args ...string) error {
 	}
 }
 
-func (o *ShowOptions) outputSecret(s string) error {
+func (o *ShowOptions) outputSecret(s []byte) error {
 	if o.stdout {
 		o.Printf("%s", s)
 		return nil
@@ -116,6 +122,20 @@ func (o *ShowOptions) outputSecret(s string) error {
 	if o.copy {
 		o.Debugf("copying secret to clipboard\n")
 		return clipboard.Copy(s)
+	}
+
+	if len(o.output) > 0 {
+		f, err := os.Create(o.output)
+		if err != nil {
+			return err
+		}
+		defer func() { //nolint:wsl
+			_ = f.Close()
+		}()
+
+		if _, err := f.Write(s); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -145,6 +165,9 @@ Use --stdout to print to stdout (unsafe), or --copy-clipboard to copy the value 
   # Show a secret by matching its ID, copy the value to the clipboard
   vlt show --id 42 --copy-clipboard
 
+  # Show a secret by ID and write its value to a file
+  vlt show --id 42 --output secret.file
+
   # Use glob pattern and label filter
   vlt show "*foo*" --label "*bar*" --stdout`,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -157,6 +180,7 @@ Use --stdout to print to stdout (unsafe), or --copy-clipboard to copy the value 
 	cmd.Flags().StringSliceVarP(&o.search.Labels, "label", "", nil, FilterByLabels.Help())
 	cmd.Flags().BoolVarP(&o.stdout, "stdout", "", false, "output the secret to stdout (unsafe)")
 	cmd.Flags().BoolVarP(&o.copy, "copy-clipboard", "c", false, "copy the secret to the clipboard")
+	cmd.Flags().StringVarP(&o.output, "output", "o", "", "export secrets to the specified file path")
 
 	return cmd
 }
