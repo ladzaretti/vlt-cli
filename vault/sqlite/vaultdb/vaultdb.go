@@ -205,7 +205,7 @@ type SecretWithLabels struct {
 	Name       string
 	Nonce      []byte
 	Ciphertext []byte
-	Value      string
+	Value      []byte
 	Labels     []string
 }
 

@@ -16,12 +16,12 @@ func TestVault_New(t *testing.T) {
 		t.Error("Dummy test")
 	}
 
-	v, err := vault.New(t.Context(), "/tmp/.vlt.temp", "password")
+	v, err := vault.New(t.Context(), "/tmp/.vlt.temp", []byte("password"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = v.InsertNewSecret(t.Context(), "name", "secret", []string{"label1", "label2"})
+	_, err = v.InsertNewSecret(t.Context(), "name", []byte("secret"), []string{"label1", "label2"})
 	if err != nil {
 		t.Error(err)
 	}
@@ -38,7 +38,7 @@ func TestVault_New(t *testing.T) {
 		t.Error(err)
 	}
 
-	v, err = vault.Open(t.Context(), "/tmp/.vlt.temp", vault.WithPassword("password"))
+	v, err = vault.Open(t.Context(), "/tmp/.vlt.temp", vault.WithPassword([]byte("password")))
 	if err != nil {
 		t.Error(err)
 	}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"golang.org/x/term"
@@ -13,16 +14,6 @@ import (
 
 func IsPipedOrRedirected(fi os.FileInfo) bool {
 	return (fi.Mode() & os.ModeCharDevice) == 0
-}
-
-// ReadTrim reads and trims input from r.
-func ReadTrim(r io.Reader) (string, error) {
-	bs, err := io.ReadAll(r)
-	if err != nil {
-		return "", fmt.Errorf("read trim: %w", err)
-	}
-
-	return strings.TrimSpace(string(bs)), nil
 }
 
 // PromptRead prompts via w for input and reads it from r until a newline is entered.
@@ -41,34 +32,34 @@ func PromptRead(w io.Writer, r io.Reader, prompt string, a ...any) (string, erro
 
 // PromptReadSecure prompts the user via w for input and securely reads it
 // from the given file descriptor.
-func PromptReadSecure(w io.Writer, fd int, prompt string, a ...any) (string, error) {
+func PromptReadSecure(w io.Writer, fd int, prompt string, a ...any) ([]byte, error) {
 	fmt.Fprintf(w, prompt, a...)
 	defer fmt.Println()
 
 	bs, err := term.ReadPassword(fd)
 	if err != nil {
-		return "", fmt.Errorf("term read password: %w", err)
+		return nil, fmt.Errorf("term read password: %w", err)
 	}
 
-	return strings.TrimSpace(string(bs)), nil
+	return bs, nil
 }
 
 // PromptPassword prompts the user to enter the current password securely.
 // The prompt is displayed via the writer w, and input is read from the
 // given file descriptor fd.
-func PromptPassword(w io.Writer, fd int) (string, error) {
+func PromptPassword(w io.Writer, fd int) ([]byte, error) {
 	return PromptReadSecure(w, fd, "Enter password: ")
 }
 
 // PromptNewPassword prompts the user to enter a new password of the specified length.
 // The prompt is displayed via the writer w, and input is read from the given file descriptor fd.
-func PromptNewPassword(w io.Writer, fd int, length int) (string, error) {
-	pass := ""
+func PromptNewPassword(w io.Writer, fd int, length int) ([]byte, error) {
+	var pass []byte
 
 	for len(pass) < length {
 		p, err := PromptReadSecure(w, fd, "Enter new password: ")
 		if err != nil {
-			return "", fmt.Errorf("prompt new password: %w", err)
+			return nil, fmt.Errorf("prompt new password: %w", err)
 		}
 
 		pass = p
@@ -80,12 +71,12 @@ func PromptNewPassword(w io.Writer, fd int, length int) (string, error) {
 
 	pass2, err := PromptReadSecure(w, fd, "Retype password: ")
 	if err != nil {
-		return "", fmt.Errorf("prompt new password: %w", err)
+		return nil, fmt.Errorf("prompt new password: %w", err)
 	}
 
-	if pass2 != pass {
+	if slices.Compare(pass2, pass) != 0 {
 		fmt.Fprintln(w, "Passwords do not match. Please try again.")
-		return "", errors.New("prompt new password: passwords do not match")
+		return nil, errors.New("prompt new password: passwords do not match")
 	}
 
 	return pass, nil

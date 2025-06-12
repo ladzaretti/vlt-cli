@@ -43,13 +43,13 @@ func SetDefault(c *Clipboard) {
 
 // Copy writes the given string to the system clipboard
 // using the default command.
-func Copy(s string) error {
-	return clipboard.Copy(s)
+func Copy(bs []byte) error {
+	return clipboard.Copy(bs)
 }
 
 // Paste reads and returns the current contents of the system clipboard
 // using the default command.
-func Paste() (string, error) {
+func Paste() ([]byte, error) {
 	return clipboard.Paste()
 }
 
@@ -106,7 +106,7 @@ func WithPasteCmd(pasteCmd []string) Opt {
 }
 
 // Copy writes the provided string to the clipboard.
-func (c *Clipboard) Copy(s string) error {
+func (c *Clipboard) Copy(bs []byte) error {
 	if _, err := exec.LookPath(c.copy.cmd); err != nil {
 		return &ConfigurationError{"copy-clipboard", err}
 	}
@@ -123,7 +123,7 @@ func (c *Clipboard) Copy(s string) error {
 		return err
 	}
 
-	if _, err := in.Write([]byte(s)); err != nil {
+	if _, err := in.Write(bs); err != nil {
 		return err
 	}
 
@@ -135,9 +135,9 @@ func (c *Clipboard) Copy(s string) error {
 }
 
 // Paste reads and returns the current contents of the system clipboard.
-func (c *Clipboard) Paste() (string, error) {
+func (c *Clipboard) Paste() ([]byte, error) {
 	if _, err := exec.LookPath(c.paste.cmd); err != nil {
-		return "", &ConfigurationError{"paste-clipboard", err}
+		return nil, &ConfigurationError{"paste-clipboard", err}
 	}
 
 	//nolint:gosec // G204: safe, user config on local CLI tool
@@ -145,8 +145,8 @@ func (c *Clipboard) Paste() (string, error) {
 
 	out, err := cmd.Output()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(out), err
+	return out, err
 }

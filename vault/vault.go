@@ -68,7 +68,7 @@ type session struct {
 // config options for creating a [Vault] instance.
 type config struct {
 	snapshot []byte // snapshot is the serialized vault container database to restore from, if set.
-	password string
+	password []byte
 	session
 }
 
@@ -86,7 +86,7 @@ func WithSnapshot(snapshot []byte) Option {
 }
 
 // WithPassword sets the password used to unlock the vault.
-func WithPassword(p string) Option {
+func WithPassword(p []byte) Option {
 	return func(c *config) {
 		c.password = p
 	}
@@ -119,7 +119,7 @@ func newVault(path string, nonce []byte, aesgcm *vaultcrypto.AESGCM, vch *vaultC
 // but is not used unless explicitly restored.
 //
 // On success, the function returns a [*Vault] ready for use.
-func New(ctx context.Context, path string, password string, opts ...Option) (vlt *Vault, retErr error) {
+func New(ctx context.Context, path string, password []byte, opts ...Option) (vlt *Vault, retErr error) {
 	config := &config{}
 	for _, opt := range opts {
 		opt(config)
@@ -138,7 +138,7 @@ func New(ctx context.Context, path string, password string, opts ...Option) (vlt
 		}
 	}()
 
-	cipherdata, err := vaultCipherData([]byte(password))
+	cipherdata, err := vaultCipherData(password)
 	if err != nil {
 		return nil, fmt.Errorf("vault.new: failed to create vault cipher data: %w", err)
 	}
@@ -148,7 +148,7 @@ func New(ctx context.Context, path string, password string, opts ...Option) (vlt
 		return nil, fmt.Errorf("vault.new: failed to decode KDF PHC: %w", err)
 	}
 
-	aes, err := deriveAESGCM(phc, []byte(password))
+	aes, err := deriveAESGCM(phc, password)
 	if err != nil {
 		return nil, fmt.Errorf("vault.new: failed to derive AES-GCM key: %w", err)
 	}
@@ -178,7 +178,7 @@ func New(ctx context.Context, path string, password string, opts ...Option) (vlt
 
 // Login verifies the password and derives the AES-GCM key
 // for the vault at the given path.
-func Login(ctx context.Context, path string, password string, opts ...Option) (key []byte, nonce []byte, _ error) {
+func Login(ctx context.Context, path string, password []byte, opts ...Option) (key []byte, nonce []byte, _ error) {
 	config := &config{}
 	for _, opt := range opts {
 		opt(config)
@@ -197,7 +197,7 @@ func Login(ctx context.Context, path string, password string, opts ...Option) (k
 		return nil, nil, fmt.Errorf("vault.login: failed to select vault from container database: %w", err)
 	}
 
-	if err := verifyPassword([]byte(password), cipherdata.AuthPHC); err != nil {
+	if err := verifyPassword(password, cipherdata.AuthPHC); err != nil {
 		return nil, nil, errf("vault.login: password verification failed: %w", err)
 	}
 
@@ -207,7 +207,7 @@ func Login(ctx context.Context, path string, password string, opts ...Option) (k
 	}
 
 	kdf := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithPHC(phc))
-	key = kdf.Derive([]byte(password))
+	key = kdf.Derive(password)
 
 	return key, cipherdata.Nonce, nil
 }
@@ -279,8 +279,8 @@ func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr 
 	return vlt, nil
 }
 
-func deriveAESFromPassword(cipherdata *vaultcontainer.CipherData, password string) (*vaultcrypto.AESGCM, error) {
-	if err := verifyPassword([]byte(password), cipherdata.AuthPHC); err != nil {
+func deriveAESFromPassword(cipherdata *vaultcontainer.CipherData, password []byte) (*vaultcrypto.AESGCM, error) {
+	if err := verifyPassword(password, cipherdata.AuthPHC); err != nil {
 		return nil, errf("derive AES from password: password verification failed: %w", err)
 	}
 
@@ -289,7 +289,7 @@ func deriveAESFromPassword(cipherdata *vaultcontainer.CipherData, password strin
 		return nil, errf("derive AES from password: failed to decode KDF PHC: %w", err)
 	}
 
-	aes, err := deriveAESGCM(phc, []byte(password))
+	aes, err := deriveAESGCM(phc, password)
 	if err != nil {
 		return nil, errf("derive AES from password: failed to derive AES-GCM key: %w", err)
 	}
@@ -635,7 +635,7 @@ func newInsertConfig(opts ...InsertOpt) *insertConfig {
 // into the vault using a transaction.
 //
 // Returns the ID of the inserted secret or an error if the operation fails.
-func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret string, labels []string, opts ...InsertOpt) (id int, retErr error) {
+func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret []byte, labels []string, opts ...InsertOpt) (id int, retErr error) {
 	insertConfig := newInsertConfig(opts...)
 
 	tx, err := vlt.conn.BeginTx(ctx, &sql.TxOptions{})
@@ -654,7 +654,7 @@ func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret strin
 		return 0, errf("insert new secret: %w", err)
 	}
 
-	ciphertext, err := vlt.aesgcm.Seal(nonce, []byte(secret))
+	ciphertext, err := vlt.aesgcm.Seal(nonce, secret)
 	if err != nil {
 		if err2 := tx.Rollback(); err2 != nil {
 			return 0, errf("insert new secret: rollback: %w", errors.Join(err2, err))
@@ -744,13 +744,13 @@ func (vlt *Vault) UpdateSecretMetadata(ctx context.Context, id int, newName stri
 }
 
 // UpdateSecret updates the secret value of the secret identified by id.
-func (vlt *Vault) UpdateSecret(ctx context.Context, id int, secret string) (int64, error) {
+func (vlt *Vault) UpdateSecret(ctx context.Context, id int, secret []byte) (int64, error) {
 	nonce, err := vaultcrypto.RandBytes(12)
 	if err != nil {
 		return 0, errf("update secret: %w", err)
 	}
 
-	ciphertext, err := vlt.aesgcm.Seal(nonce, []byte(secret))
+	ciphertext, err := vlt.aesgcm.Seal(nonce, secret)
 	if err != nil {
 		return 0, errf("update secret: %w", err)
 	}
@@ -771,7 +771,7 @@ func (vlt *Vault) ExportSecrets(ctx context.Context) (map[int]vaultdb.SecretWith
 			return nil, err
 		}
 
-		s.Value = string(decrypted)
+		s.Value = decrypted
 
 		encryptedSecrets[id] = s
 	}
@@ -799,18 +799,18 @@ func (vlt *Vault) SecretsByIDs(ctx context.Context, ids ...int) (map[int]vaultdb
 }
 
 // ShowSecret returns the decrypted ciphertext associated with the given secret ID.
-func (vlt *Vault) ShowSecret(ctx context.Context, id int) (string, error) {
+func (vlt *Vault) ShowSecret(ctx context.Context, id int) ([]byte, error) {
 	nonce, ciphertext, err := vlt.db.ShowSecret(ctx, id)
 	if err != nil {
-		return "", errf("show secret: %w", err)
+		return nil, errf("show secret: %w", err)
 	}
 
 	secret, err := vlt.aesgcm.Open(nonce, ciphertext)
 	if err != nil {
-		return "", errf("show secret: %w", err)
+		return nil, errf("show secret: %w", err)
 	}
 
-	return string(secret), nil
+	return secret, nil
 }
 
 // DeleteSecretsByIDs deletes secrets by their IDs, along with their labels.

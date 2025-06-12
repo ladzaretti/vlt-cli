@@ -46,7 +46,7 @@ func NewWithAlphabet(n int, alphabet string) (string, error) {
 }
 
 // NewWithPolicy generates a random password that satisfies the given [PasswordPolicy].
-func NewWithPolicy(p PasswordPolicy) (string, error) {
+func NewWithPolicy(p PasswordPolicy) ([]byte, error) {
 	res := ""
 
 	policy := []struct {
@@ -66,7 +66,7 @@ func NewWithPolicy(p PasswordPolicy) (string, error) {
 
 		s, err := generateRandomString(p.count, p.charset)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		res += s
@@ -75,7 +75,7 @@ func NewWithPolicy(p PasswordPolicy) (string, error) {
 	if missing := p.MinLength - len(res); missing > 0 {
 		extra, err := generateRandomString(missing, defaultAlphabet)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		res += extra
@@ -83,10 +83,10 @@ func NewWithPolicy(p PasswordPolicy) (string, error) {
 
 	bs := []byte(res)
 	if err := shuffle(bs); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(bs), nil
+	return bs, nil
 }
 
 // generateRandomString returns a cryptographically secure random string using the given alphabet.

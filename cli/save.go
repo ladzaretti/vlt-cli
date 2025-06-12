@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
@@ -62,7 +63,7 @@ func (o *SaveOptions) Validate() error {
 }
 
 func (o *SaveOptions) Run(ctx context.Context, _ ...string) (retErr error) {
-	secret := ""
+	var secret []byte
 
 	// ensure error is wrapped and output is printed if everything succeeded
 	defer func() {
@@ -84,7 +85,7 @@ func (o *SaveOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 		return fmt.Errorf("read secret non-interactive: %w", err)
 	}
 
-	secret = strings.TrimSpace(s)
+	secret = s
 
 	err = o.readInteractive(&secret)
 	if err != nil {
@@ -102,7 +103,7 @@ func (o *SaveOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	return o.insertNewSecret(ctx, secret)
 }
 
-func (o *SaveOptions) readSecretNonInteractive() (string, error) {
+func (o *SaveOptions) readSecretNonInteractive() ([]byte, error) {
 	if o.generate {
 		return randstring.NewWithPolicy(randstring.DefaultPasswordPolicy)
 	}
@@ -114,13 +115,13 @@ func (o *SaveOptions) readSecretNonInteractive() (string, error) {
 
 	if o.StdinIsPiped {
 		o.Debugf("reading non-interactive secret")
-		return input.ReadTrim(o.In)
+		return io.ReadAll(o.In)
 	}
 
-	return "", nil
+	return nil, nil
 }
 
-func (o *SaveOptions) readInteractive(secret *string) error {
+func (o *SaveOptions) readInteractive(secret *[]byte) error {
 	if o.StdinIsPiped || o.nonInteractive {
 		return nil
 	}
@@ -159,11 +160,11 @@ func (o *SaveOptions) promptRead(prompt string, a ...any) (string, error) {
 	return input.PromptRead(o.Out, o.In, prompt, a...)
 }
 
-func (o *SaveOptions) promptReadSecure(prompt string, a ...any) (string, error) {
+func (o *SaveOptions) promptReadSecure(prompt string, a ...any) ([]byte, error) {
 	return input.PromptReadSecure(o.Out, int(o.In.Fd()), prompt, a...)
 }
 
-func (o *SaveOptions) insertNewSecret(ctx context.Context, s string) error {
+func (o *SaveOptions) insertNewSecret(ctx context.Context, s []byte) error {
 	n, err := o.vault.InsertNewSecret(ctx, o.name, s, o.labels)
 	if err != nil {
 		return err
@@ -176,7 +177,7 @@ func (o *SaveOptions) insertNewSecret(ctx context.Context, s string) error {
 	return nil
 }
 
-func (o *SaveOptions) outputSecret(s string) error {
+func (o *SaveOptions) outputSecret(s []byte) error {
 	if o.output {
 		o.Infof("%s", s)
 		return nil
@@ -247,7 +248,10 @@ Note 2:
 
   # Read a secret from clipboard
   vlt save --name foo --paste-clipboard
- 
+
+  # Read a secret from file
+  vlt save --name foo < secret.file
+
   # Save a named secret with a piped value (non-interactive)
   vlt generate -u3 -l3 -d3 -s3 | vlt save --name foo -N`,
 		Run: func(cmd *cobra.Command, _ []string) {

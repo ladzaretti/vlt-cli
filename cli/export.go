@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/csv"
+	"encoding/hex"
 	"errors"
 	"io"
 	"os"
@@ -93,7 +94,7 @@ func (o *ExportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 
 	for _, secret := range secrets {
 		labels := strings.Join(secret.Labels, ",")
-		if err := w.Write([]string{secret.Name, secret.Value, labels}); err != nil {
+		if err := w.Write([]string{secret.Name, hex.EncodeToString(secret.Value), labels}); err != nil {
 			return err
 		}
 	}

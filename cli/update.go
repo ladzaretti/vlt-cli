@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
+	"io"
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/clipboard"
@@ -237,7 +237,10 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (ret
 		return &UpdateError{vaulterrors.ErrAmbiguousSecretMatch}
 	}
 
-	id, secret := matchingSecrets[0].id, ""
+	var (
+		secret []byte
+		id     = matchingSecrets[0].id
+	)
 
 	// ensure error is wrapped and output is printed if everything succeeded
 	defer func() {
@@ -259,7 +262,7 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (ret
 		return fmt.Errorf("read secret non-interactive: %w", err)
 	}
 
-	secret = strings.TrimSpace(s)
+	secret = s
 
 	if !o.nonInteractive && len(secret) == 0 {
 		s, err := o.promptReadSecure("Enter new secret value: ")
@@ -277,7 +280,7 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (ret
 	return o.UpdateSecretValue(ctx, id, secret)
 }
 
-func (o *UpdateSecretValueOptions) readSecretNonInteractive() (string, error) {
+func (o *UpdateSecretValueOptions) readSecretNonInteractive() ([]byte, error) {
 	if o.generate {
 		return randstring.NewWithPolicy(randstring.DefaultPasswordPolicy)
 	}
@@ -289,31 +292,31 @@ func (o *UpdateSecretValueOptions) readSecretNonInteractive() (string, error) {
 
 	if o.StdinIsPiped {
 		o.Debugf("reading non-interactive secret")
-		return input.ReadTrim(o.In)
+		return io.ReadAll(o.In)
 	}
 
-	return "", nil
+	return nil, nil
 }
 
-func (o *UpdateSecretValueOptions) outputSecret(s string) error {
+func (o *UpdateSecretValueOptions) outputSecret(bs []byte) error {
 	if o.output {
-		o.Infof("%s", s)
+		o.Infof("%s", bs)
 		return nil
 	}
 
 	if o.copy {
 		o.Debugf("copying secret to clipboard\n")
-		return clipboard.Copy(s)
+		return clipboard.Copy(bs)
 	}
 
 	return nil
 }
 
-func (o *UpdateSecretValueOptions) promptReadSecure(prompt string, a ...any) (string, error) {
+func (o *UpdateSecretValueOptions) promptReadSecure(prompt string, a ...any) ([]byte, error) {
 	return input.PromptReadSecure(o.Out, int(o.In.Fd()), prompt, a...)
 }
 
-func (o *UpdateSecretValueOptions) UpdateSecretValue(ctx context.Context, id int, secret string) error {
+func (o *UpdateSecretValueOptions) UpdateSecretValue(ctx context.Context, id int, secret []byte) error {
 	n, err := o.vault.UpdateSecret(ctx, id, secret)
 	if err != nil {
 		return err

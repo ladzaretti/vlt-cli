@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -65,19 +66,26 @@ func (VltImporter) validate(record []string) error {
 	return nil
 }
 
+// convert converts a CSV record into a secret.
+//
+// It assumes that the input record has already been validated, so it may panic on
+// out-of-bounds access or invalid hex data.
 func (VltImporter) convert(record []string) secret {
-	// assumes validate has run.
-	// panicking on out-of-bounds access is acceptable in this context.
+	s, err := hex.DecodeString(record[1])
+	if err != nil {
+		panic(err)
+	}
+
 	return secret{
 		name:   record[0],
-		secret: record[1],
+		secret: s,
 		labels: strings.Split(record[2], ","),
 	}
 }
 
 type secret struct {
 	name   string
-	secret string
+	secret []byte
 	labels []string
 }
 
@@ -125,7 +133,7 @@ func (ic CustomImporter) convert(record []string) secret {
 	// safe to dereference since validate is expected to run first.
 	s := secret{
 		name:   record[*ic.NameIndex],
-		secret: record[*ic.SecretIndex],
+		secret: []byte(record[*ic.SecretIndex]),
 		labels: make([]string, 0, len(ic.LabelIndexes)),
 	}
 

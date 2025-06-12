@@ -133,25 +133,25 @@ func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOpti
 	return nil
 }
 
-func (o *VaultOptions) login(ctx context.Context, io *genericclioptions.StdioOptions, sessionClient *vaultdaemon.SessionClient, sessionDuration time.Duration) (string, error) {
+func (o *VaultOptions) login(ctx context.Context, io *genericclioptions.StdioOptions, sessionClient *vaultdaemon.SessionClient, sessionDuration time.Duration) ([]byte, error) {
 	password, err := input.PromptReadSecure(io.Out, int(io.In.Fd()), "[vlt] Password for %q:", o.path)
 	if err != nil {
-		return "", fmt.Errorf("prompt password: %v", err)
+		return nil, fmt.Errorf("prompt password: %v", err)
 	}
 
 	if len(password) == 0 {
-		return "", vaulterrors.ErrEmptyPassword
+		return nil, vaulterrors.ErrEmptyPassword
 	}
 
 	key, nonce, err := vault.Login(ctx, o.path, password)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	_ = sessionClient.Login(ctx, o.path, key, nonce, sessionDuration)
 
 	if err := o.postLoginHook(ctx, io); err != nil {
-		return "", fmt.Errorf("post-login hook: %w", err)
+		return nil, fmt.Errorf("post-login hook: %w", err)
 	}
 
 	return password, nil
