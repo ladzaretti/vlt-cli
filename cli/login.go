@@ -81,7 +81,7 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 		return vaulterrors.ErrEmptyPassword
 	}
 
-	key, nonce, err := vault.Login(ctx, path, password)
+	key, nonce, err := vault.Login(ctx, path, password, vault.WithMaxHistorySnapshots(o.maxHistorySnapshots))
 	if err != nil {
 		return err
 	}

@@ -13,12 +13,14 @@ import (
 // This database stores the cryptographic data required to perform operations
 // such as encrypting or decrypting the vault and its secrets.
 type VaultContainer struct {
-	db types.DBTX
+	db                  types.DBTX
+	maxHistorySnapshots int
 }
 
-func New(db types.DBTX) *VaultContainer {
+func New(db types.DBTX, historySnapshotLimit int) *VaultContainer {
 	return &VaultContainer{
-		db: db,
+		db:                  db,
+		maxHistorySnapshots: historySnapshotLimit,
 	}
 }
 
@@ -129,11 +131,14 @@ const pruneHistory = `
 			ORDER BY
 				created_at DESC
 			LIMIT
-				3
+				?
 		);
 `
 
+// TODO1: vacuum subcommand
+// TODO2: test snapshot limit
+
 func (vc *VaultContainer) pruneVaultHistory(ctx context.Context) error {
-	_, err := vc.db.ExecContext(ctx, pruneHistory)
+	_, err := vc.db.ExecContext(ctx, pruneHistory, vc.maxHistorySnapshots)
 	return err
 }

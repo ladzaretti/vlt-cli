@@ -40,3 +40,7 @@ func SliceWithout[T comparable](s []T, excluded ...T) []T {
 
 	return result
 }
+
+func Ptr[T any](v T) *T {
+	return &v
+}

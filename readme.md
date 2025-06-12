@@ -143,6 +143,8 @@ The optional configuration file can be generated using `vlt config generate` com
 # path = ''
 # How long a session lasts before requiring login again (default: '1m')
 # session_duration = ''
+# Maximum number of historical vault snapshots to keep (default: 3, 0 disables history)
+# max_history_snapshots = 3
 
 # Clipboard configuration: Both copy and paste commands must be either both set or both unset.
 [clipboard]

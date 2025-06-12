@@ -12,6 +12,7 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/util"
 
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
@@ -38,12 +39,13 @@ type Flags struct {
 //
 //nolint:tagliatelle
 type ResolvedConfig struct {
-	SessionDuration Duration `json:"session_duration,omitempty"`
-	VaultPath       string   `json:"vault_path,omitempty"`
-	CopyCmd         []string `json:"copy_cmd,omitempty"`
-	PasteCmd        []string `json:"paste_cmd,omitempty"`
-	PostLoginCmd    []string `json:"post_login_cmd,omitempty"`
-	PostWriteCmd    []string `json:"post_write_cmd,omitempty"`
+	SessionDuration     Duration `json:"session_duration,omitempty"`
+	VaultPath           string   `json:"vault_path,omitempty"`
+	MaxHistorySnapshots int      `json:"max_history_snapshots"`
+	CopyCmd             []string `json:"copy_cmd,omitempty"`
+	PasteCmd            []string `json:"paste_cmd,omitempty"`
+	PostLoginCmd        []string `json:"post_login_cmd,omitempty"`
+	PostWriteCmd        []string `json:"post_write_cmd,omitempty"`
 }
 
 type Duration time.Duration
@@ -83,6 +85,11 @@ func (o *ConfigOptions) resolve() error {
 	o.resolved.PostLoginCmd = o.fileConfig.Hooks.PostLoginCmd
 	o.resolved.PostWriteCmd = o.fileConfig.Hooks.PostWriteCmd
 	o.resolved.VaultPath = cmp.Or(o.cliFlags.vaultPath, o.fileConfig.Vault.Path)
+
+	o.resolved.MaxHistorySnapshots = defaultMaxHistorySnapshots
+	if o.fileConfig.Vault.MaxHistorySnapshots != nil {
+		o.resolved.MaxHistorySnapshots = *o.fileConfig.Vault.MaxHistorySnapshots
+	}
 
 	if len(o.resolved.VaultPath) == 0 {
 		vaultPath, err := defaultVaultPath()
@@ -197,7 +204,10 @@ func (*generateConfigOptions) Complete() error { return nil }
 func (*generateConfigOptions) Validate() error { return nil }
 
 func (o *generateConfigOptions) Run(context.Context, ...string) error {
-	out, err := toml.Marshal(newFileConfig())
+	c := newFileConfig()
+	c.Vault.MaxHistorySnapshots = util.Ptr(defaultMaxHistorySnapshots)
+
+	out, err := toml.Marshal(c)
 	clierror.Check(err)
 
 	o.Printf("%s", string(out))

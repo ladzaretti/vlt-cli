@@ -32,6 +32,9 @@ const (
 
 	// defaultSessionDuration is the fallback for session duration.
 	defaultSessionDuration = "1m"
+
+	// defaultMaxHistorySnapshots is the default number of vault snapshots to keep.
+	defaultMaxHistorySnapshots = 3
 )
 
 var (
@@ -62,11 +65,13 @@ type vaultHooks struct {
 }
 
 type VaultOptions struct {
-	path           string
-	vault          *vault.Vault
-	hooks          vaultHooks
-	disableHooks   bool
-	nonInteractive bool
+	path                string
+	vault               *vault.Vault
+	hooks               vaultHooks
+	disableHooks        bool
+	nonInteractive      bool
+	sessionDuration     time.Duration
+	maxHistorySnapshots int
 }
 
 var _ genericclioptions.BaseOptions = &VaultOptions{}
@@ -90,7 +95,7 @@ func (*VaultOptions) Complete() error { return nil }
 func (*VaultOptions) Validate() error { return nil }
 
 // Run initializes the Vault object from the specified existing file.
-func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOptions, sessionClient *vaultdaemon.SessionClient, sessionDuration time.Duration) error {
+func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOptions, sessionClient *vaultdaemon.SessionClient) error {
 	exists, err := o.vaultExists()
 	if err != nil {
 		return err
@@ -100,7 +105,7 @@ func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOpti
 		return fmt.Errorf("%w: %s", vaulterrors.ErrVaultFileNotFound, o.path)
 	}
 
-	opts := []vault.Option{}
+	opts := []vault.Option{vault.WithMaxHistorySnapshots(o.maxHistorySnapshots)}
 
 	// nil-safe: sessionClient methods handle nil receivers safely.
 	key, nonce, err := sessionClient.GetSessionKey(ctx, o.path)
@@ -113,7 +118,7 @@ func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOpti
 			return vaulterrors.ErrInteractiveLoginDisabled
 		}
 
-		password, err := o.login(ctx, io, sessionClient, sessionDuration)
+		password, err := o.login(ctx, io, sessionClient)
 		if err != nil {
 			return err
 		}
@@ -133,7 +138,7 @@ func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOpti
 	return nil
 }
 
-func (o *VaultOptions) login(ctx context.Context, io *genericclioptions.StdioOptions, sessionClient *vaultdaemon.SessionClient, sessionDuration time.Duration) ([]byte, error) {
+func (o *VaultOptions) login(ctx context.Context, io *genericclioptions.StdioOptions, sessionClient *vaultdaemon.SessionClient) ([]byte, error) {
 	password, err := input.PromptReadSecure(io.Out, int(io.In.Fd()), "[vlt] Password for %q:", o.path)
 	if err != nil {
 		return nil, fmt.Errorf("prompt password: %v", err)
@@ -143,12 +148,12 @@ func (o *VaultOptions) login(ctx context.Context, io *genericclioptions.StdioOpt
 		return nil, vaulterrors.ErrEmptyPassword
 	}
 
-	key, nonce, err := vault.Login(ctx, o.path, password)
+	key, nonce, err := vault.Login(ctx, o.path, password, vault.WithMaxHistorySnapshots(o.maxHistorySnapshots))
 	if err != nil {
 		return nil, err
 	}
 
-	_ = sessionClient.Login(ctx, o.path, key, nonce, sessionDuration)
+	_ = sessionClient.Login(ctx, o.path, key, nonce, o.sessionDuration)
 
 	if err := o.postLoginHook(ctx, io); err != nil {
 		return nil, fmt.Errorf("post-login hook: %w", err)
@@ -244,6 +249,8 @@ func (o *DefaultVltOptions) complete() error {
 		clipboard.SetDefault(clipboard.New(opts...))
 	}
 
+	o.vaultOptions.maxHistorySnapshots = o.configOptions.resolved.MaxHistorySnapshots
+	o.vaultOptions.sessionDuration = time.Duration(o.configOptions.resolved.SessionDuration)
 	o.vaultOptions.path = o.configOptions.resolved.VaultPath
 
 	o.vaultOptions.hooks = vaultHooks{
@@ -286,9 +293,8 @@ func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 	}
 
 	o.sessionClient = c
-	sessionDuration := time.Duration(o.configOptions.resolved.SessionDuration)
 
-	return o.vaultOptions.Open(ctx, o.StdioOptions, o.sessionClient, sessionDuration)
+	return o.vaultOptions.Open(ctx, o.StdioOptions, o.sessionClient)
 }
 
 func (o *DefaultVltOptions) postRun(ctx context.Context, cmd string) error {

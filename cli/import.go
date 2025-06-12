@@ -15,6 +15,7 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/util"
 
 	"github.com/spf13/cobra"
 )
@@ -38,15 +39,15 @@ const (
 var (
 	// firefoxImporter is a custom password importer for exported Firefox password data.
 	firefoxImporter = CustomImporter{
-		NameIndex:    ptr(1),
-		SecretIndex:  ptr(2),
+		NameIndex:    util.Ptr(1),
+		SecretIndex:  util.Ptr(2),
 		LabelIndexes: []int{0, 3, 4},
 	}
 
 	// chromiumImporter is a custom password importer for exported Chromium password data.
 	chromiumImporter = CustomImporter{
-		NameIndex:    ptr(2),
-		SecretIndex:  ptr(3),
+		NameIndex:    util.Ptr(2),
+		SecretIndex:  util.Ptr(3),
 		LabelIndexes: []int{0, 1, 4},
 	}
 
@@ -159,10 +160,6 @@ func (ic CustomImporter) String() string {
 	}
 
 	return fmt.Sprintf(`{"name": %s, "secret": %s, "labels": %v}`, name, secret, ic.LabelIndexes)
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }
 
 type ImportOptions struct {

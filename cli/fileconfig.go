@@ -48,8 +48,9 @@ func newFileConfig() *FileConfig {
 //
 //nolint:tagalign,tagliatelle
 type VaultConfig struct {
-	Path            string `toml:"path,commented" comment:"Vlt database path (default: '~/.vlt' if not set)" json:"path,omitempty"`
-	SessionDuration string `toml:"session_duration,commented" comment:"How long a session lasts before requiring login again (default: '1m')" json:"session_duration,omitempty"`
+	Path                string `toml:"path,commented" comment:"Vlt database path (default: '~/.vlt' if not set)" json:"path,omitempty"`
+	SessionDuration     string `toml:"session_duration,commented" comment:"How long a session lasts before requiring login again (default: '1m')" json:"session_duration,omitempty"`
+	MaxHistorySnapshots *int   `toml:"max_history_snapshots,commented" comment:"Maximum number of historical vault snapshots to keep (default: 3, 0 disables history)" json:"max_history_snapshots,omitempty"`
 }
 
 // ClipboardConfig defines commands for clipboard ops.
@@ -135,6 +136,10 @@ func (c *FileConfig) validate() error {
 
 	if c.Hooks.PostWriteCmd != nil && len(c.Hooks.PostWriteCmd) == 0 {
 		return &ConfigError{Opt: "hooks.post_write_cmd", Err: errors.New("defined but contains no values")}
+	}
+
+	if c.Vault.MaxHistorySnapshots != nil && *c.Vault.MaxHistorySnapshots < 0 {
+		return &ConfigError{Opt: "vault.max_history_snapshots", Err: errors.New("must be zero or a positive integer")}
 	}
 
 	return nil

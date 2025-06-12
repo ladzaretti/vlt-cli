@@ -156,7 +156,7 @@ func (o *RotateOptions) openDestVault(ctx context.Context, path string) (*vault.
 		return nil, fmt.Errorf("create: %w", err)
 	}
 
-	return vault.New(ctx, path, password)
+	return vault.New(ctx, path, password, vault.WithMaxHistorySnapshots(o.vaultOptions.maxHistorySnapshots))
 }
 
 // NewCmdRotate creates the create cobra command.

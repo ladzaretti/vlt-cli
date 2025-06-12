@@ -67,21 +67,29 @@ type session struct {
 
 // config options for creating a [Vault] instance.
 type config struct {
-	snapshot []byte // snapshot is the serialized vault container database to restore from, if set.
-	password []byte
 	session
+
+	// password to unlock the vault
+	password []byte
+
+	// maxHistorySnapshots defines how many historical snapshots to keep in the database.
+	// A snapshot is taken each time the vault is modified.
+	maxHistorySnapshots int
+
+	// containerSnapshot is the serialized vault container database to restore from, if set.
+	containerSnapshot []byte
 }
 
 type Option func(*config)
 
-// WithSnapshot sets a snapshot to restore the [Vault] from.
+// WithContainerSnapshot sets a snapshot to restore the [vaultcontainer.VaultContainer] from.
 // obtained via [Vault.Serialize].
-func WithSnapshot(snapshot []byte) Option {
+func WithContainerSnapshot(snapshot []byte) Option {
 	copied := make([]byte, len(snapshot))
 	copy(copied, snapshot) // copied to avoid side effects from the underlying sqlite3 driver.
 
 	return func(c *config) {
-		c.snapshot = copied
+		c.containerSnapshot = copied
 	}
 }
 
@@ -98,6 +106,14 @@ func WithSessionKey(key, nonce []byte) Option {
 	return func(c *config) {
 		c.key = key
 		c.nonce = nonce
+	}
+}
+
+// WithHistorySnapshotLimit sets the number of
+// historical snapshots to keep.
+func WithMaxHistorySnapshots(n int) Option {
+	return func(c *config) {
+		c.maxHistorySnapshots = n
 	}
 }
 
@@ -125,7 +141,7 @@ func New(ctx context.Context, path string, password []byte, opts ...Option) (vlt
 		opt(config)
 	}
 
-	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.snapshot)
+	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.containerSnapshot, config.maxHistorySnapshots)
 	if err != nil {
 		return nil, fmt.Errorf("vault.new: failed to initialize vault container handle: %w", err)
 	}
@@ -184,7 +200,7 @@ func Login(ctx context.Context, path string, password []byte, opts ...Option) (k
 		opt(config)
 	}
 
-	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.snapshot)
+	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.containerSnapshot, config.maxHistorySnapshots)
 	if err != nil {
 		return nil, nil, errf("vault.login: failed to initialize vault container handle: %w", err)
 	}
@@ -223,7 +239,7 @@ func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr 
 		opt(config)
 	}
 
-	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.snapshot)
+	vaultContainerHandle, err := newVaultContainerHandle(ctx, path, config.containerSnapshot, config.maxHistorySnapshots)
 	if err != nil {
 		return nil, errf("vault.open: failed to initialize vault container handle: %w", err)
 	}
@@ -427,7 +443,7 @@ func (h *vaultContainerHandle) cleanup() error {
 	return executeCleanup(h.cleanupFuncs)
 }
 
-func newVaultContainerHandle(ctx context.Context, path string, snapshot []byte) (_ *vaultContainerHandle, retErr error) {
+func newVaultContainerHandle(ctx context.Context, path string, containerSnapshot []byte, maxHistorySnapshots int) (_ *vaultContainerHandle, retErr error) {
 	handle := &vaultContainerHandle{}
 	defer func() { //nolint:wsl
 		if retErr != nil {
@@ -465,8 +481,8 @@ func newVaultContainerHandle(ctx context.Context, path string, snapshot []byte) 
 		return nil, errf("new vault container handle: failed to get database connection: %w", err)
 	}
 
-	if snapshot != nil {
-		if err := Deserialize(conn, snapshot); err != nil {
+	if containerSnapshot != nil {
+		if err := Deserialize(conn, containerSnapshot); err != nil {
 			return nil, errf("new vault container handle: failed to deserialize snapshot: %w", err)
 		}
 	}
@@ -479,7 +495,7 @@ func newVaultContainerHandle(ctx context.Context, path string, snapshot []byte) 
 	}
 
 	handle.conn = conn
-	handle.db = vaultcontainer.New(db)
+	handle.db = vaultcontainer.New(db, maxHistorySnapshots)
 
 	return handle, nil
 }
