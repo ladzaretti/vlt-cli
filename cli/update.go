@@ -346,10 +346,10 @@ func NewCmdUpdateSecretValue(defaults *DefaultVltOptions) *cobra.Command {
 The update is performed only if exactly one secret matches the provided criteria.
 
 Accepts new value via prompt, clipboard, random generation, or piped input.`,
-		Example: ` # Update value using prompt (interactive)
+		Example: `  # Update value using prompt (interactive)
   vlt update secret --id 42
 
-  # Update value that matches a wildcard with a generated secret
+  # Update value matching a glob pattern with a generated secret
   vlt update secret "*foo*" --generate
 
   # Update value with a generated secret
