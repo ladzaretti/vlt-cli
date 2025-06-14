@@ -378,6 +378,7 @@ Environment Variables:
 	cmd.AddCommand(NewCmdUpdate(o))
 	cmd.AddCommand(NewCmdImport(o))
 	cmd.AddCommand(NewCmdExport(o))
+	cmd.AddCommand(NewCmdVacuum(o))
 	cmd.AddCommand(NewCmdLogin(o))
 	cmd.AddCommand(NewCmdSave(o))
 	cmd.AddCommand(NewCmdFind(o))

@@ -120,6 +120,11 @@ func (vc *VaultContainer) SelectVault(ctx context.Context) (*CipherData, error) 
 	return &data, nil
 }
 
+func (vc *VaultContainer) Vacuum(ctx context.Context) error {
+	_, err := vc.db.ExecContext(ctx, "VACUUM;")
+	return err
+}
+
 const pruneHistory = `
 	DELETE FROM vault_history
 	WHERE
@@ -134,9 +139,6 @@ const pruneHistory = `
 				?
 		);
 `
-
-// TODO1: vacuum subcommand
-// TODO2: test snapshot limit
 
 func (vc *VaultContainer) pruneVaultHistory(ctx context.Context) error {
 	_, err := vc.db.ExecContext(ctx, pruneHistory, vc.maxHistorySnapshots)

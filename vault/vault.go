@@ -50,15 +50,15 @@ type cleanupFunc func() error
 //
 // A user-supplied password is used to derive cryptographic keys via Argon2id.
 type Vault struct {
-	Path                 string                // Path to the underlying SQLite file.
-	aesgcm               *vaultcrypto.AESGCM   // aesgcm is used for cryptographic ops on the vault data.
-	nonce                []byte                // nonce is the cryptographic nonce used to encrypt the serialized vault database.
-	conn                 *sql.Conn             // conn is the connection to the vault database, it is used for serializing and deserializing.
-	db                   *vaultdb.VaultDB      // db provides an interface to the in-memory database holding the actual user data.
-	buf                  []byte                // buf holds the backing in-memory SQLite database. retained to prevent GC while the DB is active, released in [Vault.Close].
-	vaultContainerHandle *vaultContainerHandle // vaultContainerHandle connects to the vault container database.
-	cleanupFuncs         []cleanupFunc         // cleanupFuncs contains deferred cleanup functions.
-	closeOnce            sync.Once             // closeOnce protects [Vault.Close].
+	Path            string                // Path to the underlying SQLite file.
+	aesgcm          *vaultcrypto.AESGCM   // aesgcm is used for cryptographic ops on the vault data.
+	nonce           []byte                // nonce is the cryptographic nonce used to encrypt the serialized vault database.
+	conn            *sql.Conn             // conn is the connection to the vault database, it is used for serializing and deserializing.
+	db              *vaultdb.VaultDB      // db provides an interface to the in-memory database holding the actual user data.
+	buf             []byte                // buf holds the backing in-memory SQLite database. retained to prevent GC while the DB is active, released in [Vault.Close].
+	containerHandle *vaultContainerHandle // vaultContainerHandle connects to the vault container database.
+	cleanupFuncs    []cleanupFunc         // cleanupFuncs contains deferred cleanup functions.
+	closeOnce       sync.Once             // closeOnce protects [Vault.Close].
 }
 
 type session struct {
@@ -119,10 +119,10 @@ func WithMaxHistorySnapshots(n int) Option {
 
 func newVault(path string, nonce []byte, aesgcm *vaultcrypto.AESGCM, vch *vaultContainerHandle) *Vault {
 	return &Vault{
-		Path:                 path,
-		nonce:                nonce,
-		aesgcm:               aesgcm,
-		vaultContainerHandle: vch,
+		Path:            path,
+		nonce:           nonce,
+		aesgcm:          aesgcm,
+		containerHandle: vch,
 	}
 }
 
@@ -356,7 +356,7 @@ func (vlt *Vault) seal(ctx context.Context) error {
 		return errf("seal: failed to seal data with AES-GCM: %w", err)
 	}
 
-	if err := vlt.vaultContainerHandle.db.UpdateVault(ctx, ciphervault); err != nil {
+	if err := vlt.containerHandle.db.UpdateVault(ctx, ciphervault); err != nil {
 		return errf("seal: failed to update vault in the vault container database: %w", err)
 	}
 
@@ -375,7 +375,7 @@ func (vlt *Vault) Serialize(ctx context.Context) ([]byte, error) {
 		return nil, errf("serialize: sealing vault failed: %w", err)
 	}
 
-	return Serialize(vlt.vaultContainerHandle.conn)
+	return Serialize(vlt.containerHandle.conn)
 }
 
 func (vlt *Vault) cleanup() error {
@@ -405,6 +405,14 @@ func verifyPassword(password []byte, phc string) error {
 	}
 
 	return nil
+}
+
+// RegisterCleanup registers a cleanup function f to run
+// when the vault is closed via [Vault.Close].
+//
+// cleanup functions are called in the order they were added (FIFO).
+func (vlt *Vault) RegisterCleanup(f func() error) {
+	vlt.cleanupFuncs = append(vlt.cleanupFuncs, f)
 }
 
 // executeCleanup executes cleanup functions in reverse order,
@@ -552,7 +560,7 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 		conn *sql.Conn
 	)
 
-	vlt.cleanupFuncs = append(vlt.cleanupFuncs, func() error {
+	vlt.RegisterCleanup(func() error {
 		// prefer conn.Close if available to avoid double-closing
 		// the shared driver connection.
 		if conn != nil {
@@ -832,4 +840,14 @@ func (vlt *Vault) ShowSecret(ctx context.Context, id int) ([]byte, error) {
 // DeleteSecretsByIDs deletes secrets by their IDs, along with their labels.
 func (vlt *Vault) DeleteSecretsByIDs(ctx context.Context, ids ...int) (int64, error) {
 	return vlt.db.DeleteSecretsByIDs(ctx, ids)
+}
+
+// Vacuum performs a VACUUM operation on the vault database.
+func (vlt *Vault) Vacuum(ctx context.Context) error {
+	return vlt.db.Vacuum(ctx)
+}
+
+// VacuumContainer performs a VACUUM on the vault container database.
+func (vlt *Vault) VacuumContainer(ctx context.Context) error {
+	return vlt.containerHandle.db.Vacuum(ctx)
 }

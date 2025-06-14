@@ -388,6 +388,11 @@ func (s *VaultDB) DeleteSecretsByIDs(ctx context.Context, ids []int) (int64, err
 	return n, nil
 }
 
+func (s *VaultDB) Vacuum(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, "VACUUM;")
+	return err
+}
+
 func reduce(secrets []secretWithLabelRow) map[int]SecretWithLabels {
 	m := make(map[int]SecretWithLabels)
 
