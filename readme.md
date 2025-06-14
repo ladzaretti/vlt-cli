@@ -125,6 +125,7 @@ Available Commands:
   save        Save a new secret
   show        Retrieve a secret value
   update      Update secret data or metadata (subcommands available)
+  vacuum      Reclaims unused space in the database
   version     Show version
 
 Flags:
