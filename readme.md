@@ -28,6 +28,7 @@
   - [Tips and Tricks](#tips-and-tricks)
     - [Interactive Secret Selection](#interactive-secret-selection)
     - [Sync to a Git Repository](#sync-to-a-git-repository)
+  - [Demo](#demo)
 
 ## Supported Platforms
 
@@ -233,3 +234,11 @@ $ cat ~/.vlt.toml | grep -A3 hooks
 post_login_cmd=['fish','-c','vault_git pull']
 post_write_cmd=['fish','-c',"vault_git add -u && vault_git commit -m \"$(date +'%Y-%m-%d %H:%M:%S')\" && vault_git push"]
 ```
+
+### Demo
+<details>
+  <summary>Play</summary>
+
+  ![demo](./assets/demo.gif)
+
+</details>

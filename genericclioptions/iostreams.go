@@ -58,16 +58,16 @@ func (s IOStreams) Printf(format string, args ...any) {
 // if Verbose is enabled.
 func (s IOStreams) Debugf(format string, args ...any) {
 	if s.Verbose {
-		fmt.Fprintf(s.ErrOut, "debug: "+format, args...)
+		fmt.Fprintf(s.ErrOut, "DEBUG "+format, args...)
 	}
 }
 
 // Infof writes a formatted message to the standard output stream.
 func (s IOStreams) Infof(format string, args ...any) {
-	fmt.Fprintf(s.Out, "info: "+format, args...)
+	fmt.Fprintf(s.Out, "INFO "+format, args...)
 }
 
 // Errorf writes a formatted message to the error stream.
 func (s IOStreams) Errorf(format string, args ...any) {
-	fmt.Fprintf(s.ErrOut, "warn: "+format, args...)
+	fmt.Fprintf(s.ErrOut, "WARN "+format, args...)
 }
