@@ -113,7 +113,6 @@ Usage:
   vlt [command]
 
 Available Commands:
-  completion  Generate the autocompletion script for the specified shell
   config      Resolve and inspect the active vlt configuration (subcommands available)
   create      Initialize a new vault
   export      Export secrets to a file or stdout

@@ -325,7 +325,10 @@ func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string)
 	clierror.Check(err)
 
 	cmd := &cobra.Command{
-		Use:   "vlt",
+		Use: "vlt",
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true,
+		},
 		Short: "Command-line in-memory secret manager",
 		Long: `vlt is an encrypted in-memory command-line secret manager.
 
