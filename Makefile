@@ -4,7 +4,7 @@
 VERSION?=0.0.0
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_VERSION ?= v2.1.6
+GOLANGCI_VERSION ?= v2.2.1
 TEST_ARGS=-v -timeout 40s
 
 VLT_LDFLAGS= -X 'github.com/ladzaretti/vlt-cli/cli.Version=$(VERSION)'
