@@ -67,7 +67,11 @@ func (o *CreateOptions) Run(ctx context.Context, _ ...string) error {
 		return fmt.Errorf("create: %w", err)
 	}
 
-	if err := vlt.Close(ctx); err != nil {
+	if err := vlt.Seal(ctx); err != nil {
+		return fmt.Errorf("create: %w", err)
+	}
+
+	if err := vlt.Close(); err != nil {
 		return fmt.Errorf("create: %w", err)
 	}
 

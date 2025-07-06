@@ -52,7 +52,7 @@ type cleanupFunc func() error
 type Vault struct {
 	Path            string                // Path to the underlying SQLite file.
 	aesgcm          *vaultcrypto.AESGCM   // aesgcm is used for cryptographic ops on the vault data.
-	nonce           []byte                // nonce is the cryptographic nonce used to encrypt the serialized vault database.
+	decryptionNonce []byte                // decryptionNonce is the cryptographic nonce used to decrypt the serialized vault database.
 	conn            *sql.Conn             // conn is the connection to the vault database, it is used for serializing and deserializing.
 	db              *vaultdb.VaultDB      // db provides an interface to the in-memory database holding the actual user data.
 	buf             []byte                // buf holds the backing in-memory SQLite database. retained to prevent GC while the DB is active, released in [Vault.Close].
@@ -120,7 +120,7 @@ func WithMaxHistorySnapshots(n int) Option {
 func newVault(path string, nonce []byte, aesgcm *vaultcrypto.AESGCM, vch *vaultContainerHandle) *Vault {
 	return &Vault{
 		Path:            path,
-		nonce:           nonce,
+		decryptionNonce: nonce,
 		aesgcm:          aesgcm,
 		containerHandle: vch,
 	}
@@ -313,50 +313,45 @@ func deriveAESFromPassword(cipherdata *vaultcontainer.CipherData, password []byt
 	return aes, nil
 }
 
-// Close serializes the in-memory SQLite database, encrypts it, and stores the
-// resulting ciphertext in the vault container database.
+// Close releases resources associated with the in-memory SQLite database.
 //
 // It is safe to call Close multiple times; only the first call has an effect.
 //
 // After calling Close, the in-memory database buffer [Vault.buf] is eligible for gc
 // and should not be used again unless reinitialized.
-func (vlt *Vault) Close(ctx context.Context) (retErr error) {
+func (vlt *Vault) Close() (retErr error) {
 	if vlt == nil {
 		return nil
 	}
 
 	vlt.closeOnce.Do(func() {
-		retErr = vlt.close(ctx)
+		retErr = vlt.cleanup()
 	})
 
 	return retErr
 }
 
-//nolint:revive
-func (vlt *Vault) close(ctx context.Context) error {
-	if err := vlt.seal(ctx); err != nil {
-		return err
-	}
-
-	vlt.buf = nil // release backing buffer to allow garbage collection.
-
-	return vlt.cleanup()
-}
-
-// seal serializes the in-memory SQLite database, encrypts it, and stores the
-// resulting ciphertext using the vault container.
-func (vlt *Vault) seal(ctx context.Context) error {
+// Seal serializes the in-memory SQLite database, encrypts it with a new nonce,
+// and persists the resulting ciphertext along with the new nonce to the vault container database.
+//
+// Call this method whenever changes to the in-memory vault need to be saved.
+func (vlt *Vault) Seal(ctx context.Context) error {
 	serialized, err := Serialize(vlt.conn)
 	if err != nil {
 		return errf("seal: failed to serialize vault connection: %w", err)
 	}
 
-	ciphervault, err := vlt.aesgcm.Seal(vlt.nonce, serialized)
+	nonce, err := vaultcrypto.RandBytes(vaultcrypto.NonceSizeGCM)
+	if err != nil {
+		return errf("seal: failed to generate random nonce: %w", err)
+	}
+
+	ciphervault, err := vlt.aesgcm.Seal(nonce, serialized)
 	if err != nil {
 		return errf("seal: failed to seal data with AES-GCM: %w", err)
 	}
 
-	if err := vlt.containerHandle.db.UpdateVault(ctx, ciphervault); err != nil {
+	if err := vlt.containerHandle.db.UpdateVault(ctx, nonce, ciphervault); err != nil {
 		return errf("seal: failed to update vault in the vault container database: %w", err)
 	}
 
@@ -371,7 +366,7 @@ func (vlt *Vault) seal(ctx context.Context) error {
 // This is primarily used to produce a reusable snapshot of the vault container state
 // for testing.
 func (vlt *Vault) Serialize(ctx context.Context) ([]byte, error) {
-	if err := vlt.seal(ctx); err != nil {
+	if err := vlt.Seal(ctx); err != nil {
 		return nil, errf("serialize: sealing vault failed: %w", err)
 	}
 
@@ -382,6 +377,8 @@ func (vlt *Vault) cleanup() error {
 	if vlt == nil {
 		return nil
 	}
+
+	vlt.buf = nil // release backing buffer to allow garbage collection.
 
 	if err := executeCleanup(vlt.cleanupFuncs); err != nil {
 		return errf("cleanup: cleanup failed: %w", err)
@@ -511,7 +508,7 @@ func newVaultContainerHandle(ctx context.Context, path string, containerSnapshot
 // vaultCipherData generates [vaultcontainer.CipherData] containing salts, nonce,
 // and derived authentication hash used for password authentication and vault encryption.
 func vaultCipherData(password []byte) (*vaultcontainer.CipherData, error) {
-	authSalt, err := vaultcrypto.RandBytes(16)
+	authSalt, err := vaultcrypto.RandBytes(vaultcrypto.SaltSize)
 	if err != nil {
 		return nil, errf("vault cipher data: failed to generate auth salt: %w", err)
 	}
@@ -520,14 +517,14 @@ func vaultCipherData(password []byte) (*vaultcontainer.CipherData, error) {
 	authPHC := authKDF.PHC()
 	authPHC.Hash = authKDF.Derive(password)
 
-	vaultSalt, err := vaultcrypto.RandBytes(16)
+	vaultSalt, err := vaultcrypto.RandBytes(vaultcrypto.SaltSize)
 	if err != nil {
 		return nil, errf("vault cipher data: failed to generate vault salt: %w", err)
 	}
 
 	vaultKDF := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithSalt(vaultSalt))
 
-	vaultNonce, err := vaultcrypto.RandBytes(12)
+	vaultNonce, err := vaultcrypto.RandBytes(vaultcrypto.NonceSizeGCM)
 	if err != nil {
 		return nil, errf("vault cipher data: failed to generate vault nonce: %w", err)
 	}
@@ -589,7 +586,7 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 	}
 
 	if ciphervault != nil {
-		decrypted, err := vlt.aesgcm.Open(vlt.nonce, ciphervault)
+		decrypted, err := vlt.aesgcm.Open(vlt.decryptionNonce, ciphervault)
 		if err != nil {
 			return err
 		}
@@ -669,7 +666,7 @@ func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret []byt
 
 	storeTx := vlt.db.WithTx(tx)
 
-	nonce, err := vaultcrypto.RandBytes(12)
+	nonce, err := vaultcrypto.RandBytes(vaultcrypto.NonceSizeGCM)
 	if err != nil {
 		if err2 := tx.Rollback(); err2 != nil {
 			return 0, errf("insert new secret: rollback: %w", errors.Join(err2, err))
@@ -769,7 +766,7 @@ func (vlt *Vault) UpdateSecretMetadata(ctx context.Context, id int, newName stri
 
 // UpdateSecret updates the secret value of the secret identified by id.
 func (vlt *Vault) UpdateSecret(ctx context.Context, id int, secret []byte) (int64, error) {
-	nonce, err := vaultcrypto.RandBytes(12)
+	nonce, err := vaultcrypto.RandBytes(vaultcrypto.NonceSizeGCM)
 	if err != nil {
 		return 0, errf("update secret: %w", err)
 	}

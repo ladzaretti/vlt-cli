@@ -71,7 +71,7 @@ func (o *RotateOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 		return err
 	}
 
-	err = srcVault.Close(ctx)
+	err = srcVault.Close()
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func (o *RotateOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 		return err
 	}
 	defer func() { //nolint:wsl
-		retErr = errors.Join(retErr, destVault.Close(ctx))
+		retErr = errors.Join(retErr, destVault.Close())
 	}()
 
 	i := 0
@@ -111,7 +111,11 @@ func (o *RotateOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 
 	o.Debugf("number of secrets rotated: %d", i)
 
-	if err := destVault.Close(ctx); err != nil {
+	if err := destVault.Seal(ctx); err != nil {
+		return fmt.Errorf("create: %w", err)
+	}
+
+	if err := destVault.Close(); err != nil {
 		return err
 	}
 

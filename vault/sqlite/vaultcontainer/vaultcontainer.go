@@ -73,18 +73,19 @@ func (vc *VaultContainer) InsertNewVault(ctx context.Context, auth string, kdf s
 const updateVault = `
 	UPDATE vault_container
 	SET
-		vault_encrypted = $1,
-		checksum = $2,
+		nonce = $1,
+		vault_encrypted = $2,
+		checksum = $3,
 		updated_at = CURRENT_TIMESTAMP
 	WHERE
 		id = 0
-		AND checksum <> $2;
+		AND checksum <> $3;
 `
 
-func (vc *VaultContainer) UpdateVault(ctx context.Context, ciphervault []byte) error {
+func (vc *VaultContainer) UpdateVault(ctx context.Context, nonce, ciphervault []byte) error {
 	//nolint:gosec // in this context, SHA-1 is for change detection, not security.
 	checksum := sha1.Sum(ciphervault)
-	_, err := vc.db.ExecContext(ctx, updateVault, ciphervault, checksum[:])
+	_, err := vc.db.ExecContext(ctx, updateVault, nonce, ciphervault, checksum[:])
 
 	defer func() {
 		_ = vc.pruneVaultHistory(ctx)
