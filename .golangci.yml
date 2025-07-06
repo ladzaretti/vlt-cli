@@ -133,6 +133,11 @@ linters:
           disabled: true
         - name: package-comments
           disabled: true
+        - name: var-naming
+          arguments:
+            - []
+            - []
+            - - skipPackageNameChecks: true
     wsl:
       allow-cuddle-used-in-block: true
       force-err-cuddling: true

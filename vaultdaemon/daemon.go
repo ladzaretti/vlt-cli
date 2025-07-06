@@ -27,7 +27,7 @@ var socketPath = fmt.Sprintf("/run/user/%d/vlt.sock", os.Getuid())
 func Run() error {
 	log.SetPrefix("[vltd] ")
 
-	log.Printf("daemon started")
+	log.Print("daemon started")
 
 	if socketInUse(socketPath) {
 		return fmt.Errorf("socket already in use: %v", socketPath)
@@ -72,12 +72,12 @@ func Run() error {
 			return
 		}
 
-		log.Printf("grpc server stopped")
+		log.Print("grpc server stopped")
 	}()
 
 	<-ctx.Done()
 
-	log.Printf("received shutdown signal: shutting down...")
+	log.Print("received shutdown signal: shutting down...")
 
 	srv.Stop()
 	handler.stopAll()

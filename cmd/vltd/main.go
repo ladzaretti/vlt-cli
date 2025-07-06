@@ -41,7 +41,7 @@ func main() {
 	version := flag.Bool("version", false, "Show version")
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), `vltd - background daemon for the 'vlt' cli.
+		_, _ = fmt.Fprint(flag.CommandLine.Output(), `vltd - background daemon for the 'vlt' cli.
 		
 Usage: vltd [options]
 
@@ -50,8 +50,10 @@ Runs over a UNIX socket at /run/user/$UID/vlt.sock and takes no arguments.
 
 Options:
 `)
+
 		flag.PrintDefaults()
 	}
+
 	flag.Parse()
 
 	if *help {
