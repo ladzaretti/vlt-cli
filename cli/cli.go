@@ -55,8 +55,15 @@ var (
 		preRunSkipCommands...,
 	)
 
-	// postWriteHookCommands lists commands that trigger post-write hooks.
-	postWriteHookCommands = []string{"import", "remove", "save", "update", "rotate"}
+	// persistRequiredCommands lists commands that modify the in-memory vault state,
+	// requiring subsequent persistence to the on-disk vault container.
+	persistRequiredCommands = []string{
+		"import",
+		"remove",
+		"save",
+		"update",
+		"rotate",
+	}
 )
 
 type vaultHooks struct {
@@ -297,19 +304,27 @@ func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 	return o.vaultOptions.Open(ctx, o.StdioOptions, o.sessionClient)
 }
 
-func (o *DefaultVltOptions) postRun(ctx context.Context, cmd string) error {
+func (o *DefaultVltOptions) postRun(ctx context.Context, cmd string) (retErr error) {
 	if slices.Contains(postRunSkipCommands, cmd) {
 		return nil
 	}
 
-	if err := o.vaultOptions.vault.Close(ctx); err != nil {
-		return fmt.Errorf("post-run: %w", err)
+	defer func() {
+		if err := o.vaultOptions.vault.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("post-run: %w", err))
+		}
+
+		if err := o.sessionClient.Close(); err != nil {
+			o.Errorf("post-run: session client close failed: %v", err)
+		}
+	}()
+
+	if !slices.Contains(persistRequiredCommands, cmd) {
+		return nil
 	}
 
-	_ = o.sessionClient.Close()
-
-	if !slices.Contains(postWriteHookCommands, cmd) {
-		return nil
+	if err := o.vaultOptions.vault.Seal(ctx); err != nil {
+		return fmt.Errorf("post-run: %w", err)
 	}
 
 	if err := o.vaultOptions.postWriteHook(ctx, o.StdioOptions); err != nil {
