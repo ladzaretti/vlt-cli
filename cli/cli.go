@@ -63,6 +63,7 @@ var (
 		"save",
 		"update",
 		"rotate",
+		"secret", // vlt update secret
 	}
 )
 
