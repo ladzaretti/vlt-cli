@@ -4,11 +4,11 @@
     Instead, edit 'readme.templ.md' and run the script.
 -->
 <!-- omit in toc -->
-# vlt — an encrypted in-memory secret manager for the terminal
+# vlt - A secure command-line tool for managing secrets in your terminal.
 ![Static Badge](https://img.shields.io/badge/status-in--development-orange)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ladzaretti/vlt-cli)](https://goreportcard.com/report/github.com/ladzaretti/vlt-cli)
 
-`vlt` is a secure command-line tool for storing and managing secrets in an encrypted, in-memory vault.
+`vlt` provides secure, local management of your sensitive information, ensuring your secrets remain encrypted at rest and are only briefly decrypted in memory when accessed.
 
 <!-- omit in toc -->
 ## Table of Content
@@ -105,10 +105,19 @@ graph LR
 ## Usage
 ```console
 $ vlt --help
-vlt is an encrypted in-memory command-line secret manager.
+Name:
+  vlt - A secure command-line tool for managing secrets in your terminal.
+
+Description:
+  User secrets are stored in a fully encrypted, serialized SQLite vault on disk.
+
+  The encrypted vault is only decrypted into memory during a session, and individual secrets
+  are decrypted on demand. Decrypted values are ephemeral and cleared from memory immediately after use.
+
+  The vault file is never written to disk in plaintext. 
 
 Environment Variables:
-    VLT_CONFIG_PATH: overrides the default config path: "~/.vlt.toml".
+  VLT_CONFIG_PATH - overrides the default config path: "~/.vlt.toml".
 
 Usage:
   vlt [command]
@@ -128,7 +137,7 @@ Available Commands:
   save        Save a new secret
   show        Retrieve a secret value
   update      Update secret data or metadata (subcommands available)
-  vacuum      Reclaims unused space in the database
+  vacuum      Reclaim unused space in the database
   version     Show version
 
 Flags:

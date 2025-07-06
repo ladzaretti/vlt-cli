@@ -345,11 +345,19 @@ func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string)
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
 		},
-		Short: "Command-line in-memory secret manager",
-		Long: `vlt is an encrypted in-memory command-line secret manager.
+		Long: `Name:
+  vlt - A secure command-line tool for managing secrets in your terminal.
+
+Description:
+  User secrets are stored in a fully encrypted, serialized SQLite vault on disk.
+
+  The encrypted vault is only decrypted into memory during a session, and individual secrets
+  are decrypted on demand. Decrypted values are ephemeral and cleared from memory immediately after use.
+
+  The vault file is never written to disk in plaintext. 
 
 Environment Variables:
-    VLT_CONFIG_PATH: overrides the default config path: "~/.vlt.toml".`,
+  VLT_CONFIG_PATH - overrides the default config path: "~/.vlt.toml".`,
 		SilenceUsage: true,
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			if slices.Contains(preRunSkipCommands, cmd.Name()) {

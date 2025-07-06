@@ -54,8 +54,8 @@ func NewCmdVacuum(defaults *DefaultVltOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "vacuum",
-		Short: "Reclaims unused space in the database",
-		Long: `Reclaims unused space in the database.
+		Short: "Reclaim unused space in the database",
+		Long: `Reclaim unused space in the database.
 
 This is typically unnecessary, as SQLite reuses space internally.  
 However, after deleting large blobs, vacuuming can help shrink the database file.`,

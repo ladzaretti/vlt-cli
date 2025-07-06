@@ -1,7 +1,16 @@
-vlt is an encrypted in-memory command-line secret manager.
+Name:
+  vlt - A secure command-line tool for managing secrets in your terminal.
+
+Description:
+  User secrets are stored in a fully encrypted, serialized SQLite vault on disk.
+
+  The encrypted vault is only decrypted into memory during a session, and individual secrets
+  are decrypted on demand. Decrypted values are ephemeral and cleared from memory immediately after use.
+
+  The vault file is never written to disk in plaintext. 
 
 Environment Variables:
-    VLT_CONFIG_PATH: overrides the default config path: "~/.vlt.toml".
+  VLT_CONFIG_PATH - overrides the default config path: "~/.vlt.toml".
 
 Usage:
   vlt [command]
@@ -21,7 +30,7 @@ Available Commands:
   save        Save a new secret
   show        Retrieve a secret value
   update      Update secret data or metadata (subcommands available)
-  vacuum      Reclaims unused space in the database
+  vacuum      Reclaim unused space in the database
   version     Show version
 
 Flags:
