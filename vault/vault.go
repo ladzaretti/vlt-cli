@@ -341,7 +341,7 @@ func (vlt *Vault) Seal(ctx context.Context) error {
 		return errf("seal: failed to serialize vault connection: %w", err)
 	}
 
-	nonce, err := vaultcrypto.RandBytes(12)
+	nonce, err := vaultcrypto.RandBytes(vaultcrypto.NonceSizeGCM)
 	if err != nil {
 		return errf("seal: failed to generate random nonce: %w", err)
 	}
@@ -508,7 +508,7 @@ func newVaultContainerHandle(ctx context.Context, path string, containerSnapshot
 // vaultCipherData generates [vaultcontainer.CipherData] containing salts, nonce,
 // and derived authentication hash used for password authentication and vault encryption.
 func vaultCipherData(password []byte) (*vaultcontainer.CipherData, error) {
-	authSalt, err := vaultcrypto.RandBytes(16)
+	authSalt, err := vaultcrypto.RandBytes(vaultcrypto.SaltSize)
 	if err != nil {
 		return nil, errf("vault cipher data: failed to generate auth salt: %w", err)
 	}
@@ -517,14 +517,14 @@ func vaultCipherData(password []byte) (*vaultcontainer.CipherData, error) {
 	authPHC := authKDF.PHC()
 	authPHC.Hash = authKDF.Derive(password)
 
-	vaultSalt, err := vaultcrypto.RandBytes(16)
+	vaultSalt, err := vaultcrypto.RandBytes(vaultcrypto.SaltSize)
 	if err != nil {
 		return nil, errf("vault cipher data: failed to generate vault salt: %w", err)
 	}
 
 	vaultKDF := vaultcrypto.NewArgon2idKDF(vaultcrypto.WithSalt(vaultSalt))
 
-	vaultNonce, err := vaultcrypto.RandBytes(12)
+	vaultNonce, err := vaultcrypto.RandBytes(vaultcrypto.NonceSizeGCM)
 	if err != nil {
 		return nil, errf("vault cipher data: failed to generate vault nonce: %w", err)
 	}
@@ -666,7 +666,7 @@ func (vlt *Vault) InsertNewSecret(ctx context.Context, name string, secret []byt
 
 	storeTx := vlt.db.WithTx(tx)
 
-	nonce, err := vaultcrypto.RandBytes(12)
+	nonce, err := vaultcrypto.RandBytes(vaultcrypto.NonceSizeGCM)
 	if err != nil {
 		if err2 := tx.Rollback(); err2 != nil {
 			return 0, errf("insert new secret: rollback: %w", errors.Join(err2, err))
@@ -766,7 +766,7 @@ func (vlt *Vault) UpdateSecretMetadata(ctx context.Context, id int, newName stri
 
 // UpdateSecret updates the secret value of the secret identified by id.
 func (vlt *Vault) UpdateSecret(ctx context.Context, id int, secret []byte) (int64, error) {
-	nonce, err := vaultcrypto.RandBytes(12)
+	nonce, err := vaultcrypto.RandBytes(vaultcrypto.NonceSizeGCM)
 	if err != nil {
 		return 0, errf("update secret: %w", err)
 	}

@@ -5,6 +5,14 @@ import (
 	"io"
 )
 
+const (
+	// SaltSize is the standard byte length for cryptographic salts.
+	SaltSize = 16
+
+	// NonceSizeGCM is the recommended byte length for nonces used with AES-GCM.
+	NonceSizeGCM = 12
+)
+
 // RandBytes generates a slice of cryptographically secure
 // random bytes of the specified length.
 func RandBytes(length int) ([]byte, error) {
