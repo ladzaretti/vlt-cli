@@ -16,12 +16,12 @@ func TestSerialization(t *testing.T) {
 
 	// Create a table and insert data
 	//
-	_, err = db.Exec(`CREATE TABLE foo (msg TEXT NOT NULL);`)
+	_, err = db.ExecContext(t.Context(), `CREATE TABLE foo (msg TEXT NOT NULL);`)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = db.Exec(`INSERT INTO foo VALUES ('bar');`)
+	_, err = db.ExecContext(t.Context(), `INSERT INTO foo VALUES ('bar');`)
 	if err != nil {
 		t.Fatal(err)
 	}
