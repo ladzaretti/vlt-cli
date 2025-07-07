@@ -137,6 +137,7 @@ func (o *RotateOptions) openSrcVault(ctx context.Context) (*vault.Vault, error) 
 	if err != nil {
 		return nil, fmt.Errorf("prompt password: %v", err)
 	}
+	defer clear(password)
 
 	if len(password) == 0 {
 		return nil, vaulterrors.ErrEmptyPassword
@@ -159,6 +160,7 @@ func (o *RotateOptions) openDestVault(ctx context.Context, path string) (*vault.
 	if err != nil {
 		return nil, fmt.Errorf("create: %w", err)
 	}
+	defer clear(password)
 
 	return vault.New(ctx, path, password, vault.WithMaxHistorySnapshots(o.vaultOptions.maxHistorySnapshots))
 }

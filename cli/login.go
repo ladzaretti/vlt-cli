@@ -77,6 +77,8 @@ func (o *LoginOptions) Run(ctx context.Context, _ ...string) error {
 		return fmt.Errorf("prompt password: %v", err)
 	}
 
+	defer clear(password)
+
 	if len(password) == 0 {
 		return vaulterrors.ErrEmptyPassword
 	}

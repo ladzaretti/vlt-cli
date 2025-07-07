@@ -165,6 +165,8 @@ func (o *SaveOptions) promptReadSecure(prompt string, a ...any) ([]byte, error) 
 }
 
 func (o *SaveOptions) insertNewSecret(ctx context.Context, s []byte) error {
+	defer clear(s)
+
 	n, err := o.vault.InsertNewSecret(ctx, o.name, s, o.labels)
 	if err != nil {
 		return err

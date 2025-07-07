@@ -87,6 +87,7 @@ func (o *ExportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	if err != nil {
 		return err
 	}
+	defer clear(secrets)
 
 	if err := w.Write(strings.Split(vltExportHeader, ",")); err != nil {
 		return err
@@ -97,6 +98,8 @@ func (o *ExportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 		if err := w.Write([]string{secret.Name, hex.EncodeToString(secret.Value), labels}); err != nil {
 			return err
 		}
+
+		clear(secret.Value)
 	}
 
 	return nil

@@ -250,6 +250,9 @@ func (o *ImportOptions) importSecrets(ctx context.Context, in io.Reader) error {
 			return err
 		}
 
+		clear(record)
+		clear(s.secret)
+
 		i++
 	}
 

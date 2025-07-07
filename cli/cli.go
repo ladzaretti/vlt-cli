@@ -13,7 +13,7 @@ import (
 	"github.com/ladzaretti/vlt-cli/clipboard"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
-	"github.com/ladzaretti/vlt-cli/util"
+	cmdutil "github.com/ladzaretti/vlt-cli/util"
 	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaultdaemon"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
@@ -51,7 +51,7 @@ var (
 
 	// postRunSkipCommands are commands that skips the post-run execution.
 	postRunSkipCommands = append(
-		util.SliceWithout(preRunPartialCommands, "rotate"),
+		cmdutil.SliceWithout(preRunPartialCommands, "rotate"),
 		preRunSkipCommands...,
 	)
 
@@ -130,6 +130,7 @@ func (o *VaultOptions) Open(ctx context.Context, io *genericclioptions.StdioOpti
 		if err != nil {
 			return err
 		}
+		defer clear(password)
 
 		opts = append(opts, vault.WithPassword(password))
 	} else {

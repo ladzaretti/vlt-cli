@@ -317,6 +317,8 @@ func (o *UpdateSecretValueOptions) promptReadSecure(prompt string, a ...any) ([]
 }
 
 func (o *UpdateSecretValueOptions) UpdateSecretValue(ctx context.Context, id int, secret []byte) error {
+	defer clear(secret)
+
 	n, err := o.vault.UpdateSecret(ctx, id, secret)
 	if err != nil {
 		return err

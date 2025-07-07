@@ -114,6 +114,8 @@ func (o *ShowOptions) Run(ctx context.Context, args ...string) error {
 }
 
 func (o *ShowOptions) outputSecret(s []byte) error {
+	defer clear(s)
+
 	if o.stdout {
 		o.Printf("%s", s)
 		return nil

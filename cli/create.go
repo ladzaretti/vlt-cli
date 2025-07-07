@@ -59,6 +59,7 @@ func (o *CreateOptions) Run(ctx context.Context, _ ...string) error {
 	if err != nil {
 		return fmt.Errorf("create: %w", err)
 	}
+	defer clear(password)
 
 	vlt, err := vault.New(ctx, o.vaultOptions.path, password,
 		vault.WithMaxHistorySnapshots(o.vaultOptions.maxHistorySnapshots),
