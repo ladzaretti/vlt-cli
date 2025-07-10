@@ -325,8 +325,13 @@ func (o *DefaultVltOptions) postRun(ctx context.Context, cmd string) (retErr err
 		return nil
 	}
 
-	if err := o.vaultOptions.vault.Seal(ctx); err != nil {
+	nonce, err := o.vaultOptions.vault.Seal(ctx)
+	if err != nil {
 		return fmt.Errorf("post-run: %w", err)
+	}
+
+	if err := o.sessionClient.UpdateSession(ctx, o.vaultOptions.path, nonce); err != nil {
+		o.Errorf("post-run: session nonce update failed: %v", err)
 	}
 
 	if err := o.vaultOptions.postWriteHook(ctx, o.StdioOptions); err != nil {

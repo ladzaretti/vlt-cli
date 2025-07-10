@@ -111,7 +111,7 @@ func (o *RotateOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 
 	o.Debugf("number of secrets rotated: %d", i)
 
-	if err := destVault.Seal(ctx); err != nil {
+	if _, err := destVault.Seal(ctx); err != nil {
 		return fmt.Errorf("create: %w", err)
 	}
 

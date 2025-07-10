@@ -181,6 +181,59 @@ func (x *SessionRequest) GetVaultPath() string {
 	return ""
 }
 
+// UpdateRequest updates the nonce for an existing vault session.
+type UpdateRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	VaultPath     string                 `protobuf:"bytes,1,opt,name=vault_path,json=vaultPath,proto3" json:"vault_path,omitempty"`
+	Nonce         []byte                 `protobuf:"bytes,2,opt,name=nonce,proto3" json:"nonce,omitempty"` // AES-GCM nonce
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateRequest) Reset() {
+	*x = UpdateRequest{}
+	mi := &file_sessionpb_session_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateRequest) ProtoMessage() {}
+
+func (x *UpdateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sessionpb_session_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateRequest.ProtoReflect.Descriptor instead.
+func (*UpdateRequest) Descriptor() ([]byte, []int) {
+	return file_sessionpb_session_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *UpdateRequest) GetVaultPath() string {
+	if x != nil {
+		return x.VaultPath
+	}
+	return ""
+}
+
+func (x *UpdateRequest) GetNonce() []byte {
+	if x != nil {
+		return x.Nonce
+	}
+	return nil
+}
+
 var File_sessionpb_session_proto protoreflect.FileDescriptor
 
 const file_sessionpb_session_proto_rawDesc = "" +
@@ -196,10 +249,15 @@ const file_sessionpb_session_proto_rawDesc = "" +
 	"\tvault_key\x18\x03 \x01(\v2\x13.sessionpb.VaultKeyR\bvaultKey\"/\n" +
 	"\x0eSessionRequest\x12\x1d\n" +
 	"\n" +
-	"vault_path\x18\x01 \x01(\tR\tvaultPath2\xc1\x01\n" +
+	"vault_path\x18\x01 \x01(\tR\tvaultPath\"D\n" +
+	"\rUpdateRequest\x12\x1d\n" +
+	"\n" +
+	"vault_path\x18\x01 \x01(\tR\tvaultPath\x12\x14\n" +
+	"\x05nonce\x18\x02 \x01(\fR\x05nonce2\x84\x02\n" +
 	"\aSession\x128\n" +
 	"\x05Login\x12\x17.sessionpb.LoginRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
-	"\rGetSessionKey\x12\x19.sessionpb.SessionRequest\x1a\x13.sessionpb.VaultKey\x12;\n" +
+	"\rGetSessionKey\x12\x19.sessionpb.SessionRequest\x1a\x13.sessionpb.VaultKey\x12A\n" +
+	"\rUpdateSession\x12\x18.sessionpb.UpdateRequest\x1a\x16.google.protobuf.Empty\x12;\n" +
 	"\x06Logout\x12\x19.sessionpb.SessionRequest\x1a\x16.google.protobuf.EmptyB;Z9github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpbb\x06proto3"
 
 var (
@@ -214,23 +272,26 @@ func file_sessionpb_session_proto_rawDescGZIP() []byte {
 	return file_sessionpb_session_proto_rawDescData
 }
 
-var file_sessionpb_session_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_sessionpb_session_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_sessionpb_session_proto_goTypes = []any{
 	(*VaultKey)(nil),       // 0: sessionpb.VaultKey
 	(*LoginRequest)(nil),   // 1: sessionpb.LoginRequest
 	(*SessionRequest)(nil), // 2: sessionpb.SessionRequest
-	(*emptypb.Empty)(nil),  // 3: google.protobuf.Empty
+	(*UpdateRequest)(nil),  // 3: sessionpb.UpdateRequest
+	(*emptypb.Empty)(nil),  // 4: google.protobuf.Empty
 }
 var file_sessionpb_session_proto_depIdxs = []int32{
 	0, // 0: sessionpb.LoginRequest.vault_key:type_name -> sessionpb.VaultKey
 	1, // 1: sessionpb.Session.Login:input_type -> sessionpb.LoginRequest
 	2, // 2: sessionpb.Session.GetSessionKey:input_type -> sessionpb.SessionRequest
-	2, // 3: sessionpb.Session.Logout:input_type -> sessionpb.SessionRequest
-	3, // 4: sessionpb.Session.Login:output_type -> google.protobuf.Empty
-	0, // 5: sessionpb.Session.GetSessionKey:output_type -> sessionpb.VaultKey
-	3, // 6: sessionpb.Session.Logout:output_type -> google.protobuf.Empty
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
+	3, // 3: sessionpb.Session.UpdateSession:input_type -> sessionpb.UpdateRequest
+	2, // 4: sessionpb.Session.Logout:input_type -> sessionpb.SessionRequest
+	4, // 5: sessionpb.Session.Login:output_type -> google.protobuf.Empty
+	0, // 6: sessionpb.Session.GetSessionKey:output_type -> sessionpb.VaultKey
+	4, // 7: sessionpb.Session.UpdateSession:output_type -> google.protobuf.Empty
+	4, // 8: sessionpb.Session.Logout:output_type -> google.protobuf.Empty
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -247,7 +308,7 @@ func file_sessionpb_session_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sessionpb_session_proto_rawDesc), len(file_sessionpb_session_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
