@@ -116,8 +116,8 @@ func (sc *SessionClient) UpdateSession(ctx context.Context, vaultPath string, no
 				return nil
 			}
 		}
-
 	}
+
 	return err
 }
 
