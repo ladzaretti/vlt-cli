@@ -11,7 +11,9 @@ import (
 	pb "github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpb"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -108,7 +110,14 @@ func (sc *SessionClient) UpdateSession(ctx context.Context, vaultPath string, no
 	}
 
 	_, err := sc.pb.UpdateSession(ctx, in)
+	if err != nil {
+		if s, ok := status.FromError(err); ok {
+			if s.Code() == codes.NotFound {
+				return nil
+			}
+		}
 
+	}
 	return err
 }
 
