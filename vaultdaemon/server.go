@@ -160,6 +160,20 @@ func (s *sessionServer) Logout(_ context.Context, req *pb.SessionRequest) (*empt
 	return &emptypb.Empty{}, nil
 }
 
+func (s *sessionServer) UpdateSession(_ context.Context, req *pb.UpdateRequest) (*emptypb.Empty, error) {
+	path := req.GetVaultPath()
+	nonce := req.GetNonce()
+
+	session, ok := s.sessions.load(path)
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "no session found for the given path: %q", path)
+	}
+
+	session.key.Nonce = nonce
+
+	return &emptypb.Empty{}, nil
+}
+
 func (s *sessionServer) GetSessionKey(_ context.Context, req *pb.SessionRequest) (*pb.VaultKey, error) {
 	path := req.GetVaultPath()
 

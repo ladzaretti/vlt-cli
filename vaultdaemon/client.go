@@ -11,7 +11,9 @@ import (
 	pb "github.com/ladzaretti/vlt-cli/vaultdaemon/proto/sessionpb"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -84,7 +86,37 @@ func (sc *SessionClient) Logout(ctx context.Context, vaultPath string) error {
 		return ErrEmptyVaultPath
 	}
 
-	_, err := sc.pb.Logout(ctx, &pb.SessionRequest{VaultPath: vaultPath})
+	in := &pb.SessionRequest{
+		VaultPath: vaultPath,
+	}
+
+	_, err := sc.pb.Logout(ctx, in)
+
+	return err
+}
+
+func (sc *SessionClient) UpdateSession(ctx context.Context, vaultPath string, nonce []byte) error {
+	if sc == nil {
+		return nil
+	}
+
+	if len(vaultPath) == 0 {
+		return ErrEmptyVaultPath
+	}
+
+	in := &pb.UpdateRequest{
+		VaultPath: vaultPath,
+		Nonce:     nonce,
+	}
+
+	_, err := sc.pb.UpdateSession(ctx, in)
+	if err != nil {
+		if s, ok := status.FromError(err); ok {
+			if s.Code() == codes.NotFound {
+				return nil
+			}
+		}
+	}
 
 	return err
 }
@@ -99,7 +131,11 @@ func (sc *SessionClient) GetSessionKey(ctx context.Context, vaultPath string) (k
 		return nil, nil, ErrEmptyVaultPath
 	}
 
-	vaultKey, err := sc.pb.GetSessionKey(ctx, &pb.SessionRequest{VaultPath: vaultPath})
+	in := &pb.SessionRequest{
+		VaultPath: vaultPath,
+	}
+
+	vaultKey, err := sc.pb.GetSessionKey(ctx, in)
 	if err != nil {
 		return nil, nil, err
 	}

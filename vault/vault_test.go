@@ -33,7 +33,7 @@ func TestVault_New(t *testing.T) {
 
 	fmt.Printf("%v", m)
 
-	err = v.Seal(t.Context())
+	_, err = v.Seal(t.Context())
 	if err != nil {
 		t.Error(err)
 	}

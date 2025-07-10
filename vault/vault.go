@@ -335,27 +335,27 @@ func (vlt *Vault) Close() (retErr error) {
 // and persists the resulting ciphertext along with the new nonce to the vault container database.
 //
 // Call this method whenever changes to the in-memory vault need to be saved.
-func (vlt *Vault) Seal(ctx context.Context) error {
+func (vlt *Vault) Seal(ctx context.Context) (nonce []byte, _ error) {
 	serialized, err := Serialize(vlt.conn)
 	if err != nil {
-		return errf("seal: failed to serialize vault connection: %w", err)
+		return nil, errf("seal: failed to serialize vault connection: %w", err)
 	}
 
-	nonce, err := vaultcrypto.RandBytes(vaultcrypto.NonceSizeGCM)
+	nonce, err = vaultcrypto.RandBytes(vaultcrypto.NonceSizeGCM)
 	if err != nil {
-		return errf("seal: failed to generate random nonce: %w", err)
+		return nil, errf("seal: failed to generate random nonce: %w", err)
 	}
 
 	ciphervault, err := vlt.aesgcm.Seal(nonce, serialized)
 	if err != nil {
-		return errf("seal: failed to seal data with AES-GCM: %w", err)
+		return nil, errf("seal: failed to seal data with AES-GCM: %w", err)
 	}
 
 	if err := vlt.containerHandle.db.UpdateVault(ctx, nonce, ciphervault); err != nil {
-		return errf("seal: failed to update vault in the vault container database: %w", err)
+		return nil, errf("seal: failed to update vault in the vault container database: %w", err)
 	}
 
-	return nil
+	return nonce, nil
 }
 
 // Serialize returns the serialized form of the vault container, including the encrypted vault.
@@ -366,7 +366,7 @@ func (vlt *Vault) Seal(ctx context.Context) error {
 // This is primarily used to produce a reusable snapshot of the vault container state
 // for testing.
 func (vlt *Vault) Serialize(ctx context.Context) ([]byte, error) {
-	if err := vlt.Seal(ctx); err != nil {
+	if _, err := vlt.Seal(ctx); err != nil {
 		return nil, errf("serialize: sealing vault failed: %w", err)
 	}
 

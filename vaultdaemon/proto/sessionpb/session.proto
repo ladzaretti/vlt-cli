@@ -13,6 +13,9 @@ service Session {
   // GetSessionKey retrieves cipher data for a vault path.
   rpc GetSessionKey (SessionRequest) returns (VaultKey);
 
+  // UpdateSession updates the stored session nonce for a vault path.
+  rpc UpdateSession (UpdateRequest) returns (google.protobuf.Empty);
+
   // Logout clears stored cipher data for a vault path.
   rpc Logout (SessionRequest) returns (google.protobuf.Empty);
 }
@@ -33,4 +36,10 @@ message LoginRequest {
 // SessionRequest identifies a vault session by path.
 message SessionRequest {
   string vault_path = 1;
+}
+
+// UpdateRequest updates the nonce for an existing vault session.
+message UpdateRequest {
+  string vault_path = 1;
+  bytes nonce = 2; // AES-GCM nonce
 }

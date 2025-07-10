@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Session_Login_FullMethodName         = "/sessionpb.Session/Login"
 	Session_GetSessionKey_FullMethodName = "/sessionpb.Session/GetSessionKey"
+	Session_UpdateSession_FullMethodName = "/sessionpb.Session/UpdateSession"
 	Session_Logout_FullMethodName        = "/sessionpb.Session/Logout"
 )
 
@@ -36,6 +37,8 @@ type SessionClient interface {
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetSessionKey retrieves cipher data for a vault path.
 	GetSessionKey(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*VaultKey, error)
+	// UpdateSession updates the stored session nonce for a vault path.
+	UpdateSession(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Logout clears stored cipher data for a vault path.
 	Logout(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -68,6 +71,16 @@ func (c *sessionClient) GetSessionKey(ctx context.Context, in *SessionRequest, o
 	return out, nil
 }
 
+func (c *sessionClient) UpdateSession(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Session_UpdateSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *sessionClient) Logout(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -89,6 +102,8 @@ type SessionServer interface {
 	Login(context.Context, *LoginRequest) (*emptypb.Empty, error)
 	// GetSessionKey retrieves cipher data for a vault path.
 	GetSessionKey(context.Context, *SessionRequest) (*VaultKey, error)
+	// UpdateSession updates the stored session nonce for a vault path.
+	UpdateSession(context.Context, *UpdateRequest) (*emptypb.Empty, error)
 	// Logout clears stored cipher data for a vault path.
 	Logout(context.Context, *SessionRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedSessionServer()
@@ -106,6 +121,9 @@ func (UnimplementedSessionServer) Login(context.Context, *LoginRequest) (*emptyp
 }
 func (UnimplementedSessionServer) GetSessionKey(context.Context, *SessionRequest) (*VaultKey, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSessionKey not implemented")
+}
+func (UnimplementedSessionServer) UpdateSession(context.Context, *UpdateRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSession not implemented")
 }
 func (UnimplementedSessionServer) Logout(context.Context, *SessionRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
@@ -167,6 +185,24 @@ func _Session_GetSessionKey_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Session_UpdateSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SessionServer).UpdateSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Session_UpdateSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SessionServer).UpdateSession(ctx, req.(*UpdateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Session_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SessionRequest)
 	if err := dec(in); err != nil {
@@ -199,6 +235,10 @@ var Session_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSessionKey",
 			Handler:    _Session_GetSessionKey_Handler,
+		},
+		{
+			MethodName: "UpdateSession",
+			Handler:    _Session_UpdateSession_Handler,
 		},
 		{
 			MethodName: "Logout",
