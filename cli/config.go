@@ -46,6 +46,8 @@ type ResolvedConfig struct {
 	PasteCmd            []string `json:"paste_cmd,omitempty"`
 	PostLoginCmd        []string `json:"post_login_cmd,omitempty"`
 	PostWriteCmd        []string `json:"post_write_cmd,omitempty"`
+
+	enabledSession bool
 }
 
 type Duration time.Duration
@@ -108,6 +110,10 @@ func (o *ConfigOptions) resolve() error {
 	}
 
 	o.resolved.SessionDuration = Duration(t)
+
+	if o.resolved.SessionDuration > 0 {
+		o.resolved.enabledSession = true
+	}
 
 	return nil
 }

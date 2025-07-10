@@ -12,6 +12,14 @@ import (
 	"golang.org/x/term"
 )
 
+// readPasswordFunc is used to read passwords securely.
+var readPasswordFunc = term.ReadPassword
+
+// SetDefaultReadPassword overrides readPasswordFunc for testing.
+func SetDefaultReadPassword(f func(fd int) ([]byte, error)) {
+	readPasswordFunc = f
+}
+
 func IsPipedOrRedirected(fi os.FileInfo) bool {
 	return (fi.Mode() & os.ModeCharDevice) == 0
 }
@@ -36,7 +44,7 @@ func PromptReadSecure(w io.Writer, fd int, prompt string, a ...any) ([]byte, err
 	fmt.Fprintf(w, prompt, a...)
 	defer fmt.Println()
 
-	bs, err := term.ReadPassword(fd)
+	bs, err := readPasswordFunc(fd)
 	if err != nil {
 		return nil, fmt.Errorf("term read password: %w", err)
 	}

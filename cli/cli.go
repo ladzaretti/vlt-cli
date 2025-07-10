@@ -296,12 +296,14 @@ func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 		return nil
 	}
 
-	c, err := vaultdaemon.NewSessionClient()
-	if err != nil {
-		o.Infof("vlt: daemon unavailable, continuing without session support\nTo enable session support, make sure the 'vltd' daemon is running.\n\n")
-	}
+	if o.configOptions.resolved.enabledSession {
+		c, err := vaultdaemon.NewSessionClient()
+		if err != nil {
+			o.Infof("vlt: daemon unavailable, continuing without session support\nTo enable session support, make sure the 'vltd' daemon is running.\n\n")
+		}
 
-	o.sessionClient = c
+		o.sessionClient = c
+	}
 
 	return o.vaultOptions.Open(ctx, o.StdioOptions, o.sessionClient)
 }
