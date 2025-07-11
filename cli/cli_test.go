@@ -113,20 +113,20 @@ func TestConfigCommand_WithValidConfig(t *testing.T) {
 		t.Fatalf("failed to unmarshal output: %v\noutput: %s", err, out.String())
 	}
 
-	if config.Parsed.Vault.SessionDuration != "0m" {
-		t.Errorf("Parsed.SessionDuration want '0m', got %v", config.Parsed.Vault.SessionDuration)
+	if got, want := config.Parsed.Vault.SessionDuration, "0m"; got != want {
+		t.Errorf("got Parsed.SessionDuration %q, want %q", got, want)
 	}
 
-	if config.Parsed.Vault.Path == "" {
-		t.Error("expected parsed vault path to be set, got empty string")
+	if got := config.Parsed.Vault.Path; got == "" {
+		t.Errorf("got empty Parsed.Vault.Path, want non-empty path")
 	}
 
-	if config.Resolved.SessionDuration != 0 {
-		t.Errorf("SessionDuration want 0, got %v", config.Resolved.SessionDuration)
+	if got, want := config.Resolved.SessionDuration, cli.Duration(0); got != want {
+		t.Errorf("got Resolved.SessionDuration %v, want %v", got, want)
 	}
 
-	if config.Resolved.VaultPath == "" {
-		t.Error("expected resolved vault path to be set, got empty string")
+	if got := config.Resolved.VaultPath; got == "" {
+		t.Errorf("got empty Resolved.VaultPath, want non-empty path")
 	}
 }
 
@@ -139,10 +139,10 @@ func TestCreateCommand_WithPrompt(t *testing.T) {
 	})
 
 	if gotError, wantError := cmd.Execute(), "vault file already exists"; gotError == nil || gotError.Error() != wantError {
-		t.Errorf("want error %q, got: %v", wantError, gotError)
+		t.Errorf("got error %v, want %q", gotError, wantError)
 	}
 
 	if gotError, wantError := errOut.String(), "vlt: vault file already exists"; !strings.Contains(gotError, wantError) {
-		t.Errorf("want stderr message to containing %q, got: %q", wantError, errOut.String())
+		t.Errorf("got stderr %q, want it to contain %q", errOut.String(), wantError)
 	}
 }
