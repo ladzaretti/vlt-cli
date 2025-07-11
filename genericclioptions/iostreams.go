@@ -28,15 +28,17 @@ func NewDefaultIOStreams() *IOStreams {
 // a [TestFdReader] and out and error buffers for unit tests.
 //
 //nolint:revive
-func NewTestIOStreams(in *TestFdReader) (*IOStreams, *TestFdReader, *bytes.Buffer, *bytes.Buffer) {
-	out := &bytes.Buffer{}
-	errOut := &bytes.Buffer{}
+func NewTestIOStreams(r *TestFdReader) (iostream *IOStreams, in *TestFdReader, out *bytes.Buffer, errOut *bytes.Buffer) {
+	in = r
+	out, errOut = &bytes.Buffer{}, &bytes.Buffer{}
 
-	return &IOStreams{
+	iostream = &IOStreams{
 		In:     in,
 		Out:    out,
 		ErrOut: errOut,
-	}, in, out, errOut
+	}
+
+	return
 }
 
 // NewTestIOStreamsDiscard returns IOStreams with mocked input,

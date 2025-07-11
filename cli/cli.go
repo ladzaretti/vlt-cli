@@ -215,14 +215,14 @@ type DefaultVltOptions struct {
 
 var _ genericclioptions.CmdOptions = &DefaultVltOptions{}
 
-func NewDefaultVltOptions(iostreams *genericclioptions.IOStreams, vaultOptions *VaultOptions) (*DefaultVltOptions, error) {
+func NewDefaultVltOptions(iostreams *genericclioptions.IOStreams, vaultOptions *VaultOptions) *DefaultVltOptions {
 	stdio := &genericclioptions.StdioOptions{IOStreams: iostreams}
 
 	return &DefaultVltOptions{
 		configOptions: NewConfigOptions(stdio),
 		StdioOptions:  stdio,
 		vaultOptions:  vaultOptions,
-	}, nil
+	}
 }
 
 func (o *DefaultVltOptions) Complete() error {
@@ -345,8 +345,7 @@ func (o *DefaultVltOptions) postRun(ctx context.Context, cmd string) (retErr err
 
 // NewDefaultVltCommand creates the `vlt` command with its sub-commands.
 func NewDefaultVltCommand(iostreams *genericclioptions.IOStreams, args []string) *cobra.Command {
-	o, err := NewDefaultVltOptions(iostreams, NewVaultOptions())
-	clierror.Check(err)
+	o := NewDefaultVltOptions(iostreams, NewVaultOptions())
 
 	cmd := &cobra.Command{
 		Use: "vlt",
@@ -367,15 +366,15 @@ Description:
 Environment Variables:
   VLT_CONFIG_PATH - overrides the default config path: "~/.vlt.toml".`,
 		SilenceUsage: true,
-		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			if slices.Contains(preRunSkipCommands, cmd.Name()) {
-				return
+				return nil
 			}
 
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, cmd.Name()))
+			return clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, cmd.Name()))
 		},
-		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(o.postRun(cmd.Context(), cmd.Name()))
+		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
+			return clierror.Check(o.postRun(cmd.Context(), cmd.Name()))
 		},
 	}
 

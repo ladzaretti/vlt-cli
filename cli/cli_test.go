@@ -5,18 +5,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ladzaretti/vlt-cli/cli"
+	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/input"
 )
 
-func writeTestConfig(t *testing.T) string {
+func newTestConfig(t *testing.T) (configPath string) {
 	t.Helper()
 	dir := t.TempDir()
 
-	f, err := os.CreateTemp(dir, ".vlt.toml")
+	f, err := os.CreateTemp(dir, ".vlt.*.toml")
 	if err != nil {
 		t.Fatalf("failed to create temp config file: %v", err)
 	}
@@ -24,29 +28,68 @@ func writeTestConfig(t *testing.T) string {
 		_ = f.Close()
 	}()
 
-	path := f.Name()
+	configPath, vaultPath := f.Name(), path.Join(dir, ".vlt")
 
 	content := fmt.Sprintf(`
 		[vault]
 		path = '%s'
 		session_duration = '%s'
-	`, path, "0m")
+	`, vaultPath, "0m")
 
 	if _, err := f.WriteString(content); err != nil {
 		t.Fatalf("failed to write config content: %v", err)
 	}
 
-	return path
+	return configPath
 }
 
-func newTTYFileInfo(name string, size int64) os.FileInfo {
-	return genericclioptions.NewMockFileInfo(name, size, os.ModeCharDevice, false, time.Now())
+func setupIOStreams(t *testing.T, in []byte) (ioStreams *genericclioptions.IOStreams, out *bytes.Buffer, errOut *bytes.Buffer) {
+	t.Helper()
+
+	buf := bytes.NewBuffer(in)
+	stdinReader := genericclioptions.NewTestFdReader(buf, 0, newTTYFileInfo("stdin", len(in)))
+
+	ioStreams, _, out, errOut = genericclioptions.NewTestIOStreams(stdinReader)
+
+	clierror.SetErrorHandler(clierror.PrintErrHandler)
+	clierror.SetErrWriter(ioStreams.ErrOut)
+
+	t.Cleanup(func() {
+		clierror.ResetErrorHandler()
+		clierror.ResetErrWriter()
+	})
+
+	return
+}
+
+func newTTYFileInfo(name string, size int) os.FileInfo {
+	return genericclioptions.NewMockFileInfo(name, int64(size), os.ModeCharDevice, false, time.Now())
+}
+
+func mustInitializeVault(t *testing.T) string {
+	t.Helper()
+
+	configPath := newTestConfig(t)
+
+	ioStreams, _, errOut := setupIOStreams(t, nil)
+
+	input.SetDefaultReadPassword(func(_ int) ([]byte, error) {
+		return []byte("mocked_password_input"), nil
+	})
+
+	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
+		"create", "--config", configPath,
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("create command failed: %v\nstderr: %q", err, errOut.String())
+	}
+
+	return configPath
 }
 
 func TestConfigCommand_WithValidConfig(t *testing.T) {
-	t.Helper()
-
-	configPath := writeTestConfig(t)
+	configPath := newTestConfig(t)
 
 	stdin := genericclioptions.NewTestFdReader(bytes.NewBuffer(nil), 0, newTTYFileInfo("stdin", 0))
 	ioStreams, _, out, errOut := genericclioptions.NewTestIOStreams(stdin)
@@ -84,5 +127,22 @@ func TestConfigCommand_WithValidConfig(t *testing.T) {
 
 	if config.Resolved.VaultPath == "" {
 		t.Error("expected resolved vault path to be set, got empty string")
+	}
+}
+
+func TestCreateCommand_WithPrompt(t *testing.T) {
+	configPath := mustInitializeVault(t)
+
+	ioStreams, _, errOut := setupIOStreams(t, nil)
+	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
+		"create", "--config", configPath,
+	})
+
+	if gotError, wantError := cmd.Execute(), "vault file already exists"; gotError == nil || gotError.Error() != wantError {
+		t.Errorf("want error %q, got: %v", wantError, gotError)
+	}
+
+	if gotError, wantError := errOut.String(), "vlt: vault file already exists"; !strings.Contains(gotError, wantError) {
+		t.Errorf("want stderr message to containing %q, got: %q", wantError, errOut.String())
 	}
 }

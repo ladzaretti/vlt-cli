@@ -30,11 +30,13 @@ import (
 	"os"
 
 	"github.com/ladzaretti/vlt-cli/cli"
+	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 )
 
 func main() {
 	iostream := genericclioptions.NewDefaultIOStreams()
+	clierror.SetErrWriter(iostream.ErrOut)
 	vlt := cli.NewDefaultVltCommand(iostream, os.Args[1:])
 	_ = vlt.Execute()
 }

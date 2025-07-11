@@ -118,8 +118,8 @@ func NewCmdExport(defaults *DefaultVltOptions) *cobra.Command {
 		Long: `Export secrets in CSV format.
 	
 Use --output to specify a file path or --stdout to print to standard output (unsafe).`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 	cmd.Flags().StringVarP(&o.output, "output", "o", "", "export secrets to the specified file path")

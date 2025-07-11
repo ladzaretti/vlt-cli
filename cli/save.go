@@ -256,8 +256,8 @@ Note 2:
 
   # Save a named secret with a piped value (non-interactive)
   vlt generate -u3 -l3 -d3 -s3 | vlt save --name foo -N`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 

@@ -139,8 +139,8 @@ To update the secret value, use the 'vlt update secret' subcommand.`,
 
   # Remove a label from a secret
   vlt update --id 42 --remove-label bar`,
-		Run: func(cmd *cobra.Command, args []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
 	}
 
@@ -362,8 +362,8 @@ Accepts new value via prompt, clipboard, random generation, or piped input.`,
   
   # Update value using a piped secret
   vlt generate -u3 -l3 -d3 -s3 | vlt update secret foo`,
-		Run: func(cmd *cobra.Command, args []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
 	}
 

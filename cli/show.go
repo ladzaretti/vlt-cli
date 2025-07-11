@@ -172,8 +172,8 @@ Use --stdout to print to stdout (unsafe), or --copy-clipboard to copy the value 
 
   # Use glob pattern and label filter
   vlt show "*foo*" --label "*bar*" --stdout`,
-		Run: func(cmd *cobra.Command, args []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
 	}
 
