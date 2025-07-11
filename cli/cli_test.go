@@ -118,7 +118,7 @@ func TestConfigCommand_WithValidConfig(t *testing.T) {
 	}
 
 	if got := config.Parsed.Vault.Path; got == "" {
-		t.Errorf("got empty Parsed.Vault.Path, want non-empty path")
+		t.Error("got empty Parsed.Vault.Path, want non-empty path")
 	}
 
 	if got, want := config.Resolved.SessionDuration, cli.Duration(0); got != want {
@@ -126,7 +126,7 @@ func TestConfigCommand_WithValidConfig(t *testing.T) {
 	}
 
 	if got := config.Resolved.VaultPath; got == "" {
-		t.Errorf("got empty Resolved.VaultPath, want non-empty path")
+		t.Error("got empty Resolved.VaultPath, want non-empty path")
 	}
 }
 
