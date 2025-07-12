@@ -1,4 +1,8 @@
 <!-- omit in toc -->
+<p align="center">
+  <img src="./assets/gopher_guard.png" alt="Gopher Guard" width="256"/>
+</p>
+
 # vlt - A secure command-line tool for managing secrets in your terminal.
 ![Static Badge](https://img.shields.io/badge/status-in--development-orange)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ladzaretti/vlt-cli)](https://goreportcard.com/report/github.com/ladzaretti/vlt-cli)
@@ -8,22 +12,23 @@
 <!-- omit in toc -->
 ## Table of Content
 
-- [Supported Platforms](#supported-platforms)
-- [Installation](#installation)
-  - [Option 1: Download a release](#option-1-download-a-release)
-    - [Optional install script](#optional-install-script)
-  - [Option 2: Build from source (requires Go 1.24)](#option-2-build-from-source-requires-go-124)
-- [Design Overview](#design-overview)
-  - [vlt - cli client](#vlt---cli-client)
-  - [vltd - session manager daemon](#vltd---session-manager-daemon)
-- [Crypto/Security](#cryptosecurity)
-- [Usage](#usage)
-- [Configuration file](#configuration-file)
-- [Examples](#examples)
-  - [Tips and Tricks](#tips-and-tricks)
-    - [Interactive Secret Selection](#interactive-secret-selection)
-    - [Sync to a Git Repository](#sync-to-a-git-repository)
-  - [Demo](#demo)
+- [vlt - A secure command-line tool for managing secrets in your terminal.](#vlt---a-secure-command-line-tool-for-managing-secrets-in-your-terminal)
+  - [Supported Platforms](#supported-platforms)
+  - [Installation](#installation)
+    - [Option 1: Download a release](#option-1-download-a-release)
+      - [Optional install script](#optional-install-script)
+    - [Option 2: Build from source (requires Go 1.24)](#option-2-build-from-source-requires-go-124)
+  - [Design Overview](#design-overview)
+    - [vlt - cli client](#vlt---cli-client)
+    - [vltd - session manager daemon](#vltd---session-manager-daemon)
+  - [Crypto/Security](#cryptosecurity)
+  - [Usage](#usage)
+  - [Configuration file](#configuration-file)
+  - [Examples](#examples)
+    - [Tips and Tricks](#tips-and-tricks)
+      - [Interactive Secret Selection](#interactive-secret-selection)
+      - [Sync to a Git Repository](#sync-to-a-git-repository)
+    - [Demo](#demo)
 
 ## Supported Platforms
 
