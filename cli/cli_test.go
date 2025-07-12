@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +17,8 @@ import (
 	"github.com/ladzaretti/vlt-cli/input"
 	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultdb"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func newTestConfig(t *testing.T) (configPath string, vaultPath string) {
@@ -46,11 +48,16 @@ func newTestConfig(t *testing.T) (configPath string, vaultPath string) {
 	return configPath, vaultPath
 }
 
-func setupIOStreams(t *testing.T, in []byte) (ioStreams *genericclioptions.IOStreams, out *bytes.Buffer, errOut *bytes.Buffer) {
+// setupIOStreams creates IOStreams with a mocked stdin.
+func setupIOStreams(t *testing.T, in []byte, stdinInfoFn func(string, int) os.FileInfo) (ioStreams *genericclioptions.IOStreams, out *bytes.Buffer, errOut *bytes.Buffer) {
 	t.Helper()
 
-	buf := bytes.NewBuffer(in)
-	stdinReader := genericclioptions.NewTestFdReader(buf, 0, newTTYFileInfo("stdin", len(in)))
+	var (
+		buf       = bytes.NewBuffer(in)
+		stdinInfo = stdinInfoFn("stdin", len(in))
+	)
+
+	stdinReader := genericclioptions.NewTestFdReader(buf, 0, stdinInfo)
 
 	ioStreams, _, out, errOut = genericclioptions.NewTestIOStreams(stdinReader)
 
@@ -69,6 +76,10 @@ func newTTYFileInfo(name string, size int) os.FileInfo {
 	return genericclioptions.NewMockFileInfo(name, int64(size), os.ModeCharDevice, false, time.Now())
 }
 
+func newNonTTYFileInfo(name string, size int) os.FileInfo {
+	return genericclioptions.NewMockFileInfo(name, int64(size), 0, false, time.Now())
+}
+
 const mockedPassword = "mocked_password_input"
 
 func mustInitializeVault(t *testing.T) (configPath string, vaultPath string) {
@@ -76,7 +87,7 @@ func mustInitializeVault(t *testing.T) (configPath string, vaultPath string) {
 
 	configPath, vaultPath = newTestConfig(t)
 
-	ioStreams, _, errOut := setupIOStreams(t, nil)
+	ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
 
 	input.SetDefaultReadPassword(func(_ int) ([]byte, error) {
 		return []byte(mockedPassword), nil
@@ -93,7 +104,15 @@ func mustInitializeVault(t *testing.T) (configPath string, vaultPath string) {
 	return
 }
 
-func TestConfigCommand_WithValidConfig(t *testing.T) {
+// secretWithLabelsComparer compares two [vaultdb.SecretWithLabels]
+// for equality on non cryptographic fields.
+var secretWithLabelsComparer = cmp.Comparer(func(a, b vaultdb.SecretWithLabels) bool {
+	return a.Name == b.Name &&
+		bytes.Equal(a.Value, b.Value) &&
+		slices.Equal(a.Labels, b.Labels)
+})
+
+func TestConfigCommand(t *testing.T) {
 	configPath, _ := newTestConfig(t)
 
 	stdin := genericclioptions.NewTestFdReader(bytes.NewBuffer(nil), 0, newTTYFileInfo("stdin", 0))
@@ -119,26 +138,26 @@ func TestConfigCommand_WithValidConfig(t *testing.T) {
 	}
 
 	if got, want := config.Parsed.Vault.SessionDuration, "0m"; got != want {
-		t.Errorf("got Parsed.SessionDuration %q, want %q", got, want)
+		t.Errorf("got parsed session duration %q, want %q", got, want)
 	}
 
 	if got := config.Parsed.Vault.Path; got == "" {
-		t.Error("got empty Parsed.Vault.Path, want non-empty path")
+		t.Error("got empty parsed vault path, want non-empty path")
 	}
 
 	if got, want := config.Resolved.SessionDuration, cli.Duration(0); got != want {
-		t.Errorf("got Resolved.SessionDuration %v, want %v", got, want)
+		t.Errorf("got resolved session duration %v, want %v", got, want)
 	}
 
 	if got := config.Resolved.VaultPath; got == "" {
-		t.Error("got empty Resolved.VaultPath, want non-empty path")
+		t.Error("got empty resolved vault path, want non-empty path")
 	}
 }
 
 func TestCreateCommand_WithPrompt(t *testing.T) {
 	configPath, _ := mustInitializeVault(t)
 
-	ioStreams, _, errOut := setupIOStreams(t, nil)
+	ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
 	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
 		"create", "--config", configPath,
 	})
@@ -152,18 +171,43 @@ func TestCreateCommand_WithPrompt(t *testing.T) {
 	}
 }
 
-func TestSaveCommand_WithPrompt(t *testing.T) {
+func TestSaveCommand(t *testing.T) {
+	secret1 := vaultdb.SecretWithLabels{
+		Name:   "name_1",
+		Labels: []string{"label_1"},
+		Value:  []byte(mockedPassword),
+	}
+	secret2 := vaultdb.SecretWithLabels{
+		Name:   "name_2",
+		Labels: []string{"label_2"},
+		Value:  []byte("secret_2"),
+	}
+
 	configPath, vaultPath := mustInitializeVault(t)
 
-	wantName, wantLabel := "name_1", "label_1"
-
-	ioStreams, _, errOut := setupIOStreams(t, []byte(wantName+"\n"+wantLabel+"\n"))
+	ioStreams, _, errOut := setupIOStreams(t, []byte(secret1.Name+"\n"+secret1.Labels[0]+"\n"), newTTYFileInfo)
 	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
 		"save", "--config", configPath,
 	})
 
 	if err := cmd.Execute(); err != nil {
-		t.Errorf("unexpected error from 'save' command: %v", err)
+		t.Errorf("unexpected error from save command: %v", err)
+	}
+
+	if got := errOut.String(); got != "" {
+		t.Errorf("unexpected stderr output: %q", got)
+	}
+
+	ioStreams, _, errOut = setupIOStreams(t, secret2.Value, newNonTTYFileInfo)
+	cmd = cli.NewDefaultVltCommand(ioStreams, []string{
+		"save",
+		"--config", configPath,
+		"--name", secret2.Name,
+		"--label", secret2.Labels[0],
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("unexpected error from save command: %v", err)
 	}
 
 	if got := errOut.String(); got != "" {
@@ -176,31 +220,17 @@ func TestSaveCommand_WithPrompt(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = v.Close() }) //nolint:wsl
 
-	secrets, err := v.ExportSecrets(t.Context())
+	wantSecrets := map[int]vaultdb.SecretWithLabels{
+		1: secret1,
+		2: secret2,
+	}
+
+	gotSecrets, err := v.ExportSecrets(t.Context())
 	if err != nil {
-		t.Fatalf("failed to export secrets: %v", err)
+		t.Errorf("unexpected error while exporting secrets: %v", err)
 	}
 
-	if got, want := len(secrets), 1; got != want {
-		t.Fatalf("got %d, want %d secrets", got, want)
-	}
-
-	var secret vaultdb.SecretWithLabels
-
-	for _, s := range secrets {
-		secret = s
-		break
-	}
-
-	if got, want := secret.Name, wantName; got != want {
-		t.Errorf("got name = %q, want %q", got, want)
-	}
-
-	if got, want := secret.Labels, []string{wantLabel}; !reflect.DeepEqual(got, want) {
-		t.Errorf("got labels = %v, want %v", got, want)
-	}
-
-	if got, want := string(secret.Value), mockedPassword; got != want {
-		t.Errorf("got secret value = %q, want %q", got, want)
+	if diff := cmp.Diff(wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
+		t.Errorf("secrets mismatch (-want +got):\n%s", diff)
 	}
 }
