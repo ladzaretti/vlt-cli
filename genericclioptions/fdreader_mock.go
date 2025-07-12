@@ -11,10 +11,10 @@ type TestFdReader struct {
 
 	fd uintptr
 
-	fi *testFileInfo
+	fi os.FileInfo
 }
 
-func NewTestFdReader(b *bytes.Buffer, fd uintptr, fi *testFileInfo) *TestFdReader {
+func NewTestFdReader(b *bytes.Buffer, fd uintptr, fi os.FileInfo) *TestFdReader {
 	return &TestFdReader{
 		Buffer: b,
 		fd:     fd,
@@ -38,6 +38,16 @@ type testFileInfo struct {
 	mode  os.FileMode
 	t     time.Time
 	isDir bool
+}
+
+func NewMockFileInfo(name string, size int64, mode os.FileMode, isDir bool, t time.Time) os.FileInfo {
+	return &testFileInfo{
+		name:  name,
+		size:  size,
+		mode:  mode,
+		isDir: isDir,
+		t:     t,
+	}
 }
 
 func (fi *testFileInfo) Name() string       { return fi.name }

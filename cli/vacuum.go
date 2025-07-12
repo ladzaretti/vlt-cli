@@ -59,8 +59,8 @@ func NewCmdVacuum(defaults *DefaultVltOptions) *cobra.Command {
 
 This is typically unnecessary, as SQLite reuses space internally.  
 However, after deleting large blobs, vacuuming can help shrink the database file.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 

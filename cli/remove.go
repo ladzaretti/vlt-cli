@@ -154,8 +154,8 @@ Search values support UNIX glob patterns (e.g., "foo*", "*bar*").
 
   # Remove a secret by name without confirmation
   vlt remove --name api-key --yes`,
-		Run: func(cmd *cobra.Command, args []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
 	}
 

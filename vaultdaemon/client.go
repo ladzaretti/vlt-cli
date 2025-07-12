@@ -53,8 +53,8 @@ func NewSessionClient() (*SessionClient, error) {
 }
 
 // Login starts a new session by storing cipher data for the given vault path.
-func (sc *SessionClient) Login(ctx context.Context, vaultPath string, key []byte, nonce []byte, duration time.Duration) error {
-	if sc == nil {
+func (c *SessionClient) Login(ctx context.Context, vaultPath string, key []byte, nonce []byte, duration time.Duration) error {
+	if c == nil {
 		return nil
 	}
 
@@ -71,14 +71,14 @@ func (sc *SessionClient) Login(ctx context.Context, vaultPath string, key []byte
 		},
 	}
 
-	_, err := sc.pb.Login(ctx, in)
+	_, err := c.pb.Login(ctx, in)
 
 	return err
 }
 
 // Logout requests the daemon to clear the session for the given vault path.
-func (sc *SessionClient) Logout(ctx context.Context, vaultPath string) error {
-	if sc == nil {
+func (c *SessionClient) Logout(ctx context.Context, vaultPath string) error {
+	if c == nil {
 		return nil
 	}
 
@@ -90,13 +90,13 @@ func (sc *SessionClient) Logout(ctx context.Context, vaultPath string) error {
 		VaultPath: vaultPath,
 	}
 
-	_, err := sc.pb.Logout(ctx, in)
+	_, err := c.pb.Logout(ctx, in)
 
 	return err
 }
 
-func (sc *SessionClient) UpdateSession(ctx context.Context, vaultPath string, nonce []byte) error {
-	if sc == nil {
+func (c *SessionClient) UpdateSession(ctx context.Context, vaultPath string, nonce []byte) error {
+	if c == nil {
 		return nil
 	}
 
@@ -109,7 +109,7 @@ func (sc *SessionClient) UpdateSession(ctx context.Context, vaultPath string, no
 		Nonce:     nonce,
 	}
 
-	_, err := sc.pb.UpdateSession(ctx, in)
+	_, err := c.pb.UpdateSession(ctx, in)
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			if s.Code() == codes.NotFound {
@@ -122,8 +122,8 @@ func (sc *SessionClient) UpdateSession(ctx context.Context, vaultPath string, no
 }
 
 // GetSessionKey retrieves the session key and nonce for the given vault path.
-func (sc *SessionClient) GetSessionKey(ctx context.Context, vaultPath string) (key []byte, nonce []byte, _ error) {
-	if sc == nil {
+func (c *SessionClient) GetSessionKey(ctx context.Context, vaultPath string) (key []byte, nonce []byte, _ error) {
+	if c == nil {
 		return nil, nil, nil
 	}
 
@@ -135,7 +135,7 @@ func (sc *SessionClient) GetSessionKey(ctx context.Context, vaultPath string) (k
 		VaultPath: vaultPath,
 	}
 
-	vaultKey, err := sc.pb.GetSessionKey(ctx, in)
+	vaultKey, err := c.pb.GetSessionKey(ctx, in)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -145,12 +145,12 @@ func (sc *SessionClient) GetSessionKey(ctx context.Context, vaultPath string) (k
 
 // Close safely shuts down the gRPC connection.
 // No-op if the client or connection is nil.
-func (sc *SessionClient) Close() error {
-	if sc == nil || sc.conn == nil {
+func (c *SessionClient) Close() error {
+	if c == nil || c.conn == nil {
 		return nil
 	}
 
-	return sc.conn.Close()
+	return c.conn.Close()
 }
 
 func verifySocketSecure(path string, uid int) (retErr error) {

@@ -16,9 +16,11 @@ const (
 )
 
 var (
-	// fatalErrHandler is the function used to handle fatal errors.
-	// By default, it calls os.Exit(1).
-	fatalErrHandler = fatal
+	// errHandler is the function used to handle cli errors.
+	errHandler = FatalErrHandler
+
+	// errWriter is used to output cli error messages.
+	errWriter io.Writer = os.Stderr
 
 	// fprintf is the function used to format and print errors.
 	fprintf = fmt.Fprintf
@@ -27,18 +29,24 @@ var (
 	debugMode bool
 )
 
-// BehaviorOnFatal allows overriding the default behavior when a fatal
-// error occurs. By default, it calls os.Exit(1).
-func BehaviorOnFatal(f func(string, int)) {
-	fatalErrHandler = f
+// SetErrorHandler overrides the default [FatalErrHandler] error handler.
+func SetErrorHandler(f func(string, int)) {
+	errHandler = f
 }
 
-// DefaultBehaviorOnFatal restores the default behavior for fatal errors,
-// which is to call os.Exit(1).
-//
-// Useful for tests.
-func DefaultBehaviorOnFatal() {
-	fatalErrHandler = fatal
+// ResetErrorHandler restores the default error handler.
+func ResetErrorHandler() {
+	errHandler = FatalErrHandler
+}
+
+// SetErrWriter overrides the default error output writer [os.Stderr].
+func SetErrWriter(w io.Writer) {
+	errWriter = w
+}
+
+// ResetErrWriter restores the default error output writer to [os.Stderr].
+func ResetErrWriter() {
+	errWriter = os.Stderr
 }
 
 // SetDefaultFprintf sets the default function used to print errors.
@@ -53,19 +61,29 @@ func DebugMode(enabled bool) {
 	debugMode = enabled
 }
 
-// fatal prints the message provided and then exits with the given code.
-func fatal(msg string, code int) {
-	if len(msg) > 0 {
-		// add newline if needed
-		if !strings.HasSuffix(msg, "\n") {
-			msg += "\n"
-		}
-
-		_, _ = fprintf(os.Stderr, msg)
-	}
+// FatalErrHandler prints the message provided and then exits with the given code.
+func FatalErrHandler(msg string, code int) {
+	printError(msg)
 
 	//nolint:revive // Intentional exit after fatal error.
 	os.Exit(code)
+}
+
+func PrintErrHandler(msg string, _ int) {
+	printError(msg)
+}
+
+func printError(msg string) {
+	if len(msg) == 0 {
+		return
+	}
+
+	// add newline if needed
+	if !strings.HasSuffix(msg, "\n") {
+		msg += "\n"
+	}
+
+	_, _ = fprintf(errWriter, msg)
 }
 
 func debugPrint(err error) {
@@ -73,17 +91,19 @@ func debugPrint(err error) {
 		return
 	}
 
-	_, _ = fprintf(os.Stderr, "DEBUG %+v\n", err)
+	_, _ = fprintf(errWriter, "DEBUG %+v\n", err)
 }
 
 // ErrExit may be passed to CheckError to instruct it to output nothing but exit with
 // status code 1.
 var ErrExit = errors.New("exit")
 
-// Check prints a user friendly error and exits with a non-zero
-// exit code. Unrecognized errors will be printed with an "error: " prefix.
-func Check(err error) {
-	check(err, fatalErrHandler)
+// Check prints a user-friendly error message and invokes the configured error handler.
+//
+// When the [FatalErrHandler] is used, the program will exit before this function returns.
+func Check(err error) error {
+	check(err, errHandler)
+	return err
 }
 
 //nolint:revive

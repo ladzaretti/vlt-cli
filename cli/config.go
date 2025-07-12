@@ -46,6 +46,8 @@ type ResolvedConfig struct {
 	PasteCmd            []string `json:"paste_cmd,omitempty"`
 	PostLoginCmd        []string `json:"post_login_cmd,omitempty"`
 	PostWriteCmd        []string `json:"post_write_cmd,omitempty"`
+
+	enableSession bool
 }
 
 type Duration time.Duration
@@ -109,6 +111,10 @@ func (o *ConfigOptions) resolve() error {
 
 	o.resolved.SessionDuration = Duration(t)
 
+	if o.resolved.SessionDuration > 0 {
+		o.resolved.enableSession = true
+	}
+
 	return nil
 }
 
@@ -135,13 +141,17 @@ func NewCmdConfig(defaults *DefaultVltOptions) *cobra.Command {
 		Long: fmt.Sprintf(`Resolve and display the active vlt configuration.
 
 If --file is not provided, the default config path (~/%s) is used.`, defaultConfigName),
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.RejectDisallowedFlags(cmd, hiddenFlags...))
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if err := clierror.Check(genericclioptions.RejectDisallowedFlags(cmd, hiddenFlags...)); err != nil {
+				return err
+			}
+			if err := clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o)); err != nil {
+				return err
+			}
 
 			if len(o.fileConfig.path) == 0 {
 				o.Infof("no config file found; using default values.\n")
-				return
+				return nil
 			}
 
 			c := struct {
@@ -155,6 +165,8 @@ If --file is not provided, the default config path (~/%s) is used.`, defaultConf
 			}
 
 			o.Printf("%s", stringifyPretty(c))
+
+			return nil
 		},
 	}
 
@@ -208,7 +220,9 @@ func (o *generateConfigOptions) Run(context.Context, ...string) error {
 	c.Vault.MaxHistorySnapshots = util.Ptr(defaultMaxHistorySnapshots)
 
 	out, err := toml.Marshal(c)
-	clierror.Check(err)
+	if err := clierror.Check(err); err != nil {
+		return err
+	}
 
 	o.Printf("%s", string(out))
 
@@ -224,9 +238,11 @@ func newGenerateConfigCmd(defaults *DefaultVltOptions) *cobra.Command {
 		Use:   "generate",
 		Short: "Print a default config file",
 		Long:  `Outputs the default configuration in TOML format to stdout.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.RejectDisallowedFlags(cmd, hiddenFlags...))
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmp.Or(
+				clierror.Check(genericclioptions.RejectDisallowedFlags(cmd, hiddenFlags...)),
+				clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o)),
+			)
 		},
 	}
 
@@ -256,7 +272,9 @@ func (*validateConfigOptions) Validate() error { return nil }
 
 func (o *validateConfigOptions) Run(context.Context, ...string) error {
 	c, err := LoadFileConfig(o.configPath)
-	clierror.Check(err)
+	if err := clierror.Check(err); err != nil {
+		return err
+	}
 
 	if len(c.path) == 0 {
 		o.Infof("no config file found; Nothing to validate.\n")
@@ -279,11 +297,13 @@ func newValidateConfigCmd(defaults *DefaultVltOptions) *cobra.Command {
 		Long: fmt.Sprintf(`Loads the configuration file and checks for common errors.
 
 If --file is not provided, the default config path (~/%s) is used.`, defaultConfigName),
-		Run: func(cmd *cobra.Command, _ []string) {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			o.configPath, _ = cmd.InheritedFlags().GetString("file")
 
-			clierror.Check(genericclioptions.RejectDisallowedFlags(cmd, hiddenFlags...))
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+			return cmp.Or(
+				clierror.Check(genericclioptions.RejectDisallowedFlags(cmd, hiddenFlags...)),
+				clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o)),
+			)
 		},
 	}
 

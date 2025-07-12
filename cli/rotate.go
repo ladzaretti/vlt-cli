@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -178,9 +179,11 @@ func NewCmdRotate(defaults *DefaultVltOptions) *cobra.Command {
 The vault will be re-encrypted using the new password.
 
 If no --file path is provided, uses the default path (~/%s).`, defaultDatabaseFilename),
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.RejectDisallowedFlags(cmd, hiddenFlags...))
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmp.Or(
+				clierror.Check(genericclioptions.RejectDisallowedFlags(cmd, hiddenFlags...)),
+				clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o)),
+			)
 		},
 	}
 

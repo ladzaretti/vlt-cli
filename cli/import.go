@@ -324,8 +324,8 @@ Firefox and Chromium-based CSV files are auto-detected for import and do not req
   echo -e "password,username,label_1,label_2\npass,some_username,meta1,meta2" | \
     vlt import \
         --indexes '{"name":1,"secret":0,"labels":[2,3]}'`,
-		Run: func(cmd *cobra.Command, args []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o, args...))
 		},
 	}
 

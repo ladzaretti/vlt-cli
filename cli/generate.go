@@ -96,8 +96,8 @@ be randomly chosen to meet the minimum total length (if provided).
   
   # Generate a password with no special characters
   vlt generate --special 0`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
 	}
 
