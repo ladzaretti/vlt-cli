@@ -296,7 +296,7 @@ func (o *DefaultVltOptions) Run(ctx context.Context, args ...string) error {
 		return nil
 	}
 
-	if o.configOptions.resolved.enabledSession {
+	if o.configOptions.resolved.enableSession {
 		c, err := vaultdaemon.NewSessionClient()
 		if err != nil {
 			o.Infof("vlt: daemon unavailable, continuing without session support\nTo enable session support, make sure the 'vltd' daemon is running.\n\n")
