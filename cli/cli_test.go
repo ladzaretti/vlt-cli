@@ -171,18 +171,33 @@ func TestCreateCommand_WithPrompt(t *testing.T) {
 	}
 }
 
-func TestSaveCommand(t *testing.T) {
-	secret1 := vaultdb.SecretWithLabels{
+var (
+	secret1 = vaultdb.SecretWithLabels{
 		Name:   "name_1",
 		Labels: []string{"label_1"},
 		Value:  []byte(mockedPassword),
 	}
-	secret2 := vaultdb.SecretWithLabels{
+
+	secret2 = vaultdb.SecretWithLabels{
 		Name:   "name_2",
 		Labels: []string{"label_2"},
 		Value:  []byte("secret_2"),
 	}
 
+	secret3 = vaultdb.SecretWithLabels{
+		Name:   "name_3",
+		Labels: []string{"label_3"},
+		Value:  []byte("secret_3"),
+	}
+
+	secret4 = vaultdb.SecretWithLabels{
+		Name:   "name_4",
+		Labels: []string{"label_4"},
+		Value:  []byte("secret_4"),
+	}
+)
+
+func TestSaveCommand(t *testing.T) {
 	configPath, vaultPath := mustInitializeVault(t)
 
 	ioStreams, _, errOut := setupIOStreams(t, []byte(secret1.Name+"\n"+secret1.Labels[0]+"\n"), newTTYFileInfo)
@@ -233,4 +248,42 @@ func TestSaveCommand(t *testing.T) {
 	if diff := cmp.Diff(wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
 		t.Errorf("secrets mismatch (-want +got):\n%s", diff)
 	}
+}
+
+const (
+	firefoxImportHeader  = "url,username,password,httpRealm,formActionOrigin,guid,timeCreated,timeLastUsed,timePasswordChanged"
+	chromiumImportHeader = "name,url,username,password,note"
+)
+
+type firefoxImport struct{}
+
+func (firefoxImport) record(data vaultdb.SecretWithLabels) string {
+	return fmt.Sprintf(
+		"%s,%s,%s,,,,,,,",
+		data.Labels[0], // url
+		data.Name,      // username
+		data.Value,     // password
+	)
+}
+
+type chromiumImport struct{}
+
+func (chromiumImport) record(data vaultdb.SecretWithLabels) string {
+	return fmt.Sprintf(
+		"%s,,%s,%s,",
+		data.Labels[0], // name
+		data.Name,      // username
+		data.Value,     // password
+	)
+}
+
+func TestImportCommand(t *testing.T) {
+	configPath, vaultPath := mustInitializeVault(t)
+
+	firefoxImportData := firefoxImportHeader +
+		firefoxImport{}.record(secret1) +
+		firefoxImport{}.record(secret2) +
+		firefoxImport{}.record(secret3) +
+		firefoxImport{}.record(secret4)
+
 }
