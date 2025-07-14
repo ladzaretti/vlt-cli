@@ -330,7 +330,8 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 				3: secret3,
 				4: secret4,
 			},
-		}, {
+		},
+		{
 			name: "firefox import",
 			importData: strings.Join([]string{
 				firefoxImportHeader,
@@ -361,8 +362,9 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 				3: secret3,
 				4: secret4,
 			},
-		}, {
-			name: "custom import with indexes",
+		},
+		{
+			name: "custom import",
 			importData: strings.Join([]string{
 				customImportHeader,
 				customImportRecord(secret1),
