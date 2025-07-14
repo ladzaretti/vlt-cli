@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -265,9 +266,20 @@ func TestSaveCommand(t *testing.T) {
 }
 
 const (
+	vltExportHeader      = "name,secret,labels"
 	firefoxImportHeader  = "url,username,password,httpRealm,formActionOrigin,guid,timeCreated,timeLastUsed,timePasswordChanged"
 	chromiumImportHeader = "name,url,username,password,note"
+	customImportHeader   = "password,username,label_1,label_2"
 )
+
+func vltImportRecord(data vaultdb.SecretWithLabels) string {
+	return fmt.Sprintf(
+		"%s,%s,%q",
+		data.Name,                      // name
+		hex.EncodeToString(data.Value), // password
+		data.Labels[0],                 // labels
+	)
+}
 
 func firefoxImportRecord(data vaultdb.SecretWithLabels) string {
 	return fmt.Sprintf(
@@ -287,13 +299,38 @@ func chromiumImportRecord(data vaultdb.SecretWithLabels) string {
 	)
 }
 
+func customImportRecord(data vaultdb.SecretWithLabels) string {
+	return fmt.Sprintf(
+		"%s,%s,,%s",
+		data.Value,     // password
+		data.Name,      // username
+		data.Labels[0], // label_1
+	)
+}
+
 func TestImportCommand(t *testing.T) { //nolint:revive
 	testCases := []struct {
 		name        string
 		importData  string
 		wantSecrets map[int]vaultdb.SecretWithLabels
+		extraArgs   []string
 	}{
 		{
+			name: "vault import",
+			importData: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+				vltImportRecord(secret4),
+			}, "\n"),
+			wantSecrets: map[int]vaultdb.SecretWithLabels{
+				1: secret1,
+				2: secret2,
+				3: secret3,
+				4: secret4,
+			},
+		}, {
 			name: "firefox import",
 			importData: strings.Join([]string{
 				firefoxImportHeader,
@@ -324,6 +361,24 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 				3: secret3,
 				4: secret4,
 			},
+		}, {
+			name: "custom import with indexes",
+			importData: strings.Join([]string{
+				customImportHeader,
+				customImportRecord(secret1),
+				customImportRecord(secret2),
+				customImportRecord(secret3),
+				customImportRecord(secret4),
+			}, "\n"),
+			wantSecrets: map[int]vaultdb.SecretWithLabels{
+				1: secret1,
+				2: secret2,
+				3: secret3,
+				4: secret4,
+			},
+			extraArgs: []string{
+				"--indexes", `{"name":1,"secret":0,"labels":[2,3]}`,
+			},
 		},
 	}
 
@@ -346,9 +401,11 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 			}
 
 			ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
-			cmd := cli.NewDefaultVltCommand(ioStreams, []string{
-				"import", "--config", vaultEnv.configPath, f.Name(),
-			})
+
+			args := []string{"import", "--config", vaultEnv.configPath, f.Name()}
+			args = append(args, tt.extraArgs...)
+
+			cmd := cli.NewDefaultVltCommand(ioStreams, args)
 
 			if err := cmd.Execute(); err != nil {
 				t.Errorf("unexpected error from import command: %v", err)
