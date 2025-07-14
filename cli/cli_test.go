@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -21,19 +22,25 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func newTestConfig(t *testing.T) (configPath string, vaultPath string) {
-	t.Helper()
-	dir := t.TempDir()
+type vaultEnv struct {
+	tempDir    string
+	configPath string
+	vaultPath  string
+}
 
-	f, err := os.CreateTemp(dir, ".vlt.*.toml")
+func setupTestVaultEnv(t *testing.T) vaultEnv {
+	t.Helper()
+	tempDir := t.TempDir()
+
+	f, err := os.CreateTemp(tempDir, ".vlt.*.toml")
 	if err != nil {
 		t.Fatalf("failed to create temp config file: %v", err)
 	}
-	defer func() { //nolint:wsl
+	t.Cleanup(func() { //nolint:wsl
 		_ = f.Close()
-	}()
+	})
 
-	configPath, vaultPath = f.Name(), path.Join(dir, ".vlt")
+	configPath, vaultPath := f.Name(), path.Join(tempDir, ".vlt")
 
 	content := fmt.Sprintf(`
 		[vault]
@@ -45,7 +52,11 @@ func newTestConfig(t *testing.T) (configPath string, vaultPath string) {
 		t.Fatalf("failed to write config content: %v", err)
 	}
 
-	return configPath, vaultPath
+	return vaultEnv{
+		tempDir:    tempDir,
+		configPath: configPath,
+		vaultPath:  vaultPath,
+	}
 }
 
 // setupIOStreams creates IOStreams with a mocked stdin.
@@ -82,15 +93,13 @@ func newNonTTYFileInfo(name string, size int) os.FileInfo {
 
 const mockedPassword = "mocked_password_input"
 
-func mustInitializeVault(t *testing.T) (configPath string, vaultPath string) {
+func mustInitializeVault(t *testing.T, configPath string, vaultPassword string) {
 	t.Helper()
-
-	configPath, vaultPath = newTestConfig(t)
 
 	ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
 
 	input.SetDefaultReadPassword(func(_ int) ([]byte, error) {
-		return []byte(mockedPassword), nil
+		return []byte(vaultPassword), nil
 	})
 
 	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
@@ -100,8 +109,6 @@ func mustInitializeVault(t *testing.T) (configPath string, vaultPath string) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("create command failed: %v\nstderr: %q", err, errOut.String())
 	}
-
-	return
 }
 
 // secretWithLabelsComparer compares two [vaultdb.SecretWithLabels]
@@ -113,13 +120,13 @@ var secretWithLabelsComparer = cmp.Comparer(func(a, b vaultdb.SecretWithLabels) 
 })
 
 func TestConfigCommand(t *testing.T) {
-	configPath, _ := newTestConfig(t)
+	testEnv := setupTestVaultEnv(t)
 
 	stdin := genericclioptions.NewTestFdReader(bytes.NewBuffer(nil), 0, newTTYFileInfo("stdin", 0))
 	ioStreams, _, out, errOut := genericclioptions.NewTestIOStreams(stdin)
 
 	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
-		"config", "--file", configPath,
+		"config", "--file", testEnv.configPath,
 	})
 
 	if err := cmd.Execute(); err != nil {
@@ -155,11 +162,13 @@ func TestConfigCommand(t *testing.T) {
 }
 
 func TestCreateCommand_WithPrompt(t *testing.T) {
-	configPath, _ := mustInitializeVault(t)
+	vaultEnv := setupTestVaultEnv(t)
+
+	mustInitializeVault(t, vaultEnv.configPath, mockedPassword)
 
 	ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
 	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
-		"create", "--config", configPath,
+		"create", "--config", vaultEnv.configPath,
 	})
 
 	if gotError, wantError := cmd.Execute(), "vault file already exists"; gotError == nil || gotError.Error() != wantError {
@@ -171,23 +180,40 @@ func TestCreateCommand_WithPrompt(t *testing.T) {
 	}
 }
 
-func TestSaveCommand(t *testing.T) {
-	secret1 := vaultdb.SecretWithLabels{
+var (
+	secret1 = vaultdb.SecretWithLabels{
 		Name:   "name_1",
 		Labels: []string{"label_1"},
-		Value:  []byte(mockedPassword),
+		Value:  []byte("secret_1"),
 	}
-	secret2 := vaultdb.SecretWithLabels{
+
+	secret2 = vaultdb.SecretWithLabels{
 		Name:   "name_2",
 		Labels: []string{"label_2"},
 		Value:  []byte("secret_2"),
 	}
 
-	configPath, vaultPath := mustInitializeVault(t)
+	secret3 = vaultdb.SecretWithLabels{
+		Name:   "name_3",
+		Labels: []string{"label_3"},
+		Value:  []byte("secret_3"),
+	}
+
+	secret4 = vaultdb.SecretWithLabels{
+		Name:   "name_4",
+		Labels: []string{"label_4"},
+		Value:  []byte("secret_4"),
+	}
+)
+
+func TestSaveCommand(t *testing.T) {
+	vaultEnv := setupTestVaultEnv(t)
+
+	mustInitializeVault(t, vaultEnv.configPath, mockedPassword)
 
 	ioStreams, _, errOut := setupIOStreams(t, []byte(secret1.Name+"\n"+secret1.Labels[0]+"\n"), newTTYFileInfo)
 	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
-		"save", "--config", configPath,
+		"save", "--config", vaultEnv.configPath,
 	})
 
 	if err := cmd.Execute(); err != nil {
@@ -201,7 +227,7 @@ func TestSaveCommand(t *testing.T) {
 	ioStreams, _, errOut = setupIOStreams(t, secret2.Value, newNonTTYFileInfo)
 	cmd = cli.NewDefaultVltCommand(ioStreams, []string{
 		"save",
-		"--config", configPath,
+		"--config", vaultEnv.configPath,
 		"--name", secret2.Name,
 		"--label", secret2.Labels[0],
 	})
@@ -214,23 +240,199 @@ func TestSaveCommand(t *testing.T) {
 		t.Errorf("unexpected stderr output: %q", got)
 	}
 
-	v, err := vault.Open(t.Context(), vaultPath, vault.WithPassword([]byte("mocked_password_input")))
+	v, err := vault.Open(t.Context(), vaultEnv.vaultPath, vault.WithPassword([]byte(mockedPassword)))
 	if err != nil {
 		t.Fatalf("failed to open vault: %v", err)
 	}
 	t.Cleanup(func() { _ = v.Close() }) //nolint:wsl
-
-	wantSecrets := map[int]vaultdb.SecretWithLabels{
-		1: secret1,
-		2: secret2,
-	}
 
 	gotSecrets, err := v.ExportSecrets(t.Context())
 	if err != nil {
 		t.Errorf("unexpected error while exporting secrets: %v", err)
 	}
 
+	wantSecrets := map[int]vaultdb.SecretWithLabels{
+		1: {
+			Name:   secret1.Name,
+			Value:  []byte(mockedPassword),
+			Labels: secret1.Labels,
+		},
+		2: secret2,
+	}
+
 	if diff := cmp.Diff(wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
 		t.Errorf("secrets mismatch (-want +got):\n%s", diff)
+	}
+}
+
+const (
+	vltExportHeader      = "name,secret,labels"
+	firefoxImportHeader  = "url,username,password,httpRealm,formActionOrigin,guid,timeCreated,timeLastUsed,timePasswordChanged"
+	chromiumImportHeader = "name,url,username,password,note"
+	customImportHeader   = "password,username,label_1,label_2"
+)
+
+func vltImportRecord(data vaultdb.SecretWithLabels) string {
+	return fmt.Sprintf(
+		"%s,%s,%q",
+		data.Name,                      // name
+		hex.EncodeToString(data.Value), // password
+		data.Labels[0],                 // labels
+	)
+}
+
+func firefoxImportRecord(data vaultdb.SecretWithLabels) string {
+	return fmt.Sprintf(
+		"%s,%s,%s,,,,,,",
+		data.Labels[0], // url
+		data.Name,      // username
+		data.Value,     // password
+	)
+}
+
+func chromiumImportRecord(data vaultdb.SecretWithLabels) string {
+	return fmt.Sprintf(
+		"%s,,%s,%s,",
+		data.Labels[0], // name
+		data.Name,      // username
+		data.Value,     // password
+	)
+}
+
+func customImportRecord(data vaultdb.SecretWithLabels) string {
+	return fmt.Sprintf(
+		"%s,%s,,%s",
+		data.Value,     // password
+		data.Name,      // username
+		data.Labels[0], // label_1
+	)
+}
+
+func TestImportCommand(t *testing.T) { //nolint:revive
+	testCases := []struct {
+		name        string
+		importData  string
+		wantSecrets map[int]vaultdb.SecretWithLabels
+		extraArgs   []string
+	}{
+		{
+			name: "vault import",
+			importData: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+				vltImportRecord(secret4),
+			}, "\n"),
+			wantSecrets: map[int]vaultdb.SecretWithLabels{
+				1: secret1,
+				2: secret2,
+				3: secret3,
+				4: secret4,
+			},
+		},
+		{
+			name: "firefox import",
+			importData: strings.Join([]string{
+				firefoxImportHeader,
+				firefoxImportRecord(secret1),
+				firefoxImportRecord(secret2),
+				firefoxImportRecord(secret3),
+				firefoxImportRecord(secret4),
+			}, "\n"),
+			wantSecrets: map[int]vaultdb.SecretWithLabels{
+				1: secret1,
+				2: secret2,
+				3: secret3,
+				4: secret4,
+			},
+		},
+		{
+			name: "chromium import",
+			importData: strings.Join([]string{
+				chromiumImportHeader,
+				chromiumImportRecord(secret1),
+				chromiumImportRecord(secret2),
+				chromiumImportRecord(secret3),
+				chromiumImportRecord(secret4),
+			}, "\n"),
+			wantSecrets: map[int]vaultdb.SecretWithLabels{
+				1: secret1,
+				2: secret2,
+				3: secret3,
+				4: secret4,
+			},
+		},
+		{
+			name: "custom import",
+			importData: strings.Join([]string{
+				customImportHeader,
+				customImportRecord(secret1),
+				customImportRecord(secret2),
+				customImportRecord(secret3),
+				customImportRecord(secret4),
+			}, "\n"),
+			wantSecrets: map[int]vaultdb.SecretWithLabels{
+				1: secret1,
+				2: secret2,
+				3: secret3,
+				4: secret4,
+			},
+			extraArgs: []string{
+				"--indexes", `{"name":1,"secret":0,"labels":[2,3]}`,
+			},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			vaultEnv := setupTestVaultEnv(t)
+
+			mustInitializeVault(t, vaultEnv.configPath, mockedPassword)
+
+			f, err := os.CreateTemp(vaultEnv.tempDir, "import.csv")
+			if err != nil {
+				t.Fatalf("failed to create import file: %v", err)
+			}
+			t.Cleanup(func() { //nolint:wsl
+				_ = f.Close()
+			})
+
+			if _, err := f.WriteString(tt.importData); err != nil {
+				t.Fatalf("failed to write import file content: %v", err)
+			}
+
+			ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
+
+			args := []string{"import", "--config", vaultEnv.configPath, f.Name()}
+			args = append(args, tt.extraArgs...)
+
+			cmd := cli.NewDefaultVltCommand(ioStreams, args)
+
+			if err := cmd.Execute(); err != nil {
+				t.Errorf("unexpected error from import command: %v", err)
+			}
+
+			if got := errOut.String(); got != "" {
+				t.Errorf("unexpected stderr output: %q", got)
+			}
+
+			v, err := vault.Open(t.Context(), vaultEnv.vaultPath, vault.WithPassword([]byte(mockedPassword)))
+			if err != nil {
+				t.Fatalf("failed to open vault: %v", err)
+			}
+			t.Cleanup(func() { //nolint:wsl
+				_ = v.Close()
+			})
+
+			gotSecrets, err := v.ExportSecrets(t.Context())
+			if err != nil {
+				t.Errorf("unexpected error while exporting secrets: %v", err)
+			}
+
+			if diff := cmp.Diff(tt.wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
+				t.Errorf("secrets mismatch (-want +got):\n%s", diff)
+			}
+		})
 	}
 }
