@@ -93,7 +93,7 @@ func newNonTTYFileInfo(name string, size int) os.FileInfo {
 
 const mockedPassword = "mocked_password_input"
 
-func mustInitializeVault(t *testing.T, configPath string, vaultPassword string) {
+func mustInitializeVault(t *testing.T, configPath string, vaultPassword string) { //nolint:unparam // vaultPassword always receives mockedPassword ("mocked_password_input")
 	t.Helper()
 
 	ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
@@ -432,6 +432,163 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 
 			if diff := cmp.Diff(tt.wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
 				t.Errorf("secrets mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func seedSecrets(t *testing.T, vaultEnv vaultEnv, input string) {
+	t.Helper()
+
+	f, err := os.CreateTemp(vaultEnv.tempDir, "import.csv")
+	if err != nil {
+		t.Fatalf("failed to create import file: %v", err)
+	}
+	t.Cleanup(func() { //nolint:wsl
+		_ = f.Close()
+	})
+
+	if _, err := f.WriteString(input); err != nil {
+		t.Fatalf("failed to write import file content: %v", err)
+	}
+
+	ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
+
+	cmd := cli.NewDefaultVltCommand(ioStreams,
+		[]string{"import", "--config", vaultEnv.configPath, f.Name()})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error from import command: %v", err)
+	}
+
+	if got := errOut.String(); got != "" {
+		t.Fatalf("unexpected stderr output: %q", got)
+	}
+}
+
+func TestFindCommand(t *testing.T) { //nolint:revive
+	testCases := []struct {
+		name       string
+		input      string
+		args       []string
+		wantOutput string
+	}{
+		{
+			name: "list all secrets",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+				vltImportRecord(secret4),
+			}, "\n"),
+			args: []string{},
+			wantOutput: `ID     NAME       LABELS
+4      name_4     label_4
+3      name_3     label_3
+2      name_2     label_2
+1      name_1     label_1
+
+`,
+		},
+		{
+			name: "find by glob match in name or label",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+				vltImportRecord(secret4),
+			}, "\n"),
+			args: []string{"*3"},
+			wantOutput: `ID     NAME       LABELS
+3      name_3     label_3
+
+`,
+		},
+		{
+			name: "find by name",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+			}, "\n"),
+			args: []string{"--name", "name_2"},
+			wantOutput: `ID     NAME       LABELS
+2      name_2     label_2
+
+`,
+		},
+		{
+			name: "find by id",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+			}, "\n"),
+			args: []string{"--id", "1", "--id", "3"},
+			wantOutput: `ID     NAME       LABELS
+3      name_3     label_3
+1      name_1     label_1
+
+`,
+		},
+		{
+			name: "find by multiple labels (OR logic)",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+			}, "\n"),
+			args: []string{"--label", "label_1", "--label", "label_3"},
+			wantOutput: `ID     NAME       LABELS
+1      name_1     label_1
+3      name_3     label_3
+
+`,
+		},
+		{
+			name: "no results found",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+			}, "\n"),
+			args: []string{"--name", "nonexistent"},
+			wantOutput: `ID     NAME     LABELS
+
+`,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			vaultEnv := setupTestVaultEnv(t)
+
+			mustInitializeVault(t, vaultEnv.configPath, mockedPassword)
+
+			seedSecrets(t, vaultEnv, tt.input)
+
+			ioStreams, out, errOut := setupIOStreams(t, nil, newTTYFileInfo)
+
+			args := []string{"find", "--config", vaultEnv.configPath}
+			args = append(args, tt.args...)
+
+			cmd := cli.NewDefaultVltCommand(ioStreams, args)
+
+			if err := cmd.Execute(); err != nil {
+				t.Errorf("unexpected error from import command: %v", err)
+			}
+
+			if got := errOut.String(); got != "" {
+				t.Errorf("unexpected stderr output: %q", got)
+			}
+
+			got, want := out.String(), fmt.Sprintf(`[vlt] Password for "%s":`, vaultEnv.vaultPath)+tt.wantOutput
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("unexpected stdout output (-want +got):\n%s", diff)
 			}
 		})
 	}
