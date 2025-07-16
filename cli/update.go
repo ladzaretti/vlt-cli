@@ -208,7 +208,7 @@ func (o *UpdateSecretValueOptions) validateUpdateSecretArgs() error {
 	}
 
 	if used > 1 {
-		return &UpdateError{errors.New("only one of non-interactive input, --generate, or --paste-clipboard can be used at a time")}
+		return &UpdateError{errors.New("only one input method can be used at a time: piped or redirected input, --generate, or --paste-clipboard")}
 	}
 
 	return nil
@@ -238,9 +238,10 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (ret
 	}
 
 	var (
-		secret []byte
 		id     = matchingSecrets[0].id
+		secret []byte
 	)
+	defer clear(secret) //nolint:wsl
 
 	// ensure error is wrapped and output is printed if everything succeeded
 	defer func() {
@@ -317,8 +318,6 @@ func (o *UpdateSecretValueOptions) promptReadSecure(prompt string, a ...any) ([]
 }
 
 func (o *UpdateSecretValueOptions) UpdateSecretValue(ctx context.Context, id int, secret []byte) error {
-	defer clear(secret)
-
 	n, err := o.vault.UpdateSecret(ctx, id, secret)
 	if err != nil {
 		return err

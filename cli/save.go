@@ -64,6 +64,7 @@ func (o *SaveOptions) Validate() error {
 
 func (o *SaveOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	var secret []byte
+	defer clear(secret)
 
 	// ensure error is wrapped and output is printed if everything succeeded
 	defer func() {
@@ -165,8 +166,6 @@ func (o *SaveOptions) promptReadSecure(prompt string, a ...any) ([]byte, error) 
 }
 
 func (o *SaveOptions) insertNewSecret(ctx context.Context, s []byte) error {
-	defer clear(s)
-
 	n, err := o.vault.InsertNewSecret(ctx, o.name, s, o.labels)
 	if err != nil {
 		return err
@@ -208,7 +207,7 @@ func (o *SaveOptions) validateInputSource() error {
 	}
 
 	if used > 1 {
-		return &SaveError{errors.New("only one of non-interactive input, --generate, or --paste-clipboard can be used at a time")}
+		return &SaveError{errors.New("only one input method can be used at a time: piped or redirected input, --generate, or --paste-clipboard")}
 	}
 
 	return nil
