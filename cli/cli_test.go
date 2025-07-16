@@ -23,14 +23,28 @@ import (
 )
 
 type vaultEnv struct {
-	tempDir    string
-	configPath string
-	vaultPath  string
+	tempDir              string
+	configPath           string
+	vaultPath            string
+	clipboardContentPath string
 }
+
+const (
+	mockedPastedPassword = "mocked_pasted_password_input" //nolint:gosec
+	mockedPromptPassword = "mocked_prompt_password_input"
+)
 
 func setupTestVaultEnv(t *testing.T) vaultEnv {
 	t.Helper()
 	tempDir := t.TempDir()
+
+	ff, err := os.CreateTemp(tempDir, ".clipboard.*")
+	if err != nil {
+		t.Fatalf("failed to create clipboard content file: %v", err)
+	}
+	t.Cleanup(func() { //nolint:wsl
+		_ = ff.Close()
+	})
 
 	f, err := os.CreateTemp(tempDir, ".vlt.*.toml")
 	if err != nil {
@@ -40,22 +54,28 @@ func setupTestVaultEnv(t *testing.T) vaultEnv {
 		_ = f.Close()
 	})
 
-	configPath, vaultPath := f.Name(), path.Join(tempDir, ".vlt")
+	clipboardContentPath := ff.Name()
+	configPath := f.Name()
+	vaultPath := path.Join(tempDir, ".vlt")
 
 	content := fmt.Sprintf(`
 		[vault]
 		path = '%s'
 		session_duration = '%s'
-	`, vaultPath, "0m")
+		[clipboard]
+		copy_cmd=["bash", "-c", "xargs printf > %s"]
+		paste_cmd=["printf", %q]
+	`, vaultPath, "0m", clipboardContentPath, mockedPastedPassword)
 
 	if _, err := f.WriteString(content); err != nil {
 		t.Fatalf("failed to write config content: %v", err)
 	}
 
 	return vaultEnv{
-		tempDir:    tempDir,
-		configPath: configPath,
-		vaultPath:  vaultPath,
+		tempDir:              tempDir,
+		configPath:           configPath,
+		vaultPath:            vaultPath,
+		clipboardContentPath: clipboardContentPath,
 	}
 }
 
@@ -90,8 +110,6 @@ func newTTYFileInfo(name string, size int) os.FileInfo {
 func newNonTTYFileInfo(name string, size int) os.FileInfo {
 	return genericclioptions.NewMockFileInfo(name, int64(size), 0, false, time.Now())
 }
-
-const mockedPassword = "mocked_password_input"
 
 func mustInitializeVault(t *testing.T, configPath string, vaultPassword string) { //nolint:unparam // vaultPassword always receives mockedPassword ("mocked_password_input")
 	t.Helper()
@@ -164,7 +182,7 @@ func TestConfigCommand(t *testing.T) {
 func TestCreateCommand_WithPrompt(t *testing.T) {
 	vaultEnv := setupTestVaultEnv(t)
 
-	mustInitializeVault(t, vaultEnv.configPath, mockedPassword)
+	mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
 
 	ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
 	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
@@ -206,62 +224,106 @@ var (
 	}
 )
 
-func TestSaveCommand(t *testing.T) {
-	vaultEnv := setupTestVaultEnv(t)
-
-	mustInitializeVault(t, vaultEnv.configPath, mockedPassword)
-
-	ioStreams, _, errOut := setupIOStreams(t, []byte(secret1.Name+"\n"+secret1.Labels[0]+"\n"), newTTYFileInfo)
-	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
-		"save", "--config", vaultEnv.configPath,
-	})
-
-	if err := cmd.Execute(); err != nil {
-		t.Errorf("unexpected error from save command: %v", err)
-	}
-
-	if got := errOut.String(); got != "" {
-		t.Errorf("unexpected stderr output: %q", got)
-	}
-
-	ioStreams, _, errOut = setupIOStreams(t, secret2.Value, newNonTTYFileInfo)
-	cmd = cli.NewDefaultVltCommand(ioStreams, []string{
-		"save",
-		"--config", vaultEnv.configPath,
-		"--name", secret2.Name,
-		"--label", secret2.Labels[0],
-	})
-
-	if err := cmd.Execute(); err != nil {
-		t.Errorf("unexpected error from save command: %v", err)
-	}
-
-	if got := errOut.String(); got != "" {
-		t.Errorf("unexpected stderr output: %q", got)
-	}
-
-	v, err := vault.Open(t.Context(), vaultEnv.vaultPath, vault.WithPassword([]byte(mockedPassword)))
-	if err != nil {
-		t.Fatalf("failed to open vault: %v", err)
-	}
-	t.Cleanup(func() { _ = v.Close() }) //nolint:wsl
-
-	gotSecrets, err := v.ExportSecrets(t.Context())
-	if err != nil {
-		t.Errorf("unexpected error while exporting secrets: %v", err)
-	}
-
-	wantSecrets := map[int]vaultdb.SecretWithLabels{
-		1: {
-			Name:   secret1.Name,
-			Value:  []byte(mockedPassword),
-			Labels: secret1.Labels,
+func TestSaveCommand_(t *testing.T) { //nolint:revive
+	testCases := []struct {
+		name                 string
+		stdinData            []byte
+		stdinInfoFn          func(string, int) os.FileInfo
+		args                 []string
+		wantSecrets          map[int]vaultdb.SecretWithLabels
+		wantClipboardContent []uint8
+	}{
+		{
+			name:        "full prompt",
+			stdinData:   []byte(secret1.Name + "\n" + secret1.Labels[0] + "\n"),
+			stdinInfoFn: newTTYFileInfo,
+			args:        nil,
+			wantSecrets: map[int]vaultdb.SecretWithLabels{
+				1: {
+					Name:   secret1.Name,
+					Value:  []byte(mockedPromptPassword),
+					Labels: secret1.Labels,
+				},
+			},
+			wantClipboardContent: []uint8(mockedPromptPassword),
 		},
-		2: secret2,
+		{
+			name:        "prompt password only, metadata via cli flags",
+			stdinData:   secret2.Value,
+			stdinInfoFn: newNonTTYFileInfo,
+			args: []string{
+				"--name", secret2.Name,
+				"--label", secret2.Labels[0],
+			},
+			wantSecrets: map[int]vaultdb.SecretWithLabels{
+				1: secret2,
+			},
+			wantClipboardContent: secret2.Value,
+		},
+		{
+			name:        "paste password only, metadata via cli flags",
+			stdinData:   nil,
+			stdinInfoFn: newTTYFileInfo,
+			args: []string{
+				"--name", secret3.Name,
+				"--label", secret3.Labels[0],
+				"-p",
+			},
+			wantSecrets: map[int]vaultdb.SecretWithLabels{
+				1: {
+					Name:   secret3.Name,
+					Value:  []byte(mockedPastedPassword),
+					Labels: secret3.Labels,
+				},
+			},
+			wantClipboardContent: []uint8(mockedPastedPassword),
+		},
 	}
 
-	if diff := cmp.Diff(wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
-		t.Errorf("secrets mismatch (-want +got):\n%s", diff)
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			vaultEnv := setupTestVaultEnv(t)
+
+			mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
+
+			args := []string{"save", "--config", vaultEnv.configPath, "-c"}
+			args = append(args, tt.args...)
+
+			ioStreams, _, errOut := setupIOStreams(t, tt.stdinData, tt.stdinInfoFn)
+			cmd := cli.NewDefaultVltCommand(ioStreams, args)
+
+			if err := cmd.Execute(); err != nil {
+				t.Errorf("unexpected error from save command: %v", err)
+			}
+
+			if got := errOut.String(); got != "" {
+				t.Errorf("unexpected stderr output: %q", got)
+			}
+
+			v, err := vault.Open(t.Context(), vaultEnv.vaultPath, vault.WithPassword([]byte(mockedPromptPassword)))
+			if err != nil {
+				t.Fatalf("failed to open vault: %v", err)
+			}
+			t.Cleanup(func() { _ = v.Close() }) //nolint:wsl
+
+			gotSecrets, err := v.ExportSecrets(t.Context())
+			if err != nil {
+				t.Errorf("unexpected error while exporting secrets: %v", err)
+			}
+
+			if diff := cmp.Diff(tt.wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
+				t.Errorf("secrets mismatch (-want +got):\n%s", diff)
+			}
+
+			gotClipboardContent, err := os.ReadFile(vaultEnv.clipboardContentPath)
+			if err != nil {
+				t.Errorf("unexpected error while reading clipboard content containing file: %v", err)
+			}
+
+			if diff := cmp.Diff(tt.wantClipboardContent, gotClipboardContent, secretWithLabelsComparer); diff != "" {
+				t.Errorf("secrets mismatch (-want +got):\n%s", diff)
+			}
+		})
 	}
 }
 
@@ -388,7 +450,7 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 		t.Run(tt.name, func(t *testing.T) {
 			vaultEnv := setupTestVaultEnv(t)
 
-			mustInitializeVault(t, vaultEnv.configPath, mockedPassword)
+			mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
 
 			f, err := os.CreateTemp(vaultEnv.tempDir, "import.csv")
 			if err != nil {
@@ -417,7 +479,7 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 				t.Errorf("unexpected stderr output: %q", got)
 			}
 
-			v, err := vault.Open(t.Context(), vaultEnv.vaultPath, vault.WithPassword([]byte(mockedPassword)))
+			v, err := vault.Open(t.Context(), vaultEnv.vaultPath, vault.WithPassword([]byte(mockedPromptPassword)))
 			if err != nil {
 				t.Fatalf("failed to open vault: %v", err)
 			}
@@ -567,7 +629,7 @@ func TestFindCommand(t *testing.T) { //nolint:revive
 		t.Run(tt.name, func(t *testing.T) {
 			vaultEnv := setupTestVaultEnv(t)
 
-			mustInitializeVault(t, vaultEnv.configPath, mockedPassword)
+			mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
 
 			seedSecrets(t, vaultEnv, tt.input)
 
