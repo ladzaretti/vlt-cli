@@ -24,7 +24,7 @@ bin/golangci-lint: bin/golangci-lint-${GOLANGCI_VERSION}
 go-mod-vendor:
 	go mod vendor
 
-.PHONY: patch_vendor
+.PHONY: patch-vendor
 patch-vendor: go-mod-vendor
 	./scripts/patch_vendor.sh
 
