@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -18,6 +19,7 @@ import (
 	"github.com/ladzaretti/vlt-cli/input"
 	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultdb"
+	"github.com/ladzaretti/vlt-cli/vaulterrors"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -449,7 +451,6 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			vaultEnv := setupTestVaultEnv(t)
-
 			mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
 
 			f, err := os.CreateTemp(vaultEnv.tempDir, "import.csv")
@@ -625,12 +626,10 @@ func TestFindCommand(t *testing.T) { //nolint:revive
 		},
 	}
 
-	for _, tt := range testCases {
+	for _, tt := range testCases { //nolint:dupl
 		t.Run(tt.name, func(t *testing.T) {
 			vaultEnv := setupTestVaultEnv(t)
-
 			mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
-
 			seedSecrets(t, vaultEnv, tt.input)
 
 			ioStreams, out, errOut := setupIOStreams(t, nil, newTTYFileInfo)
@@ -641,7 +640,7 @@ func TestFindCommand(t *testing.T) { //nolint:revive
 			cmd := cli.NewDefaultVltCommand(ioStreams, args)
 
 			if err := cmd.Execute(); err != nil {
-				t.Errorf("unexpected error from import command: %v", err)
+				t.Errorf("unexpected error from find command: %v", err)
 			}
 
 			if got := errOut.String(); got != "" {
@@ -654,4 +653,185 @@ func TestFindCommand(t *testing.T) { //nolint:revive
 			}
 		})
 	}
+}
+
+func TestShowCommand(t *testing.T) { //nolint:revive
+	testCases := []struct {
+		name                 string
+		input                string
+		args                 []string
+		wantOutput           string
+		wantClipboardContent []uint8
+	}{
+		{
+			name: "by name and output to stdout",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args:       []string{"--name", secret1.Name, "--stdout"},
+			wantOutput: string(secret1.Value),
+		},
+		{
+			name: "by name and copy to clipboard",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args:                 []string{"--name", secret1.Name, "-c"},
+			wantOutput:           "",
+			wantClipboardContent: secret1.Value,
+		},
+		{
+			name: "by wildcard and output to stdout",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args:       []string{"*", "--stdout"},
+			wantOutput: string(secret1.Value),
+		},
+		{
+			name: "by wildcard and copy to clipboard",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args:                 []string{"*", "-c"},
+			wantOutput:           "",
+			wantClipboardContent: secret1.Value,
+		},
+		{
+			name: "by id and output to stdout",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args:       []string{"--id", "1", "--stdout"},
+			wantOutput: string(secret1.Value),
+		},
+		{
+			name: "by id and copy to clipboard",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args:                 []string{"--id", "1", "-c"},
+			wantOutput:           "",
+			wantClipboardContent: secret1.Value,
+		},
+		{
+			name: "by label and output to stdout",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args:       []string{"--label", secret1.Labels[0], "--stdout"},
+			wantOutput: string(secret1.Value),
+		},
+		{
+			name: "by label and copy to clipboard",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args:                 []string{"--label", secret1.Labels[0], "-c"},
+			wantOutput:           "",
+			wantClipboardContent: secret1.Value,
+		},
+		{
+			name: "by name and label and output to stdout",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+			}, "\n"),
+			args:       []string{"--name", secret1.Name, "--label", secret1.Labels[0], "--stdout"},
+			wantOutput: string(secret1.Value),
+		},
+		{
+			name: "by name and label and copy to clipboard",
+			input: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+			}, "\n"),
+			args:                 []string{"--name", secret1.Name, "--label", secret1.Labels[0], "-c"},
+			wantOutput:           "",
+			wantClipboardContent: secret1.Value,
+		},
+	}
+
+	for _, tt := range testCases { //nolint:dupl
+		t.Run(tt.name, func(t *testing.T) {
+			vaultEnv := setupTestVaultEnv(t)
+			mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
+			seedSecrets(t, vaultEnv, tt.input)
+
+			ioStreams, out, errOut := setupIOStreams(t, nil, newTTYFileInfo)
+
+			args := []string{"show", "--config", vaultEnv.configPath}
+			args = append(args, tt.args...)
+
+			cmd := cli.NewDefaultVltCommand(ioStreams, args)
+
+			if err := cmd.Execute(); err != nil {
+				t.Errorf("unexpected error from show command: %v", err)
+			}
+
+			if got := errOut.String(); got != "" {
+				t.Errorf("unexpected stderr output: %q", got)
+			}
+
+			got, want := out.String(), fmt.Sprintf(`[vlt] Password for "%s":`, vaultEnv.vaultPath)+tt.wantOutput
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("unexpected stdout output (-want +got):\n%s", diff)
+			}
+		})
+	}
+
+	t.Run("ambiguous match fails with error and stderr", func(t *testing.T) {
+		vaultEnv := setupTestVaultEnv(t)
+		mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
+
+		input := strings.Join([]string{
+			vltExportHeader,
+			vltImportRecord(secret1),
+			vltImportRecord(secret2),
+			vltImportRecord(secret3),
+		}, "\n")
+		seedSecrets(t, vaultEnv, input)
+
+		ioStreams, out, errOut := setupIOStreams(t, nil, newTTYFileInfo)
+
+		args := []string{
+			"show",
+			"--config", vaultEnv.configPath,
+			"*",
+			"--stdout",
+		}
+
+		cmd := cli.NewDefaultVltCommand(ioStreams, args)
+
+		gotErr, wantErr := cmd.Execute(), vaulterrors.ErrAmbiguousSecretMatch
+		if gotErr == nil {
+			t.Fatal("expected error due to ambiguous match, got nil")
+		}
+
+		if !errors.Is(gotErr, wantErr) {
+			t.Fatalf("want error %q, got %q", wantErr, gotErr)
+		}
+
+		if got := out.String(); got != fmt.Sprintf(`[vlt] Password for "%s":`, vaultEnv.vaultPath) {
+			t.Errorf("unexpected stdout: %q", got)
+		}
+
+		if got := errOut.String(); got == "" {
+			t.Error("want stderr message due to ambiguous match, got empty string")
+		} else if !strings.Contains(got, "multiple secrets match") {
+			t.Errorf("unexpected stderr content: %q", got)
+		}
+	})
 }
