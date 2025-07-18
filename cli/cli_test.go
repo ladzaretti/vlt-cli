@@ -24,6 +24,7 @@ import (
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
 
 	gocmp "github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 type vaultEnv struct {
@@ -688,18 +689,26 @@ func TestExportCommand(t *testing.T) {
 		_ = v.Close()
 	})
 
-	gotSecrets, err := v.ExportSecrets(t.Context())
+	exported, err := v.ExportSecrets(t.Context())
 	if err != nil {
 		t.Errorf("unexpected error while exporting secrets: %v", err)
 	}
 
-	wantSecrets := map[int]vaultdb.SecretWithLabels{
-		1: secret1,
-		2: secret2,
-		3: secret3,
-		4: secret4,
+	gotSecrets := make([]vaultdb.SecretWithLabels, 0, len(exported))
+
+	for _, s := range exported {
+		gotSecrets = append(gotSecrets, s)
 	}
-	if diff := gocmp.Diff(wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
+
+	wantSecrets := []vaultdb.SecretWithLabels{secret1, secret2, secret3, secret4}
+
+	opts := []gocmp.Option{
+		secretWithLabelsComparer,
+		cmpopts.SortSlices(func(a, b vaultdb.SecretWithLabels) bool {
+			return a.Name < b.Name
+		}),
+	}
+	if diff := gocmp.Diff(wantSecrets, gotSecrets, opts...); diff != "" {
 		t.Errorf("secrets mismatch (-want +got):\n%s", diff)
 	}
 }
