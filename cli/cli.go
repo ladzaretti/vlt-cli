@@ -42,12 +42,12 @@ var (
 
 	// preRunSkipCommands are commands that skips the pre-run execution.
 	preRunSkipCommands = append(
-		[]string{"config", "generate", "validate", "version"},
+		[]string{"config", "validate", "version"},
 		cobraCompletionCommands...,
 	)
 
 	// preRunPartialCommands are commands that require partial pre-run execution without vault opening.
-	preRunPartialCommands = []string{"create", "login", "logout", "rotate"}
+	preRunPartialCommands = []string{"create", "generate", "login", "logout", "rotate"}
 
 	// postRunSkipCommands are commands that skips the post-run execution.
 	postRunSkipCommands = append(
