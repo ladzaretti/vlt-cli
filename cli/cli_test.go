@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -216,6 +215,7 @@ func TestConfigGenerateCommand(t *testing.T) {
 # Command to run after any vault write (e.g., create, update, delete)
 # post_write_cmd = []
 `
+
 	if errOut.Len() > 0 {
 		t.Errorf("unexpected stderr output: %s", errOut.String())
 	}
@@ -225,10 +225,8 @@ func TestConfigGenerateCommand(t *testing.T) {
 	}
 }
 
-func TestConfigValidateCommand_UsesDefaultFile(t *testing.T) {
-	testEnv := setupTestVaultEnv(t)
-	defaultConfigPath := filepath.Join(testEnv.tempDir, ".vlt.toml")
-
+func TestConfigValidateCommand(t *testing.T) {
+	vaultEnv := setupTestVaultEnv(t)
 	validConfig := `
 [vault]
 path = "/tmp/vault.db"
@@ -236,8 +234,18 @@ session_duration = "10m"
 max_history_snapshots = 2
 `
 
-	if err := os.WriteFile(defaultConfigPath, []byte(validConfig), 0600); err != nil {
-		t.Fatalf("failed to write config: %v", err)
+	f, err := os.CreateTemp(vaultEnv.tempDir, "import.csv")
+	if err != nil {
+		t.Fatalf("failed to create config file: %v", err)
+	}
+	t.Cleanup(func() { //nolint:wsl
+		_ = f.Close()
+	})
+
+	defaultConfigPath := f.Name()
+
+	if _, err := f.WriteString(validConfig); err != nil {
+		t.Fatalf("failed to write config file content: %v", err)
 	}
 
 	t.Setenv("VLT_CONFIG_PATH", defaultConfigPath)
@@ -250,7 +258,7 @@ max_history_snapshots = 2
 	})
 
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("validate command failed: %v\nstderr: %s", err, errOut.String())
+		t.Errorf("validate command failed: %v\nstderr: %s", err, errOut.String())
 	}
 
 	if errOut.Len() > 0 {
@@ -272,7 +280,7 @@ max_history_snapshots = 2
 	t.Setenv("VLT_CONFIG_PATH", "")
 
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("validate command failed: %v\nstderr: %s", err, errOut.String())
+		t.Errorf("validate command failed: %v\nstderr: %s", err, errOut.String())
 	}
 
 	if errOut.Len() > 0 {
