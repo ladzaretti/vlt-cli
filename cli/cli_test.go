@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -178,6 +179,109 @@ func TestConfigCommand(t *testing.T) {
 
 	if got := config.Resolved.VaultPath; got == "" {
 		t.Error("got empty resolved vault path, want non-empty path")
+	}
+}
+
+func TestConfigGenerateCommand(t *testing.T) {
+	stdin := genericclioptions.NewTestFdReader(bytes.NewBuffer(nil), 0, newTTYFileInfo("stdin", 0))
+	ioStreams, _, out, errOut := genericclioptions.NewTestIOStreams(stdin)
+
+	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
+		"config", "generate",
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("config command failed: %v\nstderr: %s", err, errOut.String())
+	}
+
+	gotStdout, wantStdout := out.String(), `[vault]
+# Vlt database path (default: '~/.vlt' if not set)
+# path = ''
+# How long a session lasts before requiring login again (default: '1m')
+# session_duration = ''
+# Maximum number of historical vault snapshots to keep (default: 3, 0 disables history)
+# max_history_snapshots = 3
+
+# Clipboard configuration: Both copy and paste commands must be either both set or both unset.
+[clipboard]
+# The command used for copying to the clipboard (default: ['xsel', '-ib'] if not set)
+# copy_cmd = []
+# The command used for pasting from the clipboard (default: ['xsel', '-ob'] if not set)
+# paste_cmd = []
+
+# Optional lifecycle hooks for vault events
+[hooks]
+# Command to run after a successful login
+# post_login_cmd = []
+# Command to run after any vault write (e.g., create, update, delete)
+# post_write_cmd = []
+`
+	if errOut.Len() > 0 {
+		t.Errorf("unexpected stderr output: %s", errOut.String())
+	}
+
+	if diff := cmp.Diff(wantStdout, gotStdout); diff != "" {
+		t.Errorf("secrets mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestConfigValidateCommand_UsesDefaultFile(t *testing.T) {
+	testEnv := setupTestVaultEnv(t)
+	defaultConfigPath := filepath.Join(testEnv.tempDir, ".vlt.toml")
+
+	validConfig := `
+[vault]
+path = "/tmp/vault.db"
+session_duration = "10m"
+max_history_snapshots = 2
+`
+
+	if err := os.WriteFile(defaultConfigPath, []byte(validConfig), 0600); err != nil {
+		t.Fatalf("failed to write config: %v", err)
+	}
+
+	t.Setenv("VLT_CONFIG_PATH", defaultConfigPath)
+
+	stdin := genericclioptions.NewTestFdReader(bytes.NewBuffer(nil), 0, newTTYFileInfo("stdin", 0))
+	ioStreams, _, out, errOut := genericclioptions.NewTestIOStreams(stdin)
+
+	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
+		"config", "validate",
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("validate command failed: %v\nstderr: %s", err, errOut.String())
+	}
+
+	if errOut.Len() > 0 {
+		t.Errorf("unexpected stderr: %s", errOut.String())
+	}
+
+	gotStdout, wantStdout := out.String(), fmt.Sprintf(`INFO %s:`, defaultConfigPath)+" OK\n"
+	if diff := cmp.Diff(wantStdout, gotStdout); diff != "" {
+		t.Errorf("unexpected stdout output (-want +got):\n%s", diff)
+	}
+
+	out.Reset()
+	errOut.Reset()
+
+	cmd = cli.NewDefaultVltCommand(ioStreams, []string{
+		"config", "validate", "--file", defaultConfigPath,
+	})
+
+	t.Setenv("VLT_CONFIG_PATH", "")
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("validate command failed: %v\nstderr: %s", err, errOut.String())
+	}
+
+	if errOut.Len() > 0 {
+		t.Errorf("unexpected stderr: %s", errOut.String())
+	}
+
+	gotStdout, wantStdout = out.String(), fmt.Sprintf(`INFO %s:`, defaultConfigPath)+" OK\n"
+	if diff := cmp.Diff(wantStdout, gotStdout); diff != "" {
+		t.Errorf("unexpected stdout output (-want +got):\n%s", diff)
 	}
 }
 
@@ -526,6 +630,67 @@ func seedSecrets(t *testing.T, vaultEnv vaultEnv, input string) {
 
 	if got := errOut.String(); got != "" {
 		t.Fatalf("unexpected stderr output: %q", got)
+	}
+}
+
+func TestExportCommand(t *testing.T) {
+	vaultEnv := setupTestVaultEnv(t)
+	mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
+	seedSecrets(t, vaultEnv, strings.Join([]string{
+		vltExportHeader,
+		vltImportRecord(secret1),
+		vltImportRecord(secret2),
+		vltImportRecord(secret3),
+		vltImportRecord(secret4),
+	}, "\n"))
+
+	exportFile := path.Join(vaultEnv.tempDir, "export.csv")
+	ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
+	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
+		"export",
+		"--config", vaultEnv.configPath,
+		"-o", exportFile,
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("export command failed: %v\nstderr: %s", err, errOut.String())
+	}
+
+	anotherVaultEnv := setupTestVaultEnv(t)
+	mustInitializeVault(t, anotherVaultEnv.configPath, mockedPromptPassword)
+
+	cmd = cli.NewDefaultVltCommand(ioStreams, []string{
+		"import",
+		"--config", anotherVaultEnv.configPath,
+		exportFile,
+	},
+	)
+
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("unexpected error from import command: %v", err)
+	}
+
+	v, err := vault.Open(t.Context(), anotherVaultEnv.vaultPath, vault.WithPassword([]byte(mockedPromptPassword)))
+	if err != nil {
+		t.Fatalf("failed to open vault: %v", err)
+	}
+	t.Cleanup(func() { //nolint:wsl
+		_ = v.Close()
+	})
+
+	gotSecrets, err := v.ExportSecrets(t.Context())
+	if err != nil {
+		t.Errorf("unexpected error while exporting secrets: %v", err)
+	}
+
+	wantSecrets := map[int]vaultdb.SecretWithLabels{
+		1: secret1,
+		2: secret2,
+		3: secret3,
+		4: secret4,
+	}
+	if diff := cmp.Diff(wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
+		t.Errorf("secrets mismatch (-want +got):\n%s", diff)
 	}
 }
 
