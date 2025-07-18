@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -22,7 +23,9 @@ type ConfigError struct {
 	Err error
 }
 
-func (e *ConfigError) Error() string { return "config: " + e.Opt + ": " + e.Err.Error() }
+func (e *ConfigError) Error() string {
+	return "config: " + strings.Join([]string{e.Opt, e.Err.Error()}, ":")
+}
 
 func (e *ConfigError) Unwrap() error { return e.Err }
 
@@ -82,7 +85,7 @@ func LoadFileConfig(path string) (*FileConfig, error) {
 	if err != nil {
 		// config file not found at default location; fallback to empty config
 		if len(path) == 0 && errors.Is(err, fs.ErrNotExist) { //nolint:revive // clearer with explicit fallback logic
-			c = &FileConfig{}
+			c = newFileConfig()
 		} else {
 			return nil, err
 		}
@@ -126,6 +129,10 @@ func parseFileConfig(path string) (*FileConfig, error) {
 }
 
 func (c *FileConfig) validate() error {
+	if c == nil {
+		return &ConfigError{Err: errors.New("cannot validate a nil config")}
+	}
+
 	if c.hasPartialClipboard() {
 		return &ConfigError{Opt: "clipboard", Err: errors.New("both 'copy_cmd' and 'paste_cmd' must be set or unset together")}
 	}

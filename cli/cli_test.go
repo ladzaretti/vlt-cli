@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/ladzaretti/vlt-cli/cli"
 	"github.com/ladzaretti/vlt-cli/clierror"
@@ -21,7 +23,7 @@ import (
 	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultdb"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
 
-	"github.com/google/go-cmp/cmp"
+	gocmp "github.com/google/go-cmp/cmp"
 )
 
 type vaultEnv struct {
@@ -133,7 +135,7 @@ func mustInitializeVault(t *testing.T, configPath string, vaultPassword string) 
 
 // secretWithLabelsComparer compares two [vaultdb.SecretWithLabels]
 // for equality on non cryptographic fields.
-var secretWithLabelsComparer = cmp.Comparer(func(a, b vaultdb.SecretWithLabels) bool {
+var secretWithLabelsComparer = gocmp.Comparer(func(a, b vaultdb.SecretWithLabels) bool {
 	return a.Name == b.Name &&
 		bytes.Equal(a.Value, b.Value) &&
 		slices.Equal(a.Labels, b.Labels)
@@ -220,7 +222,7 @@ func TestConfigGenerateCommand(t *testing.T) {
 		t.Errorf("unexpected stderr output: %s", errOut.String())
 	}
 
-	if diff := cmp.Diff(wantStdout, gotStdout); diff != "" {
+	if diff := gocmp.Diff(wantStdout, gotStdout); diff != "" {
 		t.Errorf("secrets mismatch (-want +got):\n%s", diff)
 	}
 }
@@ -266,7 +268,7 @@ max_history_snapshots = 2
 	}
 
 	gotStdout, wantStdout := out.String(), fmt.Sprintf(`INFO %s:`, defaultConfigPath)+" OK\n"
-	if diff := cmp.Diff(wantStdout, gotStdout); diff != "" {
+	if diff := gocmp.Diff(wantStdout, gotStdout); diff != "" {
 		t.Errorf("unexpected stdout output (-want +got):\n%s", diff)
 	}
 
@@ -288,7 +290,7 @@ max_history_snapshots = 2
 	}
 
 	gotStdout, wantStdout = out.String(), fmt.Sprintf(`INFO %s:`, defaultConfigPath)+" OK\n"
-	if diff := cmp.Diff(wantStdout, gotStdout); diff != "" {
+	if diff := gocmp.Diff(wantStdout, gotStdout); diff != "" {
 		t.Errorf("unexpected stdout output (-want +got):\n%s", diff)
 	}
 }
@@ -338,7 +340,7 @@ var (
 	}
 )
 
-func TestSaveCommand_(t *testing.T) { //nolint:revive
+func TestSaveCommand(t *testing.T) { //nolint:revive
 	testCases := []struct {
 		name                 string
 		stdinData            []byte
@@ -425,7 +427,7 @@ func TestSaveCommand_(t *testing.T) { //nolint:revive
 				t.Errorf("unexpected error while exporting secrets: %v", err)
 			}
 
-			if diff := cmp.Diff(tt.wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
+			if diff := gocmp.Diff(tt.wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
 				t.Errorf("secrets mismatch (-want +got):\n%s", diff)
 			}
 
@@ -434,7 +436,7 @@ func TestSaveCommand_(t *testing.T) { //nolint:revive
 				t.Errorf("unexpected error while reading clipboard content containing file: %v", err)
 			}
 
-			if diff := cmp.Diff(tt.wantClipboardContent, gotClipboardContent, secretWithLabelsComparer); diff != "" {
+			if diff := gocmp.Diff(tt.wantClipboardContent, gotClipboardContent, secretWithLabelsComparer); diff != "" {
 				t.Errorf("secrets mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -605,7 +607,7 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 				t.Errorf("unexpected error while exporting secrets: %v", err)
 			}
 
-			if diff := cmp.Diff(tt.wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
+			if diff := gocmp.Diff(tt.wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
 				t.Errorf("secrets mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -697,7 +699,7 @@ func TestExportCommand(t *testing.T) {
 		3: secret3,
 		4: secret4,
 	}
-	if diff := cmp.Diff(wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
+	if diff := gocmp.Diff(wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
 		t.Errorf("secrets mismatch (-want +got):\n%s", diff)
 	}
 }
@@ -821,7 +823,7 @@ func TestFindCommand(t *testing.T) { //nolint:revive
 			}
 
 			got, want := out.String(), fmt.Sprintf(`[vlt] Password for "%s":`, vaultEnv.vaultPath)+tt.wantOutput
-			if diff := cmp.Diff(want, got); diff != "" {
+			if diff := gocmp.Diff(want, got); diff != "" {
 				t.Errorf("unexpected stdout output (-want +got):\n%s", diff)
 			}
 		})
@@ -959,7 +961,7 @@ func TestShowCommand(t *testing.T) { //nolint:revive
 			}
 
 			got, want := out.String(), fmt.Sprintf(`[vlt] Password for "%s":`, vaultEnv.vaultPath)+tt.wantOutput
-			if diff := cmp.Diff(want, got); diff != "" {
+			if diff := gocmp.Diff(want, got); diff != "" {
 				t.Errorf("unexpected stdout output (-want +got):\n%s", diff)
 			}
 		})
@@ -1007,4 +1009,128 @@ func TestShowCommand(t *testing.T) { //nolint:revive
 			t.Errorf("unexpected stderr content: %q", got)
 		}
 	})
+}
+
+func TestGenerateCommand(t *testing.T) { //nolint:revive,gocognit,cyclop
+	type passwordRequirements struct {
+		minLen  int
+		upper   int
+		lower   int
+		digit   int
+		special int
+	}
+
+	tests := []struct {
+		name string
+		args []string
+		want passwordRequirements
+	}{
+		{
+			name: "default policy",
+			args: []string{"generate", "-c"},
+			want: passwordRequirements{
+				minLen:  12,
+				upper:   2,
+				lower:   2,
+				digit:   2,
+				special: 2,
+			},
+		},
+		{
+			name: "numeric 4 and length 16",
+			args: []string{"generate", "--numeric", "4", "--min-length", "16"},
+			want: passwordRequirements{
+				minLen: 16,
+				digit:  4,
+			},
+		},
+		{
+			name: "no special characters",
+			args: []string{"generate", "--special", "0"},
+			want: passwordRequirements{
+				minLen:  12,
+				special: 0,
+			},
+		},
+		{
+			name: "custom mix",
+			args: []string{"generate", "-u3", "-l3", "-d3", "-s3"},
+			want: passwordRequirements{
+				minLen:  12,
+				upper:   3,
+				lower:   3,
+				digit:   3,
+				special: 3,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vaultEnv := setupTestVaultEnv(t)
+
+			stdin := genericclioptions.NewTestFdReader(nil, 0, newTTYFileInfo("stdin", 0))
+			ioStreams, _, out, errOut := genericclioptions.NewTestIOStreams(stdin)
+
+			clierror.SetErrorHandler(clierror.PrintErrHandler)
+			clierror.SetErrWriter(ioStreams.ErrOut)
+
+			args := []string{"--config", vaultEnv.configPath}
+			tt.args = append(tt.args, args...)
+
+			cmd := cli.NewDefaultVltCommand(ioStreams, tt.args)
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("generate command failed: %v\nstderr: %s", err, errOut.String())
+			}
+
+			if got := errOut.String(); got != "" {
+				t.Errorf("unexpected stderr output: %q", got)
+			}
+
+			stdout := strings.TrimSpace(out.String())
+
+			clipboard, err := os.ReadFile(vaultEnv.clipboardContentPath)
+			if err != nil {
+				t.Errorf("unexpected error reading clipboard file: %v", err)
+			}
+
+			output := cmp.Or(stdout, string(clipboard))
+
+			got := passwordRequirements{
+				minLen: len(output),
+			}
+			for _, r := range output {
+				switch {
+				case unicode.IsUpper(r):
+					got.upper++
+				case unicode.IsLower(r):
+					got.lower++
+				case unicode.IsDigit(r):
+					got.digit++
+				case unicode.IsPunct(r) || unicode.IsSymbol(r):
+					got.special++
+				}
+			}
+
+			if got.minLen < tt.want.minLen {
+				t.Errorf("want: password length ≥ %d, got: %d", tt.want.minLen, len(stdout))
+			}
+
+			if got.upper < tt.want.upper {
+				t.Errorf("want: >= %d uppercase letters, got: %d", tt.want.upper, got.upper)
+			}
+
+			if got.lower < tt.want.lower {
+				t.Errorf("want: >= %d lowercase letters, got: %d", tt.want.lower, got.lower)
+			}
+
+			if got.digit < tt.want.digit {
+				t.Errorf("want: >= %d digits, got: %d", tt.want.digit, got.digit)
+			}
+
+			if got.special < tt.want.special {
+				t.Errorf("want: >= %d special characters, got: %d", tt.want.special, got.special)
+			}
+		})
+	}
 }
