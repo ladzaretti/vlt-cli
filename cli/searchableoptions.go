@@ -137,10 +137,16 @@ func retrieveSortedByMatch(ctx context.Context, vault *vault.Vault, retrieveSecr
 		return nil, nil
 	}
 
-	// Sort in descending order by label count
+	// sort in descending order by label count
 	sortedByLabelsCount := secretsMapToSlice(matchingSecrets)
 	slices.SortFunc(sortedByLabelsCount, func(a, b secretWithLabels) int {
-		return len(b.labels) - len(a.labels)
+		// desc by label count
+		if lenA, lenB := len(a.labels), len(b.labels); lenA != lenB {
+			return lenB - lenA
+		}
+
+		// tie break: desc by id
+		return b.id - a.id
 	})
 
 	sortedIDs := make([]int, len(sortedByLabelsCount))

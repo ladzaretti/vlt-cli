@@ -9,16 +9,13 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"slices"
 	"strings"
 	"testing"
-	"time"
 	"unicode"
 
 	"github.com/ladzaretti/vlt-cli/cli"
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/input"
 	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultdb"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
@@ -26,121 +23,6 @@ import (
 	gocmp "github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
-
-type vaultEnv struct {
-	tempDir              string
-	configPath           string
-	vaultPath            string
-	clipboardContentPath string
-}
-
-const (
-	mockedPastedPassword = "mocked_pasted_password_input" //nolint:gosec
-	mockedPromptPassword = "mocked_prompt_password_input"
-)
-
-func setupTestVaultEnv(t *testing.T) vaultEnv {
-	t.Helper()
-	tempDir := t.TempDir()
-
-	ff, err := os.CreateTemp(tempDir, ".clipboard.*")
-	if err != nil {
-		t.Fatalf("failed to create clipboard content file: %v", err)
-	}
-	t.Cleanup(func() { //nolint:wsl
-		_ = ff.Close()
-	})
-
-	f, err := os.CreateTemp(tempDir, ".vlt.*.toml")
-	if err != nil {
-		t.Fatalf("failed to create temp config file: %v", err)
-	}
-	t.Cleanup(func() { //nolint:wsl
-		_ = f.Close()
-	})
-
-	clipboardContentPath := ff.Name()
-	configPath := f.Name()
-	vaultPath := path.Join(tempDir, ".vlt")
-
-	content := fmt.Sprintf(`
-		[vault]
-		path = '%s'
-		session_duration = '%s'
-		[clipboard]
-		copy_cmd=["bash", "-c", "xargs printf > %s"]
-		paste_cmd=["printf", %q]
-	`, vaultPath, "0m", clipboardContentPath, mockedPastedPassword)
-
-	if _, err := f.WriteString(content); err != nil {
-		t.Fatalf("failed to write config content: %v", err)
-	}
-
-	return vaultEnv{
-		tempDir:              tempDir,
-		configPath:           configPath,
-		vaultPath:            vaultPath,
-		clipboardContentPath: clipboardContentPath,
-	}
-}
-
-// setupIOStreams creates IOStreams with a mocked stdin.
-func setupIOStreams(t *testing.T, in []byte, stdinInfoFn func(string, int) os.FileInfo) (ioStreams *genericclioptions.IOStreams, out *bytes.Buffer, errOut *bytes.Buffer) {
-	t.Helper()
-
-	var (
-		buf       = bytes.NewBuffer(in)
-		stdinInfo = stdinInfoFn("stdin", len(in))
-	)
-
-	stdinReader := genericclioptions.NewTestFdReader(buf, 0, stdinInfo)
-
-	ioStreams, _, out, errOut = genericclioptions.NewTestIOStreams(stdinReader)
-
-	clierror.SetErrorHandler(clierror.PrintErrHandler)
-	clierror.SetErrWriter(ioStreams.ErrOut)
-
-	t.Cleanup(func() {
-		clierror.ResetErrorHandler()
-		clierror.ResetErrWriter()
-	})
-
-	return
-}
-
-func newTTYFileInfo(name string, size int) os.FileInfo {
-	return genericclioptions.NewMockFileInfo(name, int64(size), os.ModeCharDevice, false, time.Now())
-}
-
-func newNonTTYFileInfo(name string, size int) os.FileInfo {
-	return genericclioptions.NewMockFileInfo(name, int64(size), 0, false, time.Now())
-}
-
-func mustInitializeVault(t *testing.T, configPath string, vaultPassword string) { //nolint:unparam // vaultPassword always receives mockedPassword ("mocked_password_input")
-	t.Helper()
-
-	ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
-
-	input.SetDefaultReadPassword(func(_ int) ([]byte, error) {
-		return []byte(vaultPassword), nil
-	})
-
-	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
-		"create", "--config", configPath,
-	})
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("create command failed: %v\nstderr: %q", err, errOut.String())
-	}
-}
-
-// secretWithLabelsComparer compares two [vaultdb.SecretWithLabels]
-// for equality on non cryptographic fields.
-var secretWithLabelsComparer = gocmp.Comparer(func(a, b vaultdb.SecretWithLabels) bool {
-	return a.Name == b.Name &&
-		bytes.Equal(a.Value, b.Value) &&
-		slices.Equal(a.Labels, b.Labels)
-})
 
 func TestConfigCommand(t *testing.T) {
 	testEnv := setupTestVaultEnv(t)
@@ -264,7 +146,7 @@ max_history_snapshots = 2
 		t.Errorf("validate command failed: %v\nstderr: %s", err, errOut.String())
 	}
 
-	if errOut.Len() > 0 {
+	if errOut.String() != "" {
 		t.Errorf("unexpected stderr: %s", errOut.String())
 	}
 
@@ -417,16 +299,7 @@ func TestSaveCommand(t *testing.T) { //nolint:revive
 				t.Errorf("unexpected stderr output: %q", got)
 			}
 
-			v, err := vault.Open(t.Context(), vaultEnv.vaultPath, vault.WithPassword([]byte(mockedPromptPassword)))
-			if err != nil {
-				t.Fatalf("failed to open vault: %v", err)
-			}
-			t.Cleanup(func() { _ = v.Close() }) //nolint:wsl
-
-			gotSecrets, err := v.ExportSecrets(t.Context())
-			if err != nil {
-				t.Errorf("unexpected error while exporting secrets: %v", err)
-			}
+			gotSecrets := export(t, vaultEnv.vaultPath, []byte(mockedPromptPassword))
 
 			if diff := gocmp.Diff(tt.wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
 				t.Errorf("secrets mismatch (-want +got):\n%s", diff)
@@ -615,35 +488,6 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 	}
 }
 
-func seedSecrets(t *testing.T, vaultEnv vaultEnv, input string) {
-	t.Helper()
-
-	f, err := os.CreateTemp(vaultEnv.tempDir, "import.csv")
-	if err != nil {
-		t.Fatalf("failed to create import file: %v", err)
-	}
-	t.Cleanup(func() { //nolint:wsl
-		_ = f.Close()
-	})
-
-	if _, err := f.WriteString(input); err != nil {
-		t.Fatalf("failed to write import file content: %v", err)
-	}
-
-	ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
-
-	cmd := cli.NewDefaultVltCommand(ioStreams,
-		[]string{"import", "--config", vaultEnv.configPath, f.Name()})
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("unexpected error from import command: %v", err)
-	}
-
-	if got := errOut.String(); got != "" {
-		t.Fatalf("unexpected stderr output: %q", got)
-	}
-}
-
 func TestExportCommand(t *testing.T) {
 	vaultEnv := setupTestVaultEnv(t)
 	mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
@@ -667,6 +511,8 @@ func TestExportCommand(t *testing.T) {
 		t.Fatalf("export command failed: %v\nstderr: %s", err, errOut.String())
 	}
 
+	// create a new vault to import into.
+
 	anotherVaultEnv := setupTestVaultEnv(t)
 	mustInitializeVault(t, anotherVaultEnv.configPath, mockedPromptPassword)
 
@@ -681,18 +527,7 @@ func TestExportCommand(t *testing.T) {
 		t.Errorf("unexpected error from import command: %v", err)
 	}
 
-	v, err := vault.Open(t.Context(), anotherVaultEnv.vaultPath, vault.WithPassword([]byte(mockedPromptPassword)))
-	if err != nil {
-		t.Fatalf("failed to open vault: %v", err)
-	}
-	t.Cleanup(func() { //nolint:wsl
-		_ = v.Close()
-	})
-
-	exported, err := v.ExportSecrets(t.Context())
-	if err != nil {
-		t.Errorf("unexpected error while exporting secrets: %v", err)
-	}
+	exported := export(t, vaultEnv.vaultPath, []byte(mockedPromptPassword))
 
 	gotSecrets := make([]vaultdb.SecretWithLabels, 0, len(exported))
 
@@ -782,7 +617,7 @@ func TestFindCommand(t *testing.T) { //nolint:revive
 `,
 		},
 		{
-			name: "find by multiple labels (OR logic)",
+			name: "find by multiple labels",
 			input: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
@@ -791,8 +626,8 @@ func TestFindCommand(t *testing.T) { //nolint:revive
 			}, "\n"),
 			args: []string{"--label", "label_1", "--label", "label_3"},
 			wantOutput: `ID     NAME       LABELS
-1      name_1     label_1
 3      name_3     label_3
+1      name_1     label_1
 
 `,
 		},
@@ -1141,5 +976,119 @@ func TestGenerateCommand(t *testing.T) { //nolint:revive,gocognit,cyclop
 				t.Errorf("want: >= %d special characters, got: %d", tt.want.special, got.special)
 			}
 		})
+	}
+}
+
+func TestRemoveCommand(t *testing.T) { //nolint:revive
+	testCases := []commandTestCase{
+		{
+			name:        "force remove by id",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+			}, "\n"),
+			args:        []string{"remove", "--id", "1", "--yes"},
+			wantSecrets: []vaultdb.SecretWithLabels{secret2, secret3},
+			wantOutput:  "INFO successfully deleted 1 secrets.\n",
+		},
+		{
+			name: "remove by name with confirmation",
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+			}, "\n"),
+			stdinData:   []byte("y\n"),
+			stdinInfoFn: newTTYFileInfo,
+			args:        []string{"remove", "--name", secret1.Name},
+			wantSecrets: []vaultdb.SecretWithLabels{secret2, secret3},
+			wantOutput: `ID     NAME       LABELS
+1      name_1     label_1
+
+Delete 1 secrets? (y/N): INFO successfully deleted 1 secrets.
+`,
+		},
+		{
+			name: "abort remove by prompt",
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+			}, "\n"),
+			stdinData:   []byte("\n"),
+			stdinInfoFn: newTTYFileInfo,
+			args:        []string{"remove", "--name", secret1.Name},
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2, secret3},
+			wantOutput: `ID     NAME       LABELS
+1      name_1     label_1
+
+Delete 1 secrets? (y/N): `,
+		},
+		{
+			name:        "force remove by label",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+			}, "\n"),
+			args:        []string{"remove", "--label", "label_1", "--yes"},
+			wantSecrets: []vaultdb.SecretWithLabels{secret2, secret3},
+			wantOutput:  "INFO successfully deleted 1 secrets.\n",
+		},
+		{
+			name:        "require confirmation when multiple match",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+			}, "\n"),
+			args:        []string{"remove", "--label", "label_[12]", "--yes"},
+			wantErrorAs: &cli.RemoveError{},
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2, secret3},
+			wantOutput:  "",
+			wantStderr:  "WARN found 2 matching secrets.\nvlt: remove: 2 matching secrets found, use --all to delete all\n",
+		},
+
+		{
+			name:        "force remove by label glob",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+				vltImportRecord(secret3),
+			}, "\n"),
+			args:        []string{"remove", "--label", "label_[12]", "--yes", "--all"},
+			wantSecrets: []vaultdb.SecretWithLabels{secret3},
+			wantOutput:  "INFO successfully deleted 2 secrets.\n",
+			wantStderr:  "WARN found 2 matching secrets.\n",
+		},
+		{
+			name:        "no matching secrets",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+			}, "\n"),
+			args:        []string{"remove", "--name", "does-not-exist", "--yes"},
+			wantErrorAs: &cli.RemoveError{},
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2},
+			wantOutput:  "",
+			wantStderr:  "WARN no match found.\nvlt: remove: no match found\n",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, tt.run)
 	}
 }
