@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 	"unicode"
 
 	"github.com/ladzaretti/vlt-cli/cli"
@@ -871,13 +873,14 @@ func TestGenerateCommand(t *testing.T) { //nolint:revive,gocognit,cyclop
 			}
 
 			stdout := strings.TrimSpace(out.String())
+			clipboard := ""
 
-			clipboard, err := os.ReadFile(vaultEnv.clipboardContentPath)
-			if err != nil {
-				t.Errorf("unexpected error reading clipboard file: %v", err)
+			if len(stdout) == 0 {
+				maxAttempts := 5
+				clipboard = pollFile(t, vaultEnv.clipboardContentPath, maxAttempts)
 			}
 
-			output := cmp.Or(stdout, string(clipboard))
+			output := cmp.Or(stdout, clipboard)
 
 			got := passwordRequirements{
 				minLen: len(output),
@@ -916,6 +919,31 @@ func TestGenerateCommand(t *testing.T) { //nolint:revive,gocognit,cyclop
 			}
 		})
 	}
+}
+
+func pollFile(t *testing.T, path string, maxAttempts int) (content string) {
+	t.Helper()
+
+	ticker := time.NewTicker(time.Millisecond * 200)
+	defer ticker.Stop()
+
+	for i := range maxAttempts {
+		c, err := os.ReadFile(filepath.Clean(path))
+		if err != nil {
+			t.Logf("clipboard read attempt %d failed: %v", i+1, err)
+			continue
+		}
+
+		content = string(c)
+
+		if len(content) > 0 {
+			break
+		}
+
+		<-ticker.C
+	}
+
+	return content
 }
 
 func TestRemoveCommand(t *testing.T) { //nolint:revive

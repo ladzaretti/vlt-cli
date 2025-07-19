@@ -41,17 +41,17 @@ func setupTestVaultEnv(t *testing.T) vaultEnv {
 	if err != nil {
 		t.Fatalf("failed to create clipboard content file: %v", err)
 	}
-	t.Cleanup(func() { //nolint:wsl
+	defer func() { //nolint:wsl
 		_ = ff.Close()
-	})
+	}()
 
 	f, err := os.CreateTemp(tempDir, ".vlt.*.toml")
 	if err != nil {
 		t.Fatalf("failed to create temp config file: %v", err)
 	}
-	t.Cleanup(func() { //nolint:wsl
+	defer func() { //nolint:wsl
 		_ = f.Close()
-	})
+	}()
 
 	clipboardContentPath := ff.Name()
 	configPath := f.Name()
