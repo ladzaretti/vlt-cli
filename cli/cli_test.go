@@ -223,97 +223,62 @@ var (
 	}
 )
 
-func TestSaveCommand(t *testing.T) { //nolint:revive
-	testCases := []struct {
-		name                 string
-		stdinData            []byte
-		stdinInfoFn          func(string, int) os.FileInfo
-		args                 []string
-		wantSecrets          map[int]vaultdb.SecretWithLabels
-		wantClipboardContent []uint8
-	}{
+func TestSaveCommand(t *testing.T) {
+	testCases := []commandTestCase{
 		{
 			name:        "full prompt",
 			stdinData:   []byte(secret1.Name + "\n" + secret1.Labels[0] + "\n"),
 			stdinInfoFn: newTTYFileInfo,
-			args:        nil,
-			wantSecrets: map[int]vaultdb.SecretWithLabels{
-				1: {
+			args:        []string{"save", "-c"},
+			wantOutput:  `Enter name: Enter secret for name "name_1": Enter labels (comma-separated), or press Enter to skip: `,
+			wantSecrets: []vaultdb.SecretWithLabels{
+				{
 					Name:   secret1.Name,
 					Value:  []byte(mockedPromptPassword),
 					Labels: secret1.Labels,
 				},
 			},
-			wantClipboardContent: []uint8(mockedPromptPassword),
+			wantClipboardContent: mockedPromptPassword,
 		},
 		{
 			name:        "prompt password only, metadata via cli flags",
 			stdinData:   secret2.Value,
 			stdinInfoFn: newNonTTYFileInfo,
 			args: []string{
+				"save",
 				"--name", secret2.Name,
 				"--label", secret2.Labels[0],
+				"-c",
 			},
-			wantSecrets: map[int]vaultdb.SecretWithLabels{
-				1: secret2,
+			wantSecrets: []vaultdb.SecretWithLabels{
+				secret2,
 			},
-			wantClipboardContent: secret2.Value,
+			wantClipboardContent: string(secret2.Value),
 		},
 		{
 			name:        "paste password only, metadata via cli flags",
 			stdinData:   nil,
 			stdinInfoFn: newTTYFileInfo,
 			args: []string{
+				"save",
 				"--name", secret3.Name,
 				"--label", secret3.Labels[0],
 				"-p",
+				"-c",
 			},
-			wantSecrets: map[int]vaultdb.SecretWithLabels{
-				1: {
+			wantSecrets: []vaultdb.SecretWithLabels{
+				{
 					Name:   secret3.Name,
 					Value:  []byte(mockedPastedPassword),
 					Labels: secret3.Labels,
 				},
 			},
-			wantClipboardContent: []uint8(mockedPastedPassword),
+			wantClipboardContent: mockedPastedPassword,
 		},
 	}
 
 	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			vaultEnv := setupTestVaultEnv(t)
-
-			mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
-
-			args := []string{"save", "--config", vaultEnv.configPath, "-c"}
-			args = append(args, tt.args...)
-
-			ioStreams, _, errOut := setupIOStreams(t, tt.stdinData, tt.stdinInfoFn)
-			cmd := cli.NewDefaultVltCommand(ioStreams, args)
-
-			if err := cmd.Execute(); err != nil {
-				t.Errorf("unexpected error from save command: %v", err)
-			}
-
-			if got := errOut.String(); got != "" {
-				t.Errorf("unexpected stderr output: %q", got)
-			}
-
-			gotSecrets := export(t, vaultEnv.vaultPath, []byte(mockedPromptPassword))
-
-			if diff := gocmp.Diff(tt.wantSecrets, gotSecrets, secretWithLabelsComparer); diff != "" {
-				t.Errorf("secrets mismatch (-want +got):\n%s", diff)
-			}
-
-			gotClipboardContent, err := os.ReadFile(vaultEnv.clipboardContentPath)
-			if err != nil {
-				t.Errorf("unexpected error while reading clipboard content containing file: %v", err)
-			}
-
-			if diff := gocmp.Diff(tt.wantClipboardContent, gotClipboardContent, secretWithLabelsComparer); diff != "" {
-				t.Errorf("secrets mismatch (-want +got):\n%s", diff)
-			}
-		})
+		t.Run(tt.name, tt.run)
 	}
 }
 
@@ -549,22 +514,18 @@ func TestExportCommand(t *testing.T) {
 }
 
 func TestFindCommand(t *testing.T) { //nolint:revive
-	testCases := []struct {
-		name       string
-		input      string
-		args       []string
-		wantOutput string
-	}{
+	testCases := []commandTestCase{
 		{
-			name: "list all secrets",
-			input: strings.Join([]string{
+			name:        "list all secrets",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 				vltImportRecord(secret2),
 				vltImportRecord(secret3),
 				vltImportRecord(secret4),
 			}, "\n"),
-			args: []string{},
+			args: []string{"find"},
 			wantOutput: `ID     NAME       LABELS
 4      name_4     label_4
 3      name_3     label_3
@@ -572,243 +533,221 @@ func TestFindCommand(t *testing.T) { //nolint:revive
 1      name_1     label_1
 
 `,
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2, secret3, secret4},
 		},
 		{
-			name: "find by glob match in name or label",
-			input: strings.Join([]string{
+			name:        "find by glob match in name or label",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 				vltImportRecord(secret2),
 				vltImportRecord(secret3),
 				vltImportRecord(secret4),
 			}, "\n"),
-			args: []string{"*3"},
+			args: []string{"find", "*3"},
 			wantOutput: `ID     NAME       LABELS
 3      name_3     label_3
 
 `,
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2, secret3, secret4},
 		},
 		{
-			name: "find by name",
-			input: strings.Join([]string{
+			name:        "find by name",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 				vltImportRecord(secret2),
 			}, "\n"),
-			args: []string{"--name", "name_2"},
+			args: []string{"find", "--name", "name_2"},
 			wantOutput: `ID     NAME       LABELS
 2      name_2     label_2
 
 `,
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2},
 		},
 		{
-			name: "find by id",
-			input: strings.Join([]string{
+			name:        "find by id",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 				vltImportRecord(secret2),
 				vltImportRecord(secret3),
 			}, "\n"),
-			args: []string{"--id", "1", "--id", "3"},
+			args: []string{"find", "--id", "1", "--id", "3"},
 			wantOutput: `ID     NAME       LABELS
 3      name_3     label_3
 1      name_1     label_1
 
 `,
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2, secret3},
 		},
 		{
-			name: "find by multiple labels",
-			input: strings.Join([]string{
+			name:        "find by multiple labels",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 				vltImportRecord(secret2),
 				vltImportRecord(secret3),
 			}, "\n"),
-			args: []string{"--label", "label_1", "--label", "label_3"},
+			args: []string{"find", "--label", "label_1", "--label", "label_3"},
 			wantOutput: `ID     NAME       LABELS
 3      name_3     label_3
 1      name_1     label_1
 
 `,
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2, secret3},
 		},
 		{
-			name: "no results found",
-			input: strings.Join([]string{
+			name:        "no results found",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 				vltImportRecord(secret2),
 			}, "\n"),
-			args: []string{"--name", "nonexistent"},
+			args: []string{"find", "--name", "nonexistent"},
 			wantOutput: `ID     NAME     LABELS
 
 `,
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2},
 		},
 	}
 
-	for _, tt := range testCases { //nolint:dupl
-		t.Run(tt.name, func(t *testing.T) {
-			vaultEnv := setupTestVaultEnv(t)
-			mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
-			seedSecrets(t, vaultEnv, tt.input)
-
-			ioStreams, out, errOut := setupIOStreams(t, nil, newTTYFileInfo)
-
-			args := []string{"find", "--config", vaultEnv.configPath}
-			args = append(args, tt.args...)
-
-			cmd := cli.NewDefaultVltCommand(ioStreams, args)
-
-			if err := cmd.Execute(); err != nil {
-				t.Errorf("unexpected error from find command: %v", err)
-			}
-
-			if got := errOut.String(); got != "" {
-				t.Errorf("unexpected stderr output: %q", got)
-			}
-
-			got, want := out.String(), fmt.Sprintf(`[vlt] Password for "%s":`, vaultEnv.vaultPath)+tt.wantOutput
-			if diff := gocmp.Diff(want, got); diff != "" {
-				t.Errorf("unexpected stdout output (-want +got):\n%s", diff)
-			}
-		})
+	for _, tt := range testCases {
+		t.Run(tt.name, tt.run)
 	}
 }
 
 func TestShowCommand(t *testing.T) { //nolint:revive
-	testCases := []struct {
-		name                 string
-		input                string
-		args                 []string
-		wantOutput           string
-		wantClipboardContent []uint8
-	}{
+	testCases := []commandTestCase{
 		{
-			name: "by name and output to stdout",
-			input: strings.Join([]string{
+			name:        "by name and output to stdout",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 			}, "\n"),
-			args:       []string{"--name", secret1.Name, "--stdout"},
-			wantOutput: string(secret1.Value),
+			args:        []string{"show", "--name", secret1.Name, "--stdout"},
+			wantOutput:  string(secret1.Value),
+			wantSecrets: []vaultdb.SecretWithLabels{secret1},
 		},
+
 		{
-			name: "by name and copy to clipboard",
-			input: strings.Join([]string{
+			name:        "by name and copy to clipboard",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 			}, "\n"),
-			args:                 []string{"--name", secret1.Name, "-c"},
+			args:                 []string{"show", "--name", secret1.Name, "-c"},
 			wantOutput:           "",
-			wantClipboardContent: secret1.Value,
+			wantClipboardContent: string(secret1.Value),
+			wantSecrets:          []vaultdb.SecretWithLabels{secret1},
 		},
 		{
-			name: "by wildcard and output to stdout",
-			input: strings.Join([]string{
+			name:        "by wildcard and output to stdout",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 			}, "\n"),
-			args:       []string{"*", "--stdout"},
-			wantOutput: string(secret1.Value),
+			args:        []string{"show", "*", "--stdout"},
+			wantSecrets: []vaultdb.SecretWithLabels{secret1},
+			wantOutput:  string(secret1.Value),
 		},
 		{
-			name: "by wildcard and copy to clipboard",
-			input: strings.Join([]string{
+			name:        "by wildcard and copy to clipboard",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 			}, "\n"),
-			args:                 []string{"*", "-c"},
+			args:                 []string{"show", "*", "-c"},
 			wantOutput:           "",
-			wantClipboardContent: secret1.Value,
+			wantSecrets:          []vaultdb.SecretWithLabels{secret1},
+			wantClipboardContent: string(secret1.Value),
 		},
 		{
-			name: "by id and output to stdout",
-			input: strings.Join([]string{
+			name:        "by id and output to stdout",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 			}, "\n"),
-			args:       []string{"--id", "1", "--stdout"},
-			wantOutput: string(secret1.Value),
+			args:        []string{"show", "--id", "1", "--stdout"},
+			wantSecrets: []vaultdb.SecretWithLabels{secret1},
+			wantOutput:  string(secret1.Value),
 		},
 		{
-			name: "by id and copy to clipboard",
-			input: strings.Join([]string{
+			name:        "by id and copy to clipboard",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 			}, "\n"),
-			args:                 []string{"--id", "1", "-c"},
+			args:                 []string{"show", "--id", "1", "-c"},
 			wantOutput:           "",
-			wantClipboardContent: secret1.Value,
+			wantSecrets:          []vaultdb.SecretWithLabels{secret1},
+			wantClipboardContent: string(secret1.Value),
 		},
 		{
-			name: "by label and output to stdout",
-			input: strings.Join([]string{
+			name:        "by label and output to stdout",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 			}, "\n"),
-			args:       []string{"--label", secret1.Labels[0], "--stdout"},
-			wantOutput: string(secret1.Value),
+			args:        []string{"show", "--label", secret1.Labels[0], "--stdout"},
+			wantSecrets: []vaultdb.SecretWithLabels{secret1},
+			wantOutput:  string(secret1.Value),
 		},
 		{
-			name: "by label and copy to clipboard",
-			input: strings.Join([]string{
+			name:        "by label and copy to clipboard",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 			}, "\n"),
-			args:                 []string{"--label", secret1.Labels[0], "-c"},
+			args:                 []string{"show", "--label", secret1.Labels[0], "-c"},
 			wantOutput:           "",
-			wantClipboardContent: secret1.Value,
+			wantSecrets:          []vaultdb.SecretWithLabels{secret1},
+			wantClipboardContent: string(secret1.Value),
 		},
 		{
-			name: "by name and label and output to stdout",
-			input: strings.Join([]string{
+			name:        "by name and label and output to stdout",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 				vltImportRecord(secret2),
 				vltImportRecord(secret3),
 			}, "\n"),
-			args:       []string{"--name", secret1.Name, "--label", secret1.Labels[0], "--stdout"},
-			wantOutput: string(secret1.Value),
+			args:        []string{"show", "--name", secret1.Name, "--label", secret1.Labels[0], "--stdout"},
+			wantOutput:  string(secret1.Value),
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2, secret3},
 		},
 		{
-			name: "by name and label and copy to clipboard",
-			input: strings.Join([]string{
+			name:        "by name and label and copy to clipboard",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
 				vltExportHeader,
 				vltImportRecord(secret1),
 				vltImportRecord(secret2),
 				vltImportRecord(secret3),
 			}, "\n"),
-			args:                 []string{"--name", secret1.Name, "--label", secret1.Labels[0], "-c"},
+			args:                 []string{"show", "--name", secret1.Name, "--label", secret1.Labels[0], "-c"},
 			wantOutput:           "",
-			wantClipboardContent: secret1.Value,
+			wantSecrets:          []vaultdb.SecretWithLabels{secret1, secret2, secret3},
+			wantClipboardContent: string(secret1.Value),
 		},
 	}
 
-	for _, tt := range testCases { //nolint:dupl
-		t.Run(tt.name, func(t *testing.T) {
-			vaultEnv := setupTestVaultEnv(t)
-			mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
-			seedSecrets(t, vaultEnv, tt.input)
-
-			ioStreams, out, errOut := setupIOStreams(t, nil, newTTYFileInfo)
-
-			args := []string{"show", "--config", vaultEnv.configPath}
-			args = append(args, tt.args...)
-
-			cmd := cli.NewDefaultVltCommand(ioStreams, args)
-
-			if err := cmd.Execute(); err != nil {
-				t.Errorf("unexpected error from show command: %v", err)
-			}
-
-			if got := errOut.String(); got != "" {
-				t.Errorf("unexpected stderr output: %q", got)
-			}
-
-			got, want := out.String(), fmt.Sprintf(`[vlt] Password for "%s":`, vaultEnv.vaultPath)+tt.wantOutput
-			if diff := gocmp.Diff(want, got); diff != "" {
-				t.Errorf("unexpected stdout output (-want +got):\n%s", diff)
-			}
-		})
+	for _, tt := range testCases {
+		t.Run(tt.name, tt.run)
 	}
 
 	t.Run("ambiguous match fails with error and stderr", func(t *testing.T) {

@@ -158,6 +158,10 @@ func export(t *testing.T, vaultPath string, vaultPassword []byte) map[int]vaultd
 func seedSecrets(t *testing.T, vaultEnv vaultEnv, input string) {
 	t.Helper()
 
+	if len(input) == 0 {
+		return
+	}
+
 	f, err := os.CreateTemp(vaultEnv.tempDir, "import.csv")
 	if err != nil {
 		t.Fatalf("failed to create import file: %v", err)
