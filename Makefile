@@ -1,4 +1,4 @@
-.DEFAULT_GOAL = check
+.DEFAULT_GOAL = build
 
 # vlt version
 VERSION?=0.0.0
