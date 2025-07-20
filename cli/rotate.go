@@ -54,7 +54,7 @@ func (o *RotateOptions) Validate() error {
 	return nil
 }
 
-func (o *RotateOptions) Run(ctx context.Context, _ ...string) (retErr error) {
+func (o *RotateOptions) Run(ctx context.Context, _ ...string) (retErr error) { //nolint:revive // function-length
 	defer func() {
 		if retErr != nil {
 			retErr = &RotateError{retErr}
@@ -127,6 +127,10 @@ func (o *RotateOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 	}
 
 	o.Infof("vault rotated successfully\n")
+
+	if err := o.vaultOptions.postWriteHook(ctx, o.StdioOptions); err != nil {
+		o.Errorf("post-write hook failed: %v", err)
+	}
 
 	return nil
 }

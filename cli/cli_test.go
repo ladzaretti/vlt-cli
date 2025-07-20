@@ -18,6 +18,7 @@ import (
 	"github.com/ladzaretti/vlt-cli/cli"
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
+	"github.com/ladzaretti/vlt-cli/input"
 	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultdb"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
@@ -1232,5 +1233,83 @@ vlt: update: ambiguous secret match: multiple secrets match the search criteria
 
 	for _, tt := range testCases {
 		t.Run(tt.name, tt.run)
+	}
+}
+
+func TestRotateCommand(t *testing.T) {
+	vaultEnv := setupTestVaultEnv(t)
+
+	mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
+	seedSecrets(t, vaultEnv, strings.Join([]string{
+		vltExportHeader,
+		vltImportRecord(secret1),
+		vltImportRecord(secret2),
+		vltImportRecord(secret3),
+		vltImportRecord(secret4),
+	}, "\n"))
+
+	newPassword := "new-password"
+	readFunc := passwordSequence([][]byte{
+		[]byte(mockedPromptPassword),
+		[]byte(newPassword),
+		[]byte(newPassword),
+	})
+
+	input.SetDefaultReadPassword(readFunc)
+
+	ioStreams, out, errOut := setupIOStreams(t, nil, newTTYFileInfo)
+	cmd := cli.NewDefaultVltCommand(ioStreams, []string{
+		"rotate", "--config", vaultEnv.configPath,
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if got := errOut.String(); got != "" {
+		t.Errorf("unexpected stderr output: %q", got)
+	}
+
+	wantStdout := fmt.Sprintf(
+		"[vlt] Password for %q:Enter new password: Retype password: INFO vault rotated successfully\n",
+		vaultEnv.vaultPath,
+	)
+	if gotStdout := out.String(); gotStdout != wantStdout {
+		t.Errorf("want stdout: %q, got: %q", wantStdout, gotStdout)
+	}
+
+	exported := export(t, vaultEnv.vaultPath, []byte(newPassword))
+
+	gotSecrets := make([]vaultdb.SecretWithLabels, 0, len(exported))
+
+	for _, s := range exported {
+		gotSecrets = append(gotSecrets, s)
+	}
+
+	wantSecrets := []vaultdb.SecretWithLabels{secret1, secret2, secret3, secret4}
+
+	opts := []gocmp.Option{
+		secretWithLabelsComparer,
+		cmpopts.SortSlices(func(a, b vaultdb.SecretWithLabels) bool {
+			return a.Name < b.Name
+		}),
+	}
+	if diff := gocmp.Diff(wantSecrets, gotSecrets, opts...); diff != "" {
+		t.Errorf("secrets mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func passwordSequence(inputs [][]byte) func(_ int) ([]byte, error) {
+	var i int
+
+	return func(_ int) ([]byte, error) {
+		if i >= len(inputs) {
+			return nil, fmt.Errorf("passwordSequence: too many calls (%d), only %d inputs provided", i+1, len(inputs))
+		}
+
+		v := inputs[i]
+		i++
+
+		return v, nil
 	}
 }
