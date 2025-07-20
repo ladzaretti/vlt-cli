@@ -9,11 +9,13 @@ import (
 	"slices"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/ladzaretti/vlt-cli/cli"
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
+	"github.com/ladzaretti/vlt-cli/randstring"
 	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vault/sqlite/vaultdb"
 
@@ -62,12 +64,16 @@ func setupTestVaultEnv(t *testing.T) vaultEnv {
 		path = '%s'
 		session_duration = '%s'
 		[clipboard]
-		copy_cmd=["bash", "-c", "xargs printf > %s"]
+		copy_cmd=["tee", "%s"]
 		paste_cmd=["printf", %q]
 	`, vaultPath, "0m", clipboardContentPath, mockedPastedPassword)
 
 	if _, err := f.WriteString(content); err != nil {
 		t.Fatalf("failed to write config content: %v", err)
+	}
+
+	if err := f.Sync(); err != nil {
+		t.Fatalf("failed to flush config file: %v", err)
 	}
 
 	return vaultEnv{
@@ -128,13 +134,54 @@ func mustInitializeVault(t *testing.T, configPath string, vaultPassword string) 
 	}
 }
 
+var randGenerated = []byte("rand_generated")
+
 // secretWithLabelsComparer compares two [vaultdb.SecretWithLabels]
-// for equality on non cryptographic fields.
+// for equality, ignoring cryptographic properties.
+//
+// If either [vaultdb.SecretWithLabels.Value] is randGenerated,
+// he other is checked against [randstring.DefaultPasswordPolicy].
 var secretWithLabelsComparer = gocmp.Comparer(func(a, b vaultdb.SecretWithLabels) bool {
-	return a.Name == b.Name &&
-		bytes.Equal(a.Value, b.Value) &&
-		slices.Equal(a.Labels, b.Labels)
+	if a.Name != b.Name || !slices.Equal(a.Labels, b.Labels) {
+		return false
+	}
+
+	switch {
+	case bytes.Equal(a.Value, randGenerated):
+		return validateRandPasswordBytes(b.Value)
+	case bytes.Equal(b.Value, randGenerated):
+		return validateRandPasswordBytes(a.Value)
+	default:
+		return bytes.Equal(a.Value, b.Value)
+	}
 })
+
+func validateRandPasswordBytes(b []byte) bool {
+	return validateRandPassword([]rune(string(b)))
+}
+
+func validateRandPassword(runes []rune) bool {
+	var upper, lower, digit, special int
+
+	for _, r := range runes {
+		switch {
+		case unicode.IsUpper(r):
+			upper++
+		case unicode.IsLower(r):
+			lower++
+		case unicode.IsDigit(r):
+			digit++
+		case unicode.IsPunct(r), unicode.IsSymbol(r):
+			special++
+		}
+	}
+
+	return len(runes) >= randstring.DefaultPasswordPolicy.MinLength &&
+		special >= randstring.DefaultPasswordPolicy.MinSpecial &&
+		upper >= randstring.DefaultPasswordPolicy.MinUppercase &&
+		lower >= randstring.DefaultPasswordPolicy.MinLowercase &&
+		digit >= randstring.DefaultPasswordPolicy.MinNumeric
+}
 
 func export(t *testing.T, vaultPath string, vaultPassword []byte) map[int]vaultdb.SecretWithLabels {
 	t.Helper()
@@ -215,10 +262,8 @@ func (tt *commandTestCase) run(t *testing.T) {
 
 	if gotError := cmd.Execute(); tt.wantErrorAs != nil {
 		if gotError == nil {
-			t.Errorf("want error %v, got nil", tt.wantErrorAs)
-		}
-
-		if !errors.As(gotError, &tt.wantErrorAs) && !errors.As(gotError, tt.wantErrorAs) {
+			t.Errorf("want error of type %T, got nil", tt.wantErrorAs)
+		} else if !errors.As(gotError, &tt.wantErrorAs) && !errors.As(gotError, tt.wantErrorAs) {
 			t.Errorf("want error of type %T (%v), got %T (%v)", tt.wantErrorAs, tt.wantErrorAs, gotError, gotError)
 		}
 	} else if gotError != nil {

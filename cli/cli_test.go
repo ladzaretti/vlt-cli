@@ -1059,3 +1059,178 @@ Delete 1 secrets? (y/N): `,
 		t.Run(tt.name, tt.run)
 	}
 }
+
+func TestUpdateCommand(t *testing.T) { //nolint:revive
+	testCases := []commandTestCase{
+		{
+			name:        "rename by id",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args: []string{"update", "--id", "1", "--set-name", "renamed"},
+			wantSecrets: []vaultdb.SecretWithLabels{{
+				Name: "renamed", Labels: secret1.Labels, Value: secret1.Value,
+			}},
+			wantOutput: "",
+		},
+		{
+			name:        "add label by name",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args: []string{"update", "--name", secret1.Name, "--add-label", "foo"},
+			wantSecrets: []vaultdb.SecretWithLabels{{
+				Name: secret1.Name, Labels: append(secret1.Labels, "foo"), Value: secret1.Value,
+			}},
+			wantOutput: "",
+		},
+		{
+			name:        "remove label by id",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args: []string{"update", "--id", "1", "--remove-label", "label_1"},
+			wantSecrets: []vaultdb.SecretWithLabels{{
+				Name: secret1.Name, Labels: []string{}, Value: secret1.Value,
+			}},
+			wantOutput: "",
+		},
+		{
+			name:        "no match by name",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args:        []string{"update", "--name", "does-not-exist", "--add-label", "foo"},
+			wantErrorAs: &cli.UpdateError{},
+			wantSecrets: []vaultdb.SecretWithLabels{secret1},
+			wantOutput:  "",
+			wantStderr:  "WARN no match found.\nvlt: update: no match found\n",
+		},
+		{
+			name:        "ambiguous match by label",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+			}, "\n"),
+			args:        []string{"update", "--label", "label_[12]", "--set-name", "new-name"},
+			wantErrorAs: errors.New(""),
+			wantOutput:  "",
+			wantStderr: `WARN expecting exactly one match, but found 2.
+
+ID     NAME       LABELS
+2      name_2     label_2
+1      name_1     label_1
+
+vlt: update: ambiguous secret match: multiple secrets match the search criteria
+`,
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, tt.run)
+	}
+}
+
+func TestUpdateSecretCommand(t *testing.T) { //nolint:revive
+	testCases := []commandTestCase{
+		{
+			name:        "update value by id with prompt",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args: []string{"update", "secret", "--id", "1", "-o"},
+			wantSecrets: []vaultdb.SecretWithLabels{{
+				Name: secret1.Name, Labels: secret1.Labels, Value: []byte(mockedPromptPassword),
+			}},
+			wantOutput: `Enter new secret value: ` + mockedPromptPassword,
+		},
+		{
+			name:        "update by name with generate",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args: []string{"update", "secret", "--name", secret1.Name, "--generate"},
+			wantSecrets: []vaultdb.SecretWithLabels{{
+				Name: secret1.Name, Labels: secret1.Labels, Value: randGenerated,
+			}},
+		},
+		{
+			name:        "update by label from clipboard",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args: []string{"update", "secret", "--label", "label_1", "--paste-clipboard", "-c"},
+			wantSecrets: []vaultdb.SecretWithLabels{
+				{
+					Name: secret1.Name, Labels: secret1.Labels, Value: []byte(mockedPastedPassword),
+				},
+			},
+			wantClipboardContent: mockedPastedPassword,
+		},
+		{
+			name:        "update by glob with generated secret",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args: []string{"update", "secret", "*name*", "--generate"},
+			wantSecrets: []vaultdb.SecretWithLabels{{
+				Name: secret1.Name, Labels: secret1.Labels, Value: randGenerated,
+			}},
+		},
+		{
+			name:        "no match found",
+			stdinInfoFn: newNonTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+			}, "\n"),
+			args:        []string{"update", "secret", "no-match"},
+			wantErrorAs: &cli.UpdateError{},
+			wantSecrets: []vaultdb.SecretWithLabels{secret1},
+			wantStderr:  "WARN no match found.\nvlt: update: no match found\n",
+		},
+		{
+			name:        "ambiguous match by label",
+			stdinInfoFn: newTTYFileInfo,
+			seed: strings.Join([]string{
+				vltExportHeader,
+				vltImportRecord(secret1),
+				vltImportRecord(secret2),
+			}, "\n"),
+			args:        []string{"update", "secret", "--label", "label_[12]", "-p"},
+			wantErrorAs: &cli.UpdateError{},
+			wantSecrets: []vaultdb.SecretWithLabels{secret1, secret2},
+			wantStderr: `WARN expecting exactly one match, but found 2.
+
+ID     NAME       LABELS
+2      name_2     label_2
+1      name_1     label_1
+
+vlt: update: ambiguous secret match: multiple secrets match the search criteria
+`,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, tt.run)
+	}
+}
