@@ -36,18 +36,18 @@ type PasswordPolicy struct {
 }
 
 // New returns a securely generated random string of the given length.
-func New(n int) (string, error) {
+func New(n int) ([]byte, error) {
 	return generateRandomString(n, defaultAlphabet)
 }
 
 // NewWithAlphabet returns a securely generated random string using the provided alphabet.
-func NewWithAlphabet(n int, alphabet string) (string, error) {
+func NewWithAlphabet(n int, alphabet string) ([]byte, error) {
 	return generateRandomString(n, alphabet)
 }
 
 // NewWithPolicy generates a random password that satisfies the given [PasswordPolicy].
 func NewWithPolicy(p PasswordPolicy) ([]byte, error) {
-	res := ""
+	res := make([]byte, 0, 2*p.MinLength)
 
 	policy := []struct {
 		count   int
@@ -69,7 +69,7 @@ func NewWithPolicy(p PasswordPolicy) ([]byte, error) {
 			return nil, err
 		}
 
-		res += s
+		res = append(res, s...)
 	}
 
 	if missing := p.MinLength - len(res); missing > 0 {
@@ -78,40 +78,39 @@ func NewWithPolicy(p PasswordPolicy) ([]byte, error) {
 			return nil, err
 		}
 
-		res += extra
+		res = append(res, extra...)
 	}
 
-	bs := []byte(res)
-	if err := shuffle(bs); err != nil {
+	if err := shuffle(res); err != nil {
 		return nil, err
 	}
 
-	return bs, nil
+	return res, nil
 }
 
 // generateRandomString returns a cryptographically secure random string using the given alphabet.
 // It will return an error if the system's secure random
 // number generator fails to function correctly.
-func generateRandomString(n int, alphabet string) (string, error) {
+func generateRandomString(n int, alphabet string) ([]byte, error) {
 	if n <= 0 {
-		return "", ErrInvalidLength
+		return nil, ErrInvalidLength
 	}
 
 	if len(alphabet) == 0 {
-		return "", ErrEmptyAlphabet
+		return nil, ErrEmptyAlphabet
 	}
 
 	ret := make([]byte, n)
 	for i := range n {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		ret[i] = alphabet[num.Int64()]
 	}
 
-	return string(ret), nil
+	return ret, nil
 }
 
 // shuffle shuffles the given slice using the Fisher–Yates shuffle algorithm

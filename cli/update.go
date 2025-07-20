@@ -301,7 +301,7 @@ func (o *UpdateSecretValueOptions) readSecretNonInteractive() ([]byte, error) {
 
 func (o *UpdateSecretValueOptions) outputSecret(bs []byte) error {
 	if o.output {
-		o.Infof("%s", bs)
+		o.Printf("%s", bs)
 		return nil
 	}
 
