@@ -23,20 +23,47 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-type vaultEnv struct {
-	tempDir              string
-	configPath           string
-	vaultPath            string
-	clipboardContentPath string
-}
-
 const (
 	mockedPastedPassword = "mocked_pasted_password_input" //nolint:gosec
 	mockedPromptPassword = "mocked_prompt_password_input"
 )
 
-func setupTestVaultEnv(t *testing.T) vaultEnv {
+type testEnv struct {
+	tempDir              string
+	configPath           string
+	vaultPath            string
+	clipboardContentPath string
+	hookOutputPath       string
+}
+
+type testEnvConfig struct {
+	writeHook bool
+	loginHook bool
+}
+
+type testEnvConfigOpt = func(*testEnvConfig)
+
+func withLoginHook(enabled bool) testEnvConfigOpt {
+	return func(c *testEnvConfig) {
+		c.loginHook = enabled
+	}
+}
+
+func withWriteHook(enabled bool) testEnvConfigOpt {
+	return func(c *testEnvConfig) {
+		c.writeHook = enabled
+	}
+}
+
+func setupTestEnv(t *testing.T, opts ...testEnvConfigOpt) testEnv {
 	t.Helper()
+
+	config := &testEnvConfig{}
+
+	for _, opt := range opts {
+		opt(config)
+	}
+
 	tempDir := t.TempDir()
 
 	ff, err := os.CreateTemp(tempDir, ".clipboard.*")
@@ -55,6 +82,7 @@ func setupTestVaultEnv(t *testing.T) vaultEnv {
 		_ = f.Close()
 	}()
 
+	hookOutputPath := ""
 	clipboardContentPath := ff.Name()
 	configPath := f.Name()
 	vaultPath := path.Join(tempDir, ".vlt")
@@ -64,9 +92,15 @@ func setupTestVaultEnv(t *testing.T) vaultEnv {
 		path = '%s'
 		session_duration = '%s'
 		[clipboard]
-		copy_cmd=["tee", "%s"]
-		paste_cmd=["printf", %q]
+		copy_cmd=['tee', '%s']
+		paste_cmd=['printf', '%s']
 	`, vaultPath, "0m", clipboardContentPath, mockedPastedPassword)
+
+	if config.loginHook || config.writeHook {
+		f, hooksConfig := setupHookTest(t, tempDir, *config)
+		hookOutputPath = f.Name()
+		content += hooksConfig
+	}
 
 	if _, err := f.WriteString(content); err != nil {
 		t.Fatalf("failed to write config content: %v", err)
@@ -76,21 +110,53 @@ func setupTestVaultEnv(t *testing.T) vaultEnv {
 		t.Fatalf("failed to flush config file: %v", err)
 	}
 
-	return vaultEnv{
+	return testEnv{
 		tempDir:              tempDir,
 		configPath:           configPath,
 		vaultPath:            vaultPath,
 		clipboardContentPath: clipboardContentPath,
+		hookOutputPath:       hookOutputPath,
 	}
 }
 
+func setupHookTest(t *testing.T, tempDir string, config testEnvConfig) (f *os.File, hooksTOML string) {
+	t.Helper()
+
+	f, err := os.CreateTemp(tempDir, ".hook_output.*")
+	if err != nil {
+		t.Fatalf("failed to create hook output file: %v", err)
+	}
+	defer func() { //nolint:wsl
+		_ = f.Close()
+	}()
+
+	hookOutputPath := f.Name()
+
+	hooksTOML += `
+		[hooks]
+		`
+	if config.loginHook {
+		hooksTOML += fmt.Sprintf(`
+		post_login_cmd = ['awk', 'BEGIN {print "post_login" >> %q}']
+			`, hookOutputPath)
+	}
+
+	if config.writeHook {
+		hooksTOML += fmt.Sprintf(`
+		post_write_cmd = ['awk', 'BEGIN {print "post_write" >> %q}']
+			`, hookOutputPath)
+	}
+
+	return
+}
+
 // setupIOStreams creates IOStreams with a mocked stdin.
-func setupIOStreams(t *testing.T, in []byte, stdinInfoFn func(string, int) os.FileInfo) (ioStreams *genericclioptions.IOStreams, out *bytes.Buffer, errOut *bytes.Buffer) {
+func setupIOStreams(t *testing.T, stdinData []byte, stdinFileInfoFn func(string, int) os.FileInfo) (ioStreams *genericclioptions.IOStreams, out *bytes.Buffer, errOut *bytes.Buffer) {
 	t.Helper()
 
 	var (
-		buf       = bytes.NewBuffer(in)
-		stdinInfo = stdinInfoFn("stdin", len(in))
+		buf       = bytes.NewBuffer(stdinData)
+		stdinInfo = stdinFileInfoFn("stdin", len(stdinData))
 	)
 
 	stdinReader := genericclioptions.NewTestFdReader(buf, 0, stdinInfo)
@@ -202,7 +268,7 @@ func export(t *testing.T, vaultPath string, vaultPassword []byte) map[int]vaultd
 	return export
 }
 
-func seedSecrets(t *testing.T, vaultEnv vaultEnv, input string) {
+func seedSecrets(t *testing.T, vaultEnv testEnv, input string) {
 	t.Helper()
 
 	if len(input) == 0 {
@@ -224,7 +290,7 @@ func seedSecrets(t *testing.T, vaultEnv vaultEnv, input string) {
 	ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
 
 	cmd := cli.NewDefaultVltCommand(ioStreams,
-		[]string{"import", "--config", vaultEnv.configPath, f.Name()})
+		[]string{"import", "-H", "--config", vaultEnv.configPath, f.Name()})
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("unexpected error from import command: %v", err)
@@ -249,7 +315,7 @@ type commandTestCase struct {
 }
 
 func (tt *commandTestCase) run(t *testing.T) {
-	vaultEnv := setupTestVaultEnv(t)
+	vaultEnv := setupTestEnv(t)
 	mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
 	seedSecrets(t, vaultEnv, tt.seed)
 
@@ -284,7 +350,7 @@ func (tt *commandTestCase) run(t *testing.T) {
 		t.Errorf("unexpected error while reading clipboard content containing file: %v", err)
 	}
 
-	if diff := gocmp.Diff([]byte(tt.wantClipboardContent), gotClipboardContent, secretWithLabelsComparer); diff != "" {
+	if diff := gocmp.Diff(tt.wantClipboardContent, string(gotClipboardContent)); diff != "" {
 		t.Errorf("clipboard content mismatch (-want +got):\n%s", diff)
 	}
 

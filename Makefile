@@ -5,7 +5,7 @@ VERSION?=0.0.0
 
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_VERSION ?= v2.2.2
-TEST_ARGS=-v -timeout 40s
+TEST_ARGS=-v -timeout 40s -coverpkg=./...
 
 VLT_LDFLAGS= -X 'github.com/ladzaretti/vlt-cli/cli.Version=$(VERSION)'
 VLTD_LDFLAGS= -X 'main.Version=$(VERSION)'
@@ -70,7 +70,8 @@ test: patch-vendor
 .PHONY: cover
 cover: patch-vendor
 	@mkdir -p coverage
-	go test $(TEST_ARGS) ./... -coverprofile coverage/cover.out
+	go test $(TEST_ARGS) ./... -coverprofile coverage/cover.out ./...
+	@go tool cover -func=./coverage/cover.out | grep total | awk '{print "total coverage: " $$3}'
 
 .PHONY: coverage-html
 coverage-html: cover

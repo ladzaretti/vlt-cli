@@ -28,7 +28,7 @@ import (
 )
 
 func TestConfigCommand(t *testing.T) {
-	testEnv := setupTestVaultEnv(t)
+	testEnv := setupTestEnv(t)
 
 	stdin := genericclioptions.NewTestFdReader(bytes.NewBuffer(nil), 0, newTTYFileInfo("stdin", 0))
 	ioStreams, _, out, errOut := genericclioptions.NewTestIOStreams(stdin)
@@ -114,7 +114,7 @@ func TestConfigGenerateCommand(t *testing.T) {
 }
 
 func TestConfigValidateCommand(t *testing.T) {
-	vaultEnv := setupTestVaultEnv(t)
+	vaultEnv := setupTestEnv(t)
 	validConfig := `
 [vault]
 path = "/tmp/vault.db"
@@ -182,7 +182,7 @@ max_history_snapshots = 2
 }
 
 func TestCreateCommand_WithPrompt(t *testing.T) {
-	vaultEnv := setupTestVaultEnv(t)
+	vaultEnv := setupTestEnv(t)
 
 	mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
 
@@ -406,7 +406,7 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			vaultEnv := setupTestVaultEnv(t)
+			vaultEnv := setupTestEnv(t)
 			mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
 
 			f, err := os.CreateTemp(vaultEnv.tempDir, "import.csv")
@@ -457,7 +457,7 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 }
 
 func TestExportCommand(t *testing.T) {
-	vaultEnv := setupTestVaultEnv(t)
+	vaultEnv := setupTestEnv(t)
 	mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
 	seedSecrets(t, vaultEnv, strings.Join([]string{
 		vltExportHeader,
@@ -481,7 +481,7 @@ func TestExportCommand(t *testing.T) {
 
 	// create a new vault to import into.
 
-	anotherVaultEnv := setupTestVaultEnv(t)
+	anotherVaultEnv := setupTestEnv(t)
 	mustInitializeVault(t, anotherVaultEnv.configPath, mockedPromptPassword)
 
 	cmd = cli.NewDefaultVltCommand(ioStreams, []string{
@@ -754,7 +754,7 @@ func TestShowCommand(t *testing.T) { //nolint:revive
 	}
 
 	t.Run("ambiguous match fails with error and stderr", func(t *testing.T) {
-		vaultEnv := setupTestVaultEnv(t)
+		vaultEnv := setupTestEnv(t)
 		mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
 
 		input := strings.Join([]string{
@@ -853,7 +853,7 @@ func TestGenerateCommand(t *testing.T) { //nolint:revive,gocognit,cyclop
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vaultEnv := setupTestVaultEnv(t)
+			vaultEnv := setupTestEnv(t)
 
 			stdin := genericclioptions.NewTestFdReader(nil, 0, newTTYFileInfo("stdin", 0))
 			ioStreams, _, out, errOut := genericclioptions.NewTestIOStreams(stdin)
@@ -1237,7 +1237,7 @@ vlt: update: ambiguous secret match: multiple secrets match the search criteria
 }
 
 func TestRotateCommand(t *testing.T) {
-	vaultEnv := setupTestVaultEnv(t)
+	vaultEnv := setupTestEnv(t)
 
 	mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
 	seedSecrets(t, vaultEnv, strings.Join([]string{
@@ -1311,5 +1311,264 @@ func passwordSequence(inputs [][]byte) func(_ int) ([]byte, error) {
 		i++
 
 		return v, nil
+	}
+}
+
+func TestHooks(t *testing.T) { //nolint:revive // function-length
+	testCases := []struct {
+		name               string
+		args               []string
+		appendConfig       bool
+		appendConfigAsFile bool
+		wantHookOutput     string
+	}{
+		{
+			name:           "remove with hooks",
+			args:           []string{"remove", "--id", "1"},
+			appendConfig:   true,
+			wantHookOutput: "post_login\npost_write\n",
+		},
+		{
+			name:           "remove no hooks",
+			args:           []string{"remove", "--id", "1", "-H"},
+			appendConfig:   true,
+			wantHookOutput: "",
+		},
+		{
+			name:               "config command",
+			args:               []string{"config"},
+			appendConfigAsFile: true,
+			wantHookOutput:     "",
+		},
+		{
+			name:           "config generate command",
+			args:           []string{"config", "generate"},
+			wantHookOutput: "",
+		},
+		{
+			name:               "config validate command",
+			args:               []string{"config", "validate"},
+			appendConfigAsFile: true,
+			wantHookOutput:     "",
+		},
+		{
+			name: "save with hooks",
+			args: []string{
+				"save",
+				"--name", "name",
+				"--label", "label",
+				"-g",
+			},
+			appendConfig:   true,
+			wantHookOutput: "post_login\npost_write\n",
+		},
+		{
+			name: "save with hooks",
+			args: []string{
+				"save",
+				"--name", "name",
+				"--label", "label",
+				"-g",
+				"-H",
+			},
+			appendConfig:   true,
+			wantHookOutput: "",
+		},
+		{
+			name: "export command",
+			args: []string{
+				"export",
+				"--stdout",
+			},
+			appendConfig:   true,
+			wantHookOutput: "post_login\n",
+		},
+		{
+			name: "export command without hooks",
+			args: []string{
+				"export",
+				"--stdout",
+				"-H",
+			},
+			appendConfig:   true,
+			wantHookOutput: "",
+		},
+		{
+			name: "find with hooks",
+			args: []string{
+				"find",
+				"'*'",
+			},
+			appendConfig:   true,
+			wantHookOutput: "post_login\n",
+		},
+		{
+			name: "find without hooks",
+			args: []string{
+				"find",
+				"'*'",
+				"-H",
+			},
+			appendConfig:   true,
+			wantHookOutput: "",
+		},
+		{
+			name: "show with hooks",
+			args: []string{
+				"show",
+				"--id=1",
+				"--stdout",
+			},
+			appendConfig:   true,
+			wantHookOutput: "post_login\n",
+		},
+		{
+			name: "show without hooks",
+			args: []string{
+				"show",
+				"--id=1",
+				"-H",
+				"--stdout",
+			},
+			appendConfig:   true,
+			wantHookOutput: "",
+		},
+		{
+			name: "generate command",
+			args: []string{
+				"generate",
+			},
+			appendConfig:   true,
+			wantHookOutput: "",
+		},
+		{
+			name: "remove with hooks",
+			args: []string{
+				"remove",
+				"--yes",
+				"--id=1",
+			},
+			appendConfig:   true,
+			wantHookOutput: "post_login\npost_write\n",
+		},
+		{
+			name: "remove without hooks",
+			args: []string{
+				"remove",
+				"--yes",
+				"--id=1",
+				"-H",
+			},
+			appendConfig:   true,
+			wantHookOutput: "",
+		},
+		{
+			name: "update with hooks",
+			args: []string{
+				"update",
+				"--id=1",
+				"--set-name",
+				"renamed",
+			},
+			appendConfig:   true,
+			wantHookOutput: "post_login\npost_write\n",
+		},
+		{
+			name: "update without hooks",
+			args: []string{
+				"update",
+				"--id=1",
+				"--set-name",
+				"renamed",
+				"-H",
+			},
+			appendConfig:   true,
+			wantHookOutput: "",
+		},
+		{
+			name: "update secret with hooks",
+			args: []string{
+				"update",
+				"secret",
+				"--id=1",
+				"--generate",
+			},
+			appendConfig:   true,
+			wantHookOutput: "post_login\npost_write\n",
+		},
+		{
+			name: "update secret without hooks",
+			args: []string{
+				"update",
+				"secret",
+				"--id=1",
+				"--generate",
+				"-H",
+			},
+			appendConfig:   true,
+			wantHookOutput: "",
+		},
+		{
+			name: "rotate with hooks",
+			args: []string{
+				"rotate",
+			},
+			appendConfig:   true,
+			wantHookOutput: "post_login\npost_write\n",
+		},
+		{
+			name: "rotate without hooks",
+			args: []string{
+				"rotate",
+				"-H",
+			},
+			appendConfig:   true,
+			wantHookOutput: "",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			vaultEnv := setupTestEnv(t,
+				withLoginHook(true),
+				withWriteHook(true))
+
+			if tt.appendConfig || tt.appendConfigAsFile {
+				secrets := strings.Join([]string{
+					vltExportHeader,
+					vltImportRecord(secret1),
+				}, "\n")
+
+				mustInitializeVault(t, vaultEnv.configPath, mockedPromptPassword)
+				seedSecrets(t, vaultEnv, secrets)
+			}
+
+			ioStreams, _, _ := setupIOStreams(t, nil, newTTYFileInfo)
+
+			args := tt.args
+
+			if tt.appendConfig {
+				args = append(args, "--config", vaultEnv.configPath)
+			}
+
+			if tt.appendConfigAsFile {
+				args = append(args, "--file", vaultEnv.configPath)
+			}
+
+			cmd := cli.NewDefaultVltCommand(ioStreams, args)
+
+			if err := cmd.Execute(); err != nil {
+				t.Errorf("unexpected error running command: %v", err)
+			}
+
+			gotHookOutput, err := os.ReadFile(vaultEnv.hookOutputPath)
+			if err != nil {
+				t.Errorf("unexpected error while reading hook output file: %v", err)
+			}
+
+			if diff := gocmp.Diff(tt.wantHookOutput, string(gotHookOutput)); diff != "" {
+				t.Errorf("hook output content mismatch (-want +got):\n%s", diff)
+			}
+		})
 	}
 }
