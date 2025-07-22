@@ -52,17 +52,24 @@ check_systemd() {
 check_sudo
 check_bin
 
+sudo -k
+
 echo "installing binaries to $INSTALL_DIR"
-sudo -k cp "${SCRIPT_DIR}"/{vlt,vltd} "$INSTALL_DIR"
+
+sudo install -m 0755 "${SCRIPT_DIR}/vltd" "$INSTALL_DIR/vltd.new"
+sudo mv -f "$INSTALL_DIR/vltd.new" "$INSTALL_DIR/vltd"
+
+sudo install -m 0755 "${SCRIPT_DIR}/vlt" "$INSTALL_DIR/vlt.new"
+sudo mv -f "$INSTALL_DIR/vlt.new" "$INSTALL_DIR/vlt"
 
 echo "OK."
 
-read -rp "Install the vltd daemon systemd unit? [y/N] " answer
+read -rp "install the vltd daemon systemd unit? [y/N]: " answer </dev/tty
 
 case "$answer" in
 [Yy]*) ;;
 *)
-    echo "Skipping systemd unit installation."
+    echo "skipping systemd unit installation."
     exit 0
     ;;
 esac

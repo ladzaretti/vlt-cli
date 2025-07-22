@@ -20,7 +20,7 @@ x86_64) ARCH="amd64" ;;
 aarch64 | arm64) ARCH="arm64" ;;
 i386 | i686) ARCH="386" ;;
 *)
-    echo "Unsupported architecture: $ARCH" >&2
+    echo "unsupported architecture: $ARCH" >&2
     exit 1
     ;;
 esac
@@ -37,11 +37,11 @@ if [ "$VERSION" = "latest" ]; then
 fi
 
 if [[ -z "$VERSION" ]]; then
-    echo "Failed to determine version" >&2
+    echo "failed to determine version" >&2
     exit 1
 fi
 
-echo "Preparing install:"
+echo "preparing install:"
 echo "  OS      : $OS"
 echo "  ARCH    : $ARCH"
 echo "  VERSION : $VERSION"
@@ -50,19 +50,19 @@ TARBALL=vlt_${VERSION}_${OS}_${ARCH}.tar.gz
 DEST="$TMP_DIR"/"$TARBALL"
 URL="https://github.com/ladzaretti/vlt-cli/releases/download/v$VERSION/$TARBALL"
 
-echo "Downloading $URL..."
+echo "downloading $URL..."
 curl -sSL --fail-with-body -o "$DEST" "$URL"
 
 echo "OK."
 
-echo "Extracting archive..."
+echo "extracting archive..."
 tar -xz -C "$TMP_DIR" -f "$DEST"
 
 echo "OK."
 
 cd "$TMP_DIR/vlt_${VERSION}_${OS}_${ARCH}"
 
-echo "Running installer..."
+echo "running installer..."
 
 if [[ ! -x install.sh ]]; then
     echo "install.sh not found or not executable in $PWD" >&2
