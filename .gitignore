@@ -1,5 +1,6 @@
 .vscode
 **/coverage
+!assets/coverage
 **/dist
 **/bin
 *~

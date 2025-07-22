@@ -21,7 +21,8 @@ sed -e '/{{CONFIG}}/ {
 }' -e '/{{USAGE}}/ {
     r assets/usage.txt
     d
-}' "$TEMPLATE" >>"$TMP_README"
+}' -e "s/{{COVERAGE}}/$(<assets/coverage)/g" \
+    "$TEMPLATE" >>"$TMP_README"
 
 mv "$TMP_README" "$OUT"
 

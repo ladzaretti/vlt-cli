@@ -92,6 +92,7 @@ check: lint test
 assets: build
 	./bin/vlt config generate > assets/default-config.toml
 	./bin/vlt > assets/usage.txt
+	@go tool cover -func=./coverage/cover.out | grep total | awk '{print $$3}' > assets/coverage
 
 .PHONY: readme.md
 readme.md: assets readme.templ.md assets/default-config.toml assets/usage.txt
