@@ -27,8 +27,9 @@ archives:
 
     files:
       - UNLICENSE
-      - install.sh
       - systemd/vltd.service
+      - src: scripts/install.sh
+        dst: install.sh
 
     ids: [vlt, vltd]
     formats: [tar.gz]

@@ -19,9 +19,10 @@
 - [vlt - A secure command-line tool for managing secrets in your terminal.](#vlt---a-secure-command-line-tool-for-managing-secrets-in-your-terminal)
   - [Supported Platforms](#supported-platforms)
   - [Installation](#installation)
-    - [Option 1: Download a release](#option-1-download-a-release)
+    - [Option 1: Install via curl](#option-1-install-via-curl)
+    - [Option 2: Download a release](#option-2-download-a-release)
       - [Optional install script](#optional-install-script)
-    - [Option 2: Build from source (requires Go 1.24)](#option-2-build-from-source-requires-go-124)
+    - [Option 3: Build from source (requires Go 1.24)](#option-3-build-from-source-requires-go-124)
   - [Design Overview](#design-overview)
     - [vlt - cli client](#vlt---cli-client)
     - [vltd - session manager daemon](#vltd---session-manager-daemon)
@@ -43,7 +44,18 @@
 
 ## Installation
 
-### Option 1: Download a release
+### Option 1: Install via curl
+
+```bash
+curl -sSL https://raw.githubusercontent.com/ladzaretti/vlt-cli/refs/heads/main/install.sh | bash
+```
+This script:
+- Detects your OS and architecture
+- Downloads the latest release from GitHub
+- Extracts the archive
+- Runs the included install.sh to copy binaries and optionally install the systemd service
+
+### Option 2: Download a release
 
 Visit the [Releases](https://github.com/ladzaretti/vlt-cli/releases) page for a list of available downloads.
 
@@ -53,7 +65,7 @@ After downloading and extracting an archive, the `install.sh` script can be used
 - Copy the `vlt` and `vltd` binaries to `/usr/local/bin`
 - Install and enable the `vltd` systemd user service for managing vault sessions
 
-### Option 2: Build from source (requires Go 1.24)
+### Option 3: Build from source (requires Go 1.24)
 
 ```bash
 # Clone and build
