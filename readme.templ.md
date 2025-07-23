@@ -47,7 +47,7 @@
 ### Option 1: Install via curl
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ladzaretti/vlt-cli/refs/heads/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/ladzaretti/vlt-cli/main/install.sh | bash
 ```
 This script:
 - Detects your OS and architecture
