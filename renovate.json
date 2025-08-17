@@ -8,7 +8,7 @@
   "dependencyDashboard": true,
   "postUpdateOptions": ["gomodTidy"],
   "postUpgradeTasks": {
-    "commands": ["make patch_vendor"],
+    "commands": ["make patch-vendor"],
     "executionMode": "update"
   },
   "ignorePaths": ["**/vendor/**"],
