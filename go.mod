@@ -8,8 +8,8 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/spf13/cobra v1.9.1
 	golang.org/x/crypto v0.40.0
-	golang.org/x/sys v0.34.0
-	golang.org/x/term v0.33.0
+	golang.org/x/sys v0.35.0
+	golang.org/x/term v0.34.0
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.7
 	modernc.org/sqlite v1.38.0
