@@ -27,9 +27,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/ladzaretti/vlt-cli/vaultdaemon"
 )
@@ -66,5 +70,8 @@ Options:
 		return
 	}
 
-	log.Println(vaultdaemon.Run())
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
+	defer cancel()
+
+	log.Println(vaultdaemon.Run(ctx))
 }

@@ -24,18 +24,20 @@ var socketPath = fmt.Sprintf("/run/user/%d/vlt.sock", os.Getuid())
 
 // Run starts the vltd daemon and serves grpc over a unix domain socket
 // that only allows connections from the same user that runs the daemon.
-func Run() error {
+func Run(ctx context.Context) error {
 	log.SetPrefix("[vltd] ")
 
 	log.Print("daemon started")
 
-	if socketInUse(socketPath) {
+	if socketInUse(ctx, socketPath) {
 		return fmt.Errorf("socket already in use: %v", socketPath)
 	}
 
 	_ = os.Remove(socketPath) // remove stale socket
 
-	socket, err := net.Listen("unix", socketPath)
+	var lc net.ListenConfig
+
+	socket, err := lc.Listen(ctx, "unix", socketPath)
 	if err != nil {
 		panic(fmt.Errorf("unix socket listen: %w", err))
 	}
@@ -88,8 +90,10 @@ func Run() error {
 	return ctx.Err()
 }
 
-func socketInUse(path string) bool {
-	conn, err := net.Dial("unix", path)
+func socketInUse(ctx context.Context, path string) bool {
+	var d net.Dialer
+
+	conn, err := d.DialContext(ctx, "unix", path)
 	if err != nil {
 		return false
 	}
