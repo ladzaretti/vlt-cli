@@ -896,6 +896,7 @@ func TestGenerateCommand(t *testing.T) { //nolint:revive,gocognit,cyclop
 					got.digit++
 				case unicode.IsPunct(r) || unicode.IsSymbol(r):
 					got.special++
+				default:
 				}
 			}
 

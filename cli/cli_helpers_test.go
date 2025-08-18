@@ -239,6 +239,7 @@ func validateRandPassword(runes []rune) bool {
 			digit++
 		case unicode.IsPunct(r), unicode.IsSymbol(r):
 			special++
+		default:
 		}
 	}
 

@@ -112,7 +112,7 @@ func (c *Clipboard) Copy(bs []byte) error {
 	}
 
 	//nolint:gosec // G204: safe, user config on local CLI tool
-	cmd := exec.Command(c.copy.cmd, c.copy.args...)
+	cmd := exec.Command(c.copy.cmd, c.copy.args...) //nolint:noctx
 
 	in, err := cmd.StdinPipe()
 	if err != nil {
@@ -141,7 +141,7 @@ func (c *Clipboard) Paste() ([]byte, error) {
 	}
 
 	//nolint:gosec // G204: safe, user config on local CLI tool
-	cmd := exec.Command(c.paste.cmd, c.paste.args...)
+	cmd := exec.Command(c.paste.cmd, c.paste.args...) //nolint:noctx
 
 	out, err := cmd.Output()
 	if err != nil {
