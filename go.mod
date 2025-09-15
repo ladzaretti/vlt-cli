@@ -12,7 +12,7 @@ require (
 	golang.org/x/term v0.34.0
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.7
-	modernc.org/sqlite v1.38.2
+	modernc.org/sqlite v1.39.0
 )
 
 require (
