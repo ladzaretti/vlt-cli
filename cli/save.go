@@ -12,7 +12,6 @@ import (
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
 	"github.com/ladzaretti/vlt-cli/randstring"
-	cmdutil "github.com/ladzaretti/vlt-cli/util"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
 
 	"github.com/spf13/cobra"
@@ -151,7 +150,7 @@ func (o *SaveOptions) readInteractive(secret *[]byte) error {
 			return fmt.Errorf("label read interactive: %w", err)
 		}
 
-		o.labels = append(o.labels, cmdutil.ParseCommaSeparated(labels)...)
+		o.labels = append(o.labels, parseCommaSeparated(labels)...)
 	}
 
 	return nil
@@ -270,4 +269,17 @@ Note 2:
 	cmd.Flags().StringSliceVarP(&o.labels, "label", "", nil, "optional label to associate with the secret (comma-separated or repeated)")
 
 	return cmd
+}
+
+func parseCommaSeparated(raw string) []string {
+	res := make([]string, 0, 8)
+
+	split := strings.FieldsFunc(raw, func(r rune) bool { return r == ',' })
+	for _, s := range split {
+		if l := strings.TrimSpace(s); len(l) > 0 {
+			res = append(res, l)
+		}
+	}
+
+	return res
 }

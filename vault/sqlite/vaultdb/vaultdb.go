@@ -6,7 +6,6 @@ import (
 	"errors"
 	"strings"
 
-	cmdutil "github.com/ladzaretti/vlt-cli/util"
 	"github.com/ladzaretti/vlt-cli/vault/types"
 )
 
@@ -233,7 +232,7 @@ func (s *VaultDB) SecretsByIDs(ctx context.Context, ids []int) (map[int]SecretWi
 	WHERE
 		s.id IN (` + strings.Join(placeholders, ",") + ")"
 
-	return s.secretsJoinLabels(ctx, query, cmdutil.ToAnySlice(ids)...)
+	return s.secretsJoinLabels(ctx, query, toAnySlice(ids)...)
 }
 
 // Filters defines criteria for querying secrets from the vault.
@@ -375,7 +374,7 @@ func (s *VaultDB) DeleteSecretsByIDs(ctx context.Context, ids []int) (int64, err
 	WHERE
 		id IN (` + strings.Join(placeholders, ",") + ")"
 
-	res, err := s.db.ExecContext(ctx, query, cmdutil.ToAnySlice(ids)...)
+	res, err := s.db.ExecContext(ctx, query, toAnySlice(ids)...)
 	if err != nil {
 		return 0, err
 	}
@@ -418,4 +417,14 @@ func reduce(secrets []secretWithLabelRow) map[int]SecretWithLabels {
 	}
 
 	return m
+}
+
+func toAnySlice[T any](ts []T) []any {
+	args := make([]any, len(ts))
+
+	for i, t := range ts {
+		args[i] = t
+	}
+
+	return args
 }

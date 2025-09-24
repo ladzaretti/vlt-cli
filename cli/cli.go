@@ -13,7 +13,6 @@ import (
 	"github.com/ladzaretti/vlt-cli/clipboard"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
 	"github.com/ladzaretti/vlt-cli/input"
-	cmdutil "github.com/ladzaretti/vlt-cli/util"
 	"github.com/ladzaretti/vlt-cli/vault"
 	"github.com/ladzaretti/vlt-cli/vaultdaemon"
 	"github.com/ladzaretti/vlt-cli/vaulterrors"
@@ -51,7 +50,7 @@ var (
 
 	// postRunSkipCommands are commands that skips the post-run execution.
 	postRunSkipCommands = append(
-		cmdutil.SliceWithout(preRunPartialCommands, "rotate"),
+		sliceWithout(preRunPartialCommands, "rotate"),
 		preRunSkipCommands...,
 	)
 
@@ -417,4 +416,19 @@ Environment Variables:
 	cmd.AddCommand(NewCmdShow(o))
 
 	return cmd
+}
+
+func sliceWithout(s []string, excluded ...string) []string {
+	result := make([]string, 0, len(s))
+	for _, t := range s {
+		if !slices.Contains(excluded, t) {
+			result = append(result, t)
+		}
+	}
+
+	return result
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }

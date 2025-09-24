@@ -12,7 +12,6 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/util"
 
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
@@ -217,7 +216,7 @@ func (*generateConfigOptions) Validate() error { return nil }
 
 func (o *generateConfigOptions) Run(context.Context, ...string) error {
 	c := newFileConfig()
-	c.Vault.MaxHistorySnapshots = util.Ptr(defaultMaxHistorySnapshots)
+	c.Vault.MaxHistorySnapshots = ptr(defaultMaxHistorySnapshots)
 
 	out, err := toml.Marshal(c)
 	if err := clierror.Check(err); err != nil {

@@ -15,7 +15,6 @@ import (
 
 	"github.com/ladzaretti/vlt-cli/clierror"
 	"github.com/ladzaretti/vlt-cli/genericclioptions"
-	"github.com/ladzaretti/vlt-cli/util"
 
 	"github.com/spf13/cobra"
 )
@@ -39,15 +38,15 @@ const (
 var (
 	// firefoxImporter is a custom password importer for exported Firefox password data.
 	firefoxImporter = CustomImporter{
-		NameIndex:    util.Ptr(1),
-		SecretIndex:  util.Ptr(2),
+		NameIndex:    ptr(1),
+		SecretIndex:  ptr(2),
 		LabelIndexes: []int{0, 3, 4},
 	}
 
 	// chromiumImporter is a custom password importer for exported Chromium password data.
 	chromiumImporter = CustomImporter{
-		NameIndex:    util.Ptr(2),
-		SecretIndex:  util.Ptr(3),
+		NameIndex:    ptr(2),
+		SecretIndex:  ptr(3),
 		LabelIndexes: []int{0, 1, 4},
 	}
 
