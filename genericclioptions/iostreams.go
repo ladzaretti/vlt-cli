@@ -38,7 +38,7 @@ func NewTestIOStreams(r *TestFdReader) (iostream *IOStreams, in *TestFdReader, o
 		ErrOut: errOut,
 	}
 
-	return
+	return iostream, in, out, errOut
 }
 
 // NewTestIOStreamsDiscard returns IOStreams with mocked input,

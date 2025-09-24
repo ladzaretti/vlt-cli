@@ -36,7 +36,7 @@ func (m *safeMap[K, V]) load(key K) (value V, ok bool) {
 
 	value, ok = m.data[key]
 
-	return
+	return value, ok
 }
 
 // Range iterates over all key-value pairs in the map and calls f for each.
