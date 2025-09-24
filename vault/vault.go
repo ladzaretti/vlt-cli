@@ -19,6 +19,12 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+const pragma = `
+PRAGMA temp_store = MEMORY;
+PRAGMA synchronous = EXTRA;
+PRAGMA foreign_keys = ON;
+`
+
 var ErrAuthenticationFailed = errors.New("authentication failed")
 
 var (
@@ -486,6 +492,10 @@ func newVaultContainerHandle(ctx context.Context, path string, containerSnapshot
 		return nil, errf("new vault container handle: failed to get database connection: %w", err)
 	}
 
+	if _, err := conn.ExecContext(ctx, pragma); err != nil {
+		return nil, err
+	}
+
 	if containerSnapshot != nil {
 		if err := Deserialize(conn, containerSnapshot); err != nil {
 			return nil, errf("new vault container handle: failed to deserialize snapshot: %w", err)
@@ -581,7 +591,7 @@ func (vlt *Vault) open(ctx context.Context, ciphervault []byte) (retErr error) {
 		return err
 	}
 
-	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
+	if _, err := conn.ExecContext(ctx, pragma); err != nil {
 		return err
 	}
 
