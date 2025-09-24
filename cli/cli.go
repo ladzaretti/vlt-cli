@@ -398,8 +398,7 @@ Environment Variables:
 		fmt.Sprintf("configuration file path (default: ~/%s)", defaultConfigName),
 	)
 
-	hiddenFlags := []string{"config", "verbose", "file", "no-hooks", "no-login-prompt"}
-	genericclioptions.MarkFlagsHidden(cmd, hiddenFlags...)
+	genericclioptions.MarkAllFlagsHidden(cmd, "help")
 
 	cmd.AddCommand(newVersionCommand(o))
 	cmd.AddCommand(NewCmdGenerate(o))

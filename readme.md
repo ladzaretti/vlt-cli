@@ -12,7 +12,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/ladzaretti/vlt-cli)](https://github.com/ladzaretti/vlt-cli/releases)
 ![status: beta](https://img.shields.io/badge/status-beta-yellow)
-![coverage](https://img.shields.io/badge/coverage-25-yellow)
+![coverage](https://img.shields.io/badge/coverage-62.6%25-yellow)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ladzaretti/vlt-cli)](https://goreportcard.com/report/github.com/ladzaretti/vlt-cli)
 ![license](https://img.shields.io/github/license/ladzaretti/vlt-cli)
 
