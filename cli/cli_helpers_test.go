@@ -147,7 +147,7 @@ func setupHookTest(t *testing.T, tempDir string, config testEnvConfig) (f *os.Fi
 			`, hookOutputPath)
 	}
 
-	return
+	return f, hooksTOML
 }
 
 // setupIOStreams creates IOStreams with a mocked stdin.
@@ -171,7 +171,7 @@ func setupIOStreams(t *testing.T, stdinData []byte, stdinFileInfoFn func(string,
 		clierror.ResetErrWriter()
 	})
 
-	return
+	return ioStreams, out, errOut
 }
 
 func newTTYFileInfo(name string, size int) os.FileInfo {
