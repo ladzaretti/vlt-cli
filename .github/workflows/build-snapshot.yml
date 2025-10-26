@@ -46,25 +46,25 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload linux_amd64
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux_amd64
           path: dist/*linux_amd64*.tar.gz
 
       - name: Upload linux_arm64
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux_arm64
           path: dist/*linux_arm64*.tar.gz
 
       - name: Upload linux_386
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux_386
           path: dist/*linux_386*.tar.gz
       
       - name: Upload checksums
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: checksums
           path: dist/*_checksums.txt
