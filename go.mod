@@ -6,7 +6,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/ladzaretti/migrate v0.1.6
 	github.com/pelletier/go-toml/v2 v2.2.4
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	golang.org/x/crypto v0.42.0
 	golang.org/x/sys v0.36.0
