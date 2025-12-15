@@ -9,8 +9,8 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	golang.org/x/crypto v0.42.0
-	golang.org/x/sys v0.36.0
-	golang.org/x/term v0.35.0
+	golang.org/x/sys v0.39.0
+	golang.org/x/term v0.38.0
 	google.golang.org/grpc v1.75.1
 	google.golang.org/protobuf v1.36.9
 	modernc.org/sqlite v1.39.0
