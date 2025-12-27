@@ -174,7 +174,7 @@ google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/timestamppb
-# modernc.org/libc v1.66.3
+# modernc.org/libc v1.66.10
 ## explicit; go 1.23.0
 modernc.org/libc
 modernc.org/libc/errno
@@ -208,7 +208,8 @@ modernc.org/mathutil
 # modernc.org/memory v1.11.0
 ## explicit; go 1.23.0
 modernc.org/memory
-# modernc.org/sqlite v1.39.0
-## explicit; go 1.23.0
+# modernc.org/sqlite v1.42.1
+## explicit; go 1.24.0
 modernc.org/sqlite
 modernc.org/sqlite/lib
+modernc.org/sqlite/vtab
