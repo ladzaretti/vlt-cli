@@ -241,7 +241,7 @@ func (o *UpdateSecretValueOptions) Run(ctx context.Context, args ...string) (ret
 		id     = matchingSecrets[0].id
 		secret []byte
 	)
-	defer clear(secret) //nolint:wsl
+	defer clear(secret)
 
 	// ensure error is wrapped and output is printed if everything succeeded
 	defer func() {

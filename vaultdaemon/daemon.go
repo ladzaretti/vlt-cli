@@ -41,7 +41,7 @@ func Run(ctx context.Context) error {
 	if err != nil {
 		panic(fmt.Errorf("unix socket listen: %w", err))
 	}
-	defer func() { //nolint:wsl
+	defer func() { //nolint:wsl_v5
 		_ = socket.Close()
 		_ = os.Remove(socketPath)
 	}()
@@ -97,7 +97,7 @@ func socketInUse(ctx context.Context, path string) bool {
 	if err != nil {
 		return false
 	}
-	_ = conn.Close() //nolint:wsl
+	_ = conn.Close() //nolint:wsl_v5
 
 	return true
 }
@@ -121,14 +121,14 @@ func (l *secureUnixListener) Accept() (net.Conn, error) {
 		ucred, err := getCred(conn)
 		if err != nil {
 			log.Printf("uid check failed: %v", err)
-			_ = conn.Close() //nolint:wsl
+			_ = conn.Close() //nolint:wsl_v5
 
 			continue
 		}
 
 		if int(ucred.Uid) != l.allowedUID {
 			log.Printf("connection from disallowed uid: %d", ucred.Uid)
-			_ = conn.Close() //nolint:wsl
+			_ = conn.Close() //nolint:wsl_v5
 
 			continue
 		}

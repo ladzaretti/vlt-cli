@@ -103,7 +103,7 @@ linters:
     - usetesting
     - wastedassign
     - whitespace
-    - wsl
+    - wsl_v5
     - zerologlint
 
   settings:
@@ -138,9 +138,11 @@ linters:
             - []
             - []
             - - skipPackageNameChecks: true
-    wsl:
-      allow-cuddle-used-in-block: true
-      force-err-cuddling: true
+    wsl_v5:
+      allow-whole-block: true
+      branch-max-lines: 2
+      enable:
+        - err
     nlreturn:
       block-size: 4
     errorlint:

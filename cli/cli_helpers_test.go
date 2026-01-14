@@ -70,7 +70,7 @@ func setupTestEnv(t *testing.T, opts ...testEnvConfigOpt) testEnv {
 	if err != nil {
 		t.Fatalf("failed to create clipboard content file: %v", err)
 	}
-	defer func() { //nolint:wsl
+	defer func() { //nolint:wsl_v5
 		_ = ff.Close()
 	}()
 
@@ -78,7 +78,7 @@ func setupTestEnv(t *testing.T, opts ...testEnvConfigOpt) testEnv {
 	if err != nil {
 		t.Fatalf("failed to create temp config file: %v", err)
 	}
-	defer func() { //nolint:wsl
+	defer func() { //nolint:wsl_v5
 		_ = f.Close()
 	}()
 
@@ -126,7 +126,7 @@ func setupHookTest(t *testing.T, tempDir string, config testEnvConfig) (f *os.Fi
 	if err != nil {
 		t.Fatalf("failed to create hook output file: %v", err)
 	}
-	defer func() { //nolint:wsl
+	defer func() { //nolint:wsl_v5
 		_ = f.Close()
 	}()
 
@@ -257,7 +257,7 @@ func export(t *testing.T, vaultPath string, vaultPassword []byte) map[int]vaultd
 	if err != nil {
 		t.Fatalf("failed to open vault: %v", err)
 	}
-	t.Cleanup(func() { //nolint:wsl
+	t.Cleanup(func() { //nolint:wsl_v5
 		_ = v.Close()
 	})
 
@@ -280,7 +280,7 @@ func seedSecrets(t *testing.T, vaultEnv testEnv, input string) {
 	if err != nil {
 		t.Fatalf("failed to create import file: %v", err)
 	}
-	t.Cleanup(func() { //nolint:wsl
+	t.Cleanup(func() { //nolint:wsl_v5
 		_ = f.Close()
 	})
 
@@ -322,7 +322,7 @@ func (tt *commandTestCase) run(t *testing.T) {
 
 	ioStreams, out, errOut := setupIOStreams(t, tt.stdinData, tt.stdinInfoFn)
 
-	args := []string{"--config", vaultEnv.configPath}
+	args := []string{"--config", vaultEnv.configPath} //nolint:prealloc
 	args = append(args, tt.args...)
 
 	cmd := cli.NewDefaultVltCommand(ioStreams, args)

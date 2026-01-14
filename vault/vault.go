@@ -151,7 +151,7 @@ func New(ctx context.Context, path string, password []byte, opts ...Option) (vlt
 	if err != nil {
 		return nil, fmt.Errorf("vault.new: failed to initialize vault container handle: %w", err)
 	}
-	defer func() { //nolint:wsl
+	defer func() { //nolint:wsl_v5
 		if retErr != nil {
 			_ = vaultContainerHandle.cleanup()
 			_ = vlt.cleanup()
@@ -210,7 +210,7 @@ func Login(ctx context.Context, path string, password []byte, opts ...Option) (k
 	if err != nil {
 		return nil, nil, errf("vault.login: failed to initialize vault container handle: %w", err)
 	}
-	defer func() { //nolint:wsl
+	defer func() { //nolint:wsl_v5
 		_ = vaultContainerHandle.cleanup()
 	}()
 
@@ -249,7 +249,7 @@ func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr 
 	if err != nil {
 		return nil, errf("vault.open: failed to initialize vault container handle: %w", err)
 	}
-	defer func() { //nolint:wsl
+	defer func() { //nolint:wsl_v5
 		if retErr != nil {
 			_ = vaultContainerHandle.cleanup()
 			return
@@ -287,7 +287,7 @@ func Open(ctx context.Context, path string, opts ...Option) (vlt *Vault, retErr 
 	}
 
 	vlt = newVault(path, nonce, aes, vaultContainerHandle)
-	defer func() { //nolint:wsl
+	defer func() {
 		if retErr != nil {
 			_ = vlt.cleanup()
 			return
@@ -456,7 +456,7 @@ func (h *vaultContainerHandle) cleanup() error {
 
 func newVaultContainerHandle(ctx context.Context, path string, containerSnapshot []byte, maxHistorySnapshots int) (_ *vaultContainerHandle, retErr error) {
 	handle := &vaultContainerHandle{}
-	defer func() { //nolint:wsl
+	defer func() {
 		if retErr != nil {
 			retErr = errors.Join(retErr, handle.cleanup())
 			return

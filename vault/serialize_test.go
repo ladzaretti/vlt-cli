@@ -12,7 +12,7 @@ func TestSerialization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = db.Close() }() //nolint:wsl
+	defer func() { _ = db.Close() }() //nolint:wsl_v5
 
 	// Create a table and insert data
 	//
