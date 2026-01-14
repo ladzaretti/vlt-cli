@@ -126,7 +126,7 @@ max_history_snapshots = 2
 	if err != nil {
 		t.Fatalf("failed to create config file: %v", err)
 	}
-	t.Cleanup(func() { //nolint:wsl
+	t.Cleanup(func() { //nolint:wsl_v5
 		_ = f.Close()
 	})
 
@@ -413,7 +413,7 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 			if err != nil {
 				t.Fatalf("failed to create import file: %v", err)
 			}
-			t.Cleanup(func() { //nolint:wsl
+			t.Cleanup(func() { //nolint:wsl_v5
 				_ = f.Close()
 			})
 
@@ -423,7 +423,7 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 
 			ioStreams, _, errOut := setupIOStreams(t, nil, newTTYFileInfo)
 
-			args := []string{"import", "--config", vaultEnv.configPath, f.Name()}
+			args := []string{"import", "--config", vaultEnv.configPath, f.Name()} //nolint:prealloc
 			args = append(args, tt.extraArgs...)
 
 			cmd := cli.NewDefaultVltCommand(ioStreams, args)
@@ -440,7 +440,7 @@ func TestImportCommand(t *testing.T) { //nolint:revive
 			if err != nil {
 				t.Fatalf("failed to open vault: %v", err)
 			}
-			t.Cleanup(func() { //nolint:wsl
+			t.Cleanup(func() { //nolint:wsl_v5
 				_ = v.Close()
 			})
 

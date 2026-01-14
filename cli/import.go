@@ -265,7 +265,7 @@ func (o *ImportOptions) importFromFile(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	defer func() { //nolint:wsl
+	defer func() { //nolint:wsl_v5
 		_ = f.Close()
 	}()
 

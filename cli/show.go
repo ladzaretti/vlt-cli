@@ -131,7 +131,7 @@ func (o *ShowOptions) outputSecret(s []byte) error {
 		if err != nil {
 			return err
 		}
-		defer func() { //nolint:wsl
+		defer func() { //nolint:wsl_v5
 			_ = f.Close()
 		}()
 

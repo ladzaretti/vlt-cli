@@ -144,6 +144,7 @@ If --file is not provided, the default config path (~/%s) is used.`, defaultConf
 			if err := clierror.Check(genericclioptions.RejectDisallowedFlags(cmd, hiddenFlags...)); err != nil {
 				return err
 			}
+
 			if err := clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o)); err != nil {
 				return err
 			}

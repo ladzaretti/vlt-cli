@@ -71,6 +71,7 @@ func readUntil(r io.Reader, delim byte) ([]byte, error) {
 // from the given file descriptor.
 func PromptReadSecure(w io.Writer, fd int, prompt string, a ...any) ([]byte, error) {
 	fmt.Fprintf(w, prompt, a...)
+
 	defer fmt.Println()
 
 	bs, err := readPasswordFunc(fd)

@@ -281,7 +281,7 @@ func (s *VaultDB) FilterSecrets(ctx context.Context, m Filters) (map[int]SecretW
 		clauses := make([]string, len(m.Labels))
 		for i := range clauses {
 			clauses[i] = "l.name GLOB ?"
-			args = append(args, m.Labels[i]) //nolint:wsl
+			args = append(args, m.Labels[i])
 		}
 
 		whereClauses = append(whereClauses, "("+strings.Join(clauses, " OR ")+")")
@@ -300,7 +300,7 @@ func (s *VaultDB) secretsJoinLabels(ctx context.Context, query string, args ...a
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }() //nolint:wsl
+	defer func() { _ = rows.Close() }() //nolint:wsl_v5
 
 	var secrets []secretWithLabelRow
 	for rows.Next() {
@@ -337,7 +337,7 @@ func (s *VaultDB) ExportSecrets(ctx context.Context) (map[int]SecretWithLabels, 
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }() //nolint:wsl
+	defer func() { _ = rows.Close() }() //nolint:wsl_v5
 
 	var secrets []secretWithLabelRow
 	for rows.Next() {

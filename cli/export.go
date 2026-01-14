@@ -69,7 +69,7 @@ func (o *ExportOptions) Run(ctx context.Context, _ ...string) (retErr error) {
 		if err != nil {
 			return err
 		}
-		defer func() { //nolint:wsl
+		defer func() { //nolint:wsl_v5
 			_ = f.Close()
 		}()
 
