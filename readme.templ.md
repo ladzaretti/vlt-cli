@@ -39,7 +39,9 @@
 - **OS**: Linux
   - Tested on (`amd64`):
     - Debian 12
+    - Debian 13
     - Fedora 42
+    - Fedora 43
 - **Arch**: Prebuilt binaries are available for `amd64`, `arm64`, and `386`.
 
 ## Installation
