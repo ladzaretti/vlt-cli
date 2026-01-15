@@ -66,9 +66,10 @@ func NewCmdLogout(defaults *DefaultVltOptions) *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "logout",
-		Short: "Log out of the current session",
-		Long:  "Log out of the current session.",
+		Use:     "logout",
+		Aliases: []string{"lock"},
+		Short:   "Log out of the current session",
+		Long:    "Log out of the current session.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return clierror.Check(genericclioptions.ExecuteCommand(cmd.Context(), o))
 		},
