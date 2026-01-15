@@ -84,12 +84,12 @@ This packs the `vlt` and `vltd` binaries in `./dist/`.
 ## Design Overview
 ### vlt - cli client
 The `vlt` cli manages secrets stored in a vault system composed of two layers:
-- `vault_container.sqlite` is the outer SQLite database. It stores metadata and a single encrypted, serialized SQLite instance as a binary blob.
-- `vault.sqlite` is a serialized and encrypted inner SQLite database that contains the actual user data.
+- `vault_container.sqlite` is the outer SQLite database. It stores crypto metadata (auth PHC, KDF PHC, nonce, checksum) and a single encrypted, serialized SQLite instance as a binary blob.
+- `vault.sqlite` is a serialized and encrypted inner SQLite database that contains the actual user data (secret names, labels, ciphertexts).
   - The decrypted `vault.sqlite` is held in the `vlt` process memory only and is never written to disk.
 
 ### vltd - session manager daemon
-The `vltd` daemon manages derived encryption keys and exposes a Unix socket that `vlt` uses to obtain them. Only `vlt` accesses the database files directly.
+The `vltd` daemon manages derived encryption keys and exposes a Unix socket that `vlt` uses to obtain them. The socket is created at `/run/user/<uid>/vlt.sock` with `0600` permissions and only accepts connections from the same UID. Only `vlt` accesses the database files directly.
 
 ```mermaid
 graph LR
@@ -114,8 +114,11 @@ graph LR
 - **Encryption**:  
   - Secrets are encrypted with `AES-256-GCM`, using unique nonces for each encrypted value.  
   - The backing `SQLite` database is encrypted at rest and only decrypted into memory after authentication.
+  - The outer container stores crypto metadata in plaintext (PHC strings, nonce, checksum) plus the encrypted vault blob.
 
-- **Memory-Safety**: Secrets are stored in memory only.
+- **Session Keys**: Stored in the daemon's memory only for the configured session duration and cleared on logout/expiry.
+
+- **Memory-Safety**: Secrets are stored in memory only, with best effort zeroization of buffers on session end and vault close.
 
 ## Usage
 ```console

@@ -384,13 +384,23 @@ func (vlt *Vault) cleanup() error {
 		return nil
 	}
 
+	zeroBytes(vlt.buf)
+	zeroBytes(vlt.decryptionNonce)
+
 	vlt.buf = nil // release backing buffer to allow garbage collection.
+	vlt.decryptionNonce = nil
 
 	if err := executeCleanup(vlt.cleanupFuncs); err != nil {
 		return errf("cleanup: cleanup failed: %w", err)
 	}
 
 	return nil
+}
+
+func zeroBytes(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
 }
 
 // verifyPassword checks whether the given password matches the Argon2id PHC hash.

@@ -112,7 +112,9 @@ func newSessionServer() *sessionServer {
 // stopAll stops all active sessions safely via safeMap.
 func (s *sessionServer) stopAll() {
 	s.sessions.Range(func(_ string, s *session) bool {
+		zeroVaultKey(s.key)
 		s.stop()
+
 		return true
 	})
 }
@@ -127,6 +129,10 @@ func (s *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*emptypb
 
 	duration := time.Duration(sessionSeconds) * time.Second
 
+	if existing, ok := s.sessions.load(vaultPath); ok {
+		zeroVaultKey(existing.key)
+	}
+
 	session := newSession(duration, req.GetVaultKey())
 	s.sessions.store(req.GetVaultPath(), session)
 
@@ -135,6 +141,7 @@ func (s *sessionServer) Login(_ context.Context, req *pb.LoginRequest) (*emptypb
 	go session.start(func() {
 		cur, ok := s.sessions.load(vaultPath)
 		if ok {
+			zeroVaultKey(cur.key)
 			cur.key = nil
 		}
 
@@ -153,6 +160,7 @@ func (s *sessionServer) Logout(_ context.Context, req *pb.SessionRequest) (*empt
 		return nil, status.Errorf(codes.NotFound, "no session found for the given path: %q", path)
 	}
 
+	zeroVaultKey(session.key)
 	session.stop()
 
 	s.sessions.delete(path)
@@ -183,4 +191,19 @@ func (s *sessionServer) GetSessionKey(_ context.Context, req *pb.SessionRequest)
 	}
 
 	return session.key, nil
+}
+
+func zeroBytes(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
+}
+
+func zeroVaultKey(vk *pb.VaultKey) {
+	if vk == nil {
+		return
+	}
+
+	zeroBytes(vk.GetKey())
+	zeroBytes(vk.GetNonce())
 }
