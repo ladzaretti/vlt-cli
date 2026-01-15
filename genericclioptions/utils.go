@@ -16,13 +16,15 @@ func MarkAllFlagsHidden(target *cobra.Command, excluded ...string) {
 	f := target.HelpFunc()
 
 	target.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-		cmd.Flags().VisitAll(func(f *pflag.Flag) {
-			if slices.Contains(excluded, f.Name) {
-				return
-			}
+		if cmd == target {
+			cmd.Flags().VisitAll(func(f *pflag.Flag) {
+				if slices.Contains(excluded, f.Name) {
+					return
+				}
 
-			f.Hidden = true
-		})
+				f.Hidden = true
+			})
+		}
 
 		f(cmd, args)
 	})
