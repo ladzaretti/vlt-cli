@@ -14,7 +14,7 @@
 `vlt` provides secure, local management of your sensitive information, ensuring your secrets remain encrypted at rest and are only briefly decrypted in memory when accessed.
 
 <!-- omit in toc -->
-## Table of Content
+## Table of Contents
 
 - [vlt - A secure command-line tool for managing secrets in your terminal.](#vlt---a-secure-command-line-tool-for-managing-secrets-in-your-terminal)
   - [Supported Platforms](#supported-platforms)
@@ -186,7 +186,7 @@ vlt ls -P | fzf --header-lines=1 | awk '{print $1}' | xargs -r vlt show -c --id
 ```
 
 #### Sync to a Git Repository
-Use the `post-login` and `post-write` hooks to sync the vault with a bare Git repository.
+Use the `post_login_cmd` and `post_write_cmd` hooks to sync the vault with a bare Git repository.
 
 Example setup using fish shell:
 ```shell
