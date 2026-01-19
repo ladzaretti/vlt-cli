@@ -22,7 +22,7 @@
     - [Option 1: Install via curl](#option-1-install-via-curl)
     - [Option 2: Download a release](#option-2-download-a-release)
       - [Optional install script](#optional-install-script)
-    - [Option 3: Build from source (requires Go 1.24)](#option-3-build-from-source-requires-go-124)
+    - [Option 3: Build from source (requires Go 1.24 or newer)](#option-3-build-from-source-requires-go-124-or-newer)
   - [Design Overview](#design-overview)
     - [vlt - cli client](#vlt---cli-client)
     - [vltd - session manager daemon](#vltd---session-manager-daemon)
@@ -67,7 +67,7 @@ After downloading and extracting an archive, the `install.sh` script can be used
 - Copy the `vlt` and `vltd` binaries to `/usr/local/bin`
 - Install and enable the `vltd` systemd user service for managing vault sessions
 
-### Option 3: Build from source (requires Go 1.24)
+### Option 3: Build from source (requires Go 1.24 or newer)
 
 ```bash
 # Clone and build
