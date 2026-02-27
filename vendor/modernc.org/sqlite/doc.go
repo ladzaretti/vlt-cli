@@ -53,7 +53,6 @@
 //
 // https://modern-c.appspot.com/-/builder/?importpath=modernc.org%2fsqlite
 //
-//
 // # Connecting to a database
 //
 // To access a Sqlite database do something like
