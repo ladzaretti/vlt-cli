@@ -8,6 +8,17 @@
 // SQLite is an in-process implementation of a self-contained, serverless,
 // zero-configuration, transactional SQL database engine.
 //
+// # Pluggable page cache
+//
+// The package exposes a Go-facing wrapper for SQLite's
+// SQLITE_CONFIG_PCACHE2 mechanism. Applications can supply their own
+// page cache implementation by registering a [PageCache] before the
+// first [sql.Open] via [RegisterPageCache]. See the docstrings
+// on [PageCache], [Cache], and [Page] for the contract; the binding
+// owns the sqlite3_pcache_page stub on behalf of the implementation
+// and re-consults Cache.Fetch on every SQLite request, so a bounded
+// and evicting purgeable cache works as the C contract intends.
+//
 // # Fragile modernc.org/libc dependency
 //
 // When you import this package you should use in your go.mod file the exact
@@ -27,21 +38,21 @@
 //
 //	OS      Arch    SQLite version
 //	------------------------------
-//	darwin	amd64   3.51.2
-//	darwin	arm64   3.51.2
-//	freebsd	amd64   3.51.2
-//	freebsd	arm64   3.51.2
-//	linux	386     3.51.2
-//	linux	amd64   3.51.2
-//	linux	arm     3.51.2
-//	linux	arm64   3.51.2
-//	linux	loong64 3.51.2
-//	linux	ppc64le 3.51.2
-//	linux	riscv64 3.51.2
-//	linux	s390x   3.51.2
-//	windows	386     3.51.2
-//	windows	amd64   3.51.2
-//	windows	arm64   3.51.2
+//	darwin	amd64   3.53.2
+//	darwin	arm64   3.53.2
+//	freebsd	amd64   3.53.2
+//	freebsd	arm64   3.53.2
+//	linux	386     3.53.2
+//	linux	amd64   3.53.2
+//	linux	arm     3.53.2
+//	linux	arm64   3.53.2
+//	linux	loong64 3.53.2
+//	linux	ppc64le 3.53.2
+//	linux	riscv64 3.53.2
+//	linux	s390x   3.53.2
+//	windows	386     3.53.2
+//	windows	amd64   3.53.2
+//	windows	arm64   3.53.2
 //
 // # Benchmarks
 //
@@ -52,7 +63,6 @@
 // Builder results available at:
 //
 // https://modern-c.appspot.com/-/builder/?importpath=modernc.org%2fsqlite
-//
 //
 // # Connecting to a database
 //
